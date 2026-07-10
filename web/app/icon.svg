@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Dhukuti app icon</title>
+  <rect width="64" height="64" rx="14" fill="#0A0A0A"/>
+  <path d="M32 12 50 20.5 32 29 14 20.5 32 12Z" fill="none" stroke="#FF6B4A" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M14 31.5 32 40 50 31.5" fill="none" stroke="#F5F5F5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>
+  <path d="M14 42.5 32 51 50 42.5" fill="none" stroke="#F5F5F5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/>
+</svg>
