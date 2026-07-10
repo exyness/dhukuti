@@ -2,22 +2,17 @@ import {
   AlertCircle,
   CircleDollarSign,
   Clock3,
+  ExternalLink,
   ShieldAlert,
   ShieldCheck,
-  UserMinus,
-  UserRound,
   Vote,
 } from "lucide-react";
 import { AppShell, Panel } from "@/components/app/app-shell";
+import { CircleMemberAvatar } from "@/components/app/circle-member-avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { circleMembers, currentCircle, payoutSchedule } from "@/lib/app-data";
-
-type MemberAvatarData = {
-  handle: string;
-  reputation: number;
-  role: string;
-  state: string;
-};
+import { cn } from "@/lib/cn";
 
 export default function CircleDetailsPage() {
   const openSlots = Math.max(currentCircle.memberCap - circleMembers.length, 0);
@@ -25,26 +20,30 @@ export default function CircleDetailsPage() {
     const slotNumber = circleMembers.length + index + 1;
 
     return {
+      collateral: "Not locked",
       handle: `Slot ${slotNumber}`,
+      nextPayout: "Unassigned",
       reputation: 0,
       role: "Open",
-      state: "Pending",
+      state: "Open",
+      summary: `Open slot gated by ${currentCircle.minReputation}+ reputation and ${currentCircle.collateral} collateral.`,
+      vouch: "Available",
     };
   });
 
   return (
-    <AppShell title={currentCircle.name}>
+    <AppShell title={currentCircle.name} contentClassName="!max-w-7xl !px-6 !py-10 md:!px-10">
       <div className="space-y-8">
         <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <Panel className="flex flex-col justify-between p-8">
-            <div>
-              <div className="mb-5 flex items-center gap-2">
+          <Panel className="flex min-h-[17rem] flex-col items-center justify-between gap-6 p-6 text-center">
+            <div className="w-full">
+              <div className="mb-5 flex items-center justify-center gap-2">
                 <Clock3 className="h-4 w-4 text-accent" aria-hidden="true" />
                 <span className="font-mono text-[0.65rem] uppercase tracking-widest text-muted">
                   Round {currentCircle.round} closes in
                 </span>
               </div>
-              <div className="flex items-start gap-4">
+              <div className="flex items-start justify-center gap-3">
                 <CountdownUnit value="02" label="Days" />
                 <span className="mt-1 font-mono text-3xl text-white/20">:</span>
                 <CountdownUnit value="14" label="Hrs" />
@@ -52,13 +51,13 @@ export default function CircleDetailsPage() {
                 <CountdownUnit value="38" label="Mins" />
               </div>
             </div>
-            <Button variant="primary" className="mt-8 w-full">
+            <Button variant="primary" className="w-full">
               Contribute {currentCircle.contribution}
               <CircleDollarSign className="h-3.5 w-3.5" aria-hidden="true" />
             </Button>
           </Panel>
 
-          <Panel className="p-8 lg:col-span-2">
+          <Panel className="p-6 lg:col-span-2">
             <div className="mb-6 flex items-center justify-between gap-4">
               <span className="font-mono text-[0.65rem] uppercase tracking-widest text-muted">
                 Circle Members ({currentCircle.memberCap})
@@ -69,12 +68,22 @@ export default function CircleDetailsPage() {
                 <LegendDot label="Default risk" tone="default" />
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-5 sm:grid-cols-4 md:grid-cols-6">
+            <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-6">
               {circleMembers.map((member) => (
-                <MemberAvatar key={member.handle} member={member} />
+                <CircleMemberAvatar
+                  key={member.handle}
+                  fallbackCollateral={currentCircle.collateral}
+                  member={member}
+                  minReputation={currentCircle.minReputation}
+                />
               ))}
               {openSlotMembers.map((member) => (
-                <MemberAvatar key={member.handle} member={member} />
+                <CircleMemberAvatar
+                  key={member.handle}
+                  fallbackCollateral={currentCircle.collateral}
+                  member={member}
+                  minReputation={currentCircle.minReputation}
+                />
               ))}
             </div>
           </Panel>
@@ -104,11 +113,12 @@ export default function CircleDetailsPage() {
                     {payoutSchedule.map((row) => (
                       <tr
                         key={row.round}
-                        className={
+                        className={cn(
+                          "group border-b border-border transition-colors hover:bg-white/[0.03] last:border-b-0",
                           row.status === "Default vote"
-                            ? "border-b border-border bg-white/[0.02]"
-                            : "border-b border-border opacity-70 last:border-b-0"
-                        }
+                            ? "bg-white/[0.02]"
+                            : "opacity-70 hover:opacity-100",
+                        )}
                       >
                         <td className="p-4 font-medium text-accent">
                           {row.round}/{currentCircle.memberCap}
@@ -123,7 +133,9 @@ export default function CircleDetailsPage() {
                           </div>
                         </td>
                         <td className="p-4 font-medium">{row.amount}</td>
-                        <td className={statusClassName(row.status)}>{row.status}</td>
+                        <td className="p-4">
+                          <PayoutStatus status={row.status} />
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -178,6 +190,10 @@ export default function CircleDetailsPage() {
                     Reject
                   </Button>
                 </div>
+                <Button variant="ghost" size="sm" className="mt-3 w-full">
+                  View member proof
+                  <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                </Button>
               </div>
             </Panel>
 
@@ -227,7 +243,7 @@ export default function CircleDetailsPage() {
 
 function CountdownUnit({ label, value }: { label: string; value: string }) {
   return (
-    <div className="text-center">
+    <div className="min-w-14 text-center">
       <span className="block font-mono text-3xl font-medium">{value}</span>
       <span className="font-mono text-[0.55rem] uppercase text-muted">{label}</span>
     </div>
@@ -240,43 +256,6 @@ function LegendDot({ label, tone }: { label: string; tone: "paid" | "pending" | 
       <span className={legendDotClassName(tone)} aria-hidden="true" />
       {label}
     </span>
-  );
-}
-
-function MemberAvatar({ member }: { member: MemberAvatarData }) {
-  const isYou = member.role === "You";
-  const isDefault = member.state === "Default risk";
-  const isPaid = member.state === "Paid";
-
-  return (
-    <button
-      type="button"
-      className="group flex min-h-24 flex-col items-center justify-center gap-2 rounded-md transition-colors hover:bg-white/[0.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      <div className={avatarRingClassName({ isDefault, isYou })}>
-        {isDefault ? (
-          <UserMinus className="h-5 w-5 text-accent" aria-hidden="true" />
-        ) : (
-          <UserRound
-            className={isYou ? "h-5 w-5 text-accent" : "h-5 w-5 text-white/40"}
-            aria-hidden="true"
-          />
-        )}
-        <span className={statusDotClassName({ isDefault, isPaid })} aria-hidden="true" />
-      </div>
-      <span
-        className={
-          isYou || isDefault
-            ? "font-mono text-[0.6rem] text-accent"
-            : "font-mono text-[0.6rem] text-muted group-hover:text-foreground"
-        }
-      >
-        {member.handle}
-      </span>
-      {member.reputation > 0 ? (
-        <span className="font-mono text-[0.52rem] text-white/25">Rep {member.reputation}</span>
-      ) : null}
-    </button>
   );
 }
 
@@ -293,16 +272,36 @@ function TableHead({ children }: { children: React.ReactNode }) {
   return <th className="p-4 font-medium uppercase tracking-wider text-muted">{children}</th>;
 }
 
-function avatarRingClassName({ isDefault, isYou }: { isDefault: boolean; isYou: boolean }) {
-  if (isYou) {
-    return "relative flex h-12 w-12 items-center justify-center rounded-full border border-accent/40 bg-accent/8";
+function PayoutStatus({ status }: { status: string }) {
+  if (status === "Completed") {
+    return (
+      <Badge tone="success" shape="square" size="xs">
+        {status}
+      </Badge>
+    );
   }
 
-  if (isDefault) {
-    return "relative flex h-12 w-12 items-center justify-center rounded-full border border-accent/25 bg-white/[0.02]";
+  if (status === "Default vote") {
+    return (
+      <Badge tone="accent" shape="square" size="xs">
+        {status}
+      </Badge>
+    );
   }
 
-  return "relative flex h-12 w-12 items-center justify-center rounded-full border border-border bg-white/[0.03]";
+  if (status === "Dutch bid settled") {
+    return (
+      <Badge tone="info" shape="square" size="xs">
+        Settled
+      </Badge>
+    );
+  }
+
+  return (
+    <Badge tone="muted" shape="square" size="xs">
+      {status}
+    </Badge>
+  );
 }
 
 function legendDotClassName(tone: "paid" | "pending" | "default") {
@@ -315,28 +314,4 @@ function legendDotClassName(tone: "paid" | "pending" | "default") {
   }
 
   return "h-2 w-2 rounded-full bg-warning";
-}
-
-function statusClassName(status: string) {
-  if (status === "Completed") {
-    return "p-4 text-success";
-  }
-
-  if (status === "Default vote") {
-    return "p-4 text-accent";
-  }
-
-  return "p-4 text-muted";
-}
-
-function statusDotClassName({ isDefault, isPaid }: { isDefault: boolean; isPaid: boolean }) {
-  if (isDefault) {
-    return "absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border border-background bg-accent";
-  }
-
-  if (isPaid) {
-    return "absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border border-background bg-success";
-  }
-
-  return "absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border border-background bg-warning";
 }

@@ -10,7 +10,6 @@ import {
   useCallback,
   useEffect,
   useId,
-  useRef,
   useState,
 } from "react";
 import { createPortal } from "react-dom";
@@ -44,34 +43,24 @@ export function Tooltip({
   side?: TooltipSide;
 }) {
   const id = useId();
-  const triggerRef = useRef<HTMLSpanElement>(null);
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ left: 0, top: 0 });
 
-  const updatePosition = useCallback(() => {
-    const rect = triggerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    setPosition(
-      side === "right"
-        ? { left: rect.right + 12, top: rect.top + rect.height / 2 }
-        : { left: rect.left + rect.width / 2, top: rect.top - 10 },
-    );
-  }, [side]);
+  const show = useCallback(
+    (element: HTMLElement) => {
+      if (!enabled) return;
+      const rect = element.getBoundingClientRect();
+      setPosition(
+        side === "right"
+          ? { left: rect.right + 12, top: rect.top + rect.height / 2 }
+          : { left: rect.left + rect.width / 2, top: rect.top - 10 },
+      );
+      setOpen(true);
+    },
+    [enabled, side],
+  );
 
   const hide = useCallback(() => setOpen(false), []);
-
-  const show = useCallback(() => {
-    if (!enabled) return;
-    updatePosition();
-    setOpen(true);
-  }, [enabled, updatePosition]);
-
-  useEffect(() => {
-    if (!enabled) {
-      hide();
-    }
-  }, [enabled, hide]);
 
   useEffect(() => {
     if (!open) return;
@@ -110,20 +99,24 @@ export function Tooltip({
 
   const trigger = isValidElement<TooltipTriggerProps>(children)
     ? cloneElement(children, {
-        "aria-describedby": open ? id : children.props["aria-describedby"],
+        "aria-describedby": open && enabled ? id : children.props["aria-describedby"],
         onBlurCapture: composeEventHandler(children.props.onBlurCapture, hide),
         onClickCapture: composeEventHandler(children.props.onClickCapture, hide),
-        onFocusCapture: composeEventHandler(children.props.onFocusCapture, show),
+        onFocusCapture: composeEventHandler(children.props.onFocusCapture, (event) =>
+          show(event.currentTarget),
+        ),
         onMouseLeave: composeEventHandler(children.props.onMouseLeave, hide),
         onPointerCancel: composeEventHandler(children.props.onPointerCancel, hide),
         onPointerDownCapture: composeEventHandler(children.props.onPointerDownCapture, hide),
-        onPointerEnter: composeEventHandler(children.props.onPointerEnter, show),
+        onPointerEnter: composeEventHandler(children.props.onPointerEnter, (event) =>
+          show(event.currentTarget),
+        ),
         onPointerLeave: composeEventHandler(children.props.onPointerLeave, hide),
       })
     : children;
 
   return (
-    <span ref={triggerRef} className={cn("inline-flex", className)}>
+    <span className={cn("inline-flex", className)}>
       {trigger}
       {open && enabled && typeof document !== "undefined"
         ? createPortal(
@@ -148,13 +141,13 @@ export function Tooltip({
 
 function composeEventHandler<Event extends { defaultPrevented?: boolean }>(
   userHandler: ((event: Event) => void) | undefined,
-  ownHandler: () => void,
+  ownHandler: (event: Event) => void,
 ) {
   return (event: Event) => {
     userHandler?.(event);
 
     if (!event.defaultPrevented) {
-      ownHandler();
+      ownHandler(event);
     }
   };
 }

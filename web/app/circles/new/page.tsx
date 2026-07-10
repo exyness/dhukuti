@@ -1,4 +1,4 @@
-import { ArrowRight, LockKeyhole, WalletCards } from "lucide-react";
+import { ArrowRight, ChevronDown, LockKeyhole, WalletCards } from "lucide-react";
 import type { ReactNode } from "react";
 import { AppPageHeader, AppShell, Panel, TokenScopeNotice } from "@/components/app/app-shell";
 import { Badge } from "@/components/ui/badge";
@@ -7,59 +7,60 @@ import { cn } from "@/lib/cn";
 
 export default function NewCirclePage() {
   return (
-    <AppShell title="Create Circle">
+    <AppShell title="Create Circle" contentClassName="!max-w-7xl !px-6 !py-10 md:!px-10">
       <AppPageHeader
         eyebrow="Circle Builder"
         title="Configure a savings circle."
-        copy="Set the economic rules, collateral, and payout model before publishing. These terms become fixed after the first member joins."
+        copy="Set the economic rules, admission gate, and payout model before publishing. These terms become fixed after the first member joins."
       />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
-        <form className="space-y-6">
-          <Panel className="p-7">
-            <fieldset>
+      <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_23.75rem]">
+        <form className="space-y-[1.125rem]">
+          <Panel className="p-6">
+            <fieldset className="m-0 min-w-0">
               <legend className="font-mono text-[0.68rem] uppercase tracking-widest text-muted">
                 01. Circle Terms
               </legend>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-                V1 circles settle in native SOL and enforce 2 to 64 members so contribution and vote
-                bitmaps fit safely in program state.
+              <p className="mt-1 mb-[1.375rem] max-w-2xl text-sm leading-6 text-muted">
+                Define the core parameters members will review before they join.
               </p>
-              <div className="mt-6 grid gap-5 md:grid-cols-2">
+              <div className="grid gap-[1.125rem] md:grid-cols-2">
                 <Field label="Circle name" htmlFor="circle-name">
                   <input
                     id="circle-name"
                     name="circle-name"
                     type="text"
-                    placeholder="Kathmandu builder circle"
+                    placeholder="Dev guild savings"
                     autoComplete="off"
+                    spellCheck={false}
                     className="input-control"
                   />
                 </Field>
                 <Field label="Cycle duration" htmlFor="cycle-duration">
-                  <select
-                    id="cycle-duration"
-                    name="cycle-duration"
-                    className="input-control"
-                    defaultValue="30"
-                  >
-                    <option value="7">Weekly · 7 days</option>
-                    <option value="14">Biweekly · 14 days</option>
-                    <option value="30">Monthly · 30 days</option>
-                  </select>
+                  <SelectShell>
+                    <select
+                      id="cycle-duration"
+                      name="cycle-duration"
+                      className="input-control appearance-none pr-10 font-mono text-[0.84rem]"
+                      defaultValue="30"
+                    >
+                      <option value="7">Weekly - 7 days</option>
+                      <option value="30">Monthly - 30 days</option>
+                      <option value="90">Quarterly - 90 days</option>
+                    </select>
+                  </SelectShell>
                 </Field>
                 <Field label="Contribution amount" htmlFor="contribution">
-                  <AmountInput id="contribution" name="contribution" defaultValue="2.00" />
+                  <AmountInput id="contribution" name="contribution" defaultValue="5.00" />
                 </Field>
-                <Field label="Max members" htmlFor="member-cap">
+                <Field label="Max participants" htmlFor="member-cap">
                   <input
                     id="member-cap"
                     name="member-cap"
-                    type="number"
+                    type="text"
                     inputMode="numeric"
-                    min={2}
-                    max={64}
-                    defaultValue={8}
+                    pattern="[0-9]*"
+                    defaultValue={12}
                     autoComplete="off"
                     className="input-control"
                   />
@@ -68,123 +69,166 @@ export default function NewCirclePage() {
             </fieldset>
           </Panel>
 
-          <Panel className="p-7">
-            <fieldset>
+          <Panel className="p-6">
+            <fieldset className="m-0 min-w-0">
               <legend className="font-mono text-[0.68rem] uppercase tracking-widest text-muted">
-                02. Payout Curve
+                02. Payout Strategy
               </legend>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-                The deployed program supports fixed-order payouts and early payout Dutch bids.
+              <p className="mt-1 mb-[1.375rem] max-w-2xl text-sm leading-6 text-muted">
+                Choose how each cycle&apos;s recipient is selected.
               </p>
-              <div className="mt-6 grid gap-4 md:grid-cols-3">
+              <div className="grid gap-3 md:grid-cols-3">
                 <StrategyCard
                   checked
-                  description="Recipient order is fixed before the circle starts."
-                  label="Fixed order"
-                  name="payout-curve"
+                  description="Recipient order is locked before the circle opens."
+                  kicker="Fixed Order"
+                  label="Sequential"
+                  name="strategy"
                   value="fixed"
                 />
                 <StrategyCard
-                  description="Members can accept an early payout discount."
-                  label="Dutch bid"
-                  name="payout-curve"
-                  value="dutch"
-                />
-                <StrategyCard
-                  description="Reserved until a VRF oracle integration is implemented."
-                  disabled
-                  label="Lottery"
-                  name="payout-curve"
+                  description="A verifiable draw selects the recipient each cycle."
+                  kicker="Random"
+                  label="Lottery Pot"
+                  name="strategy"
                   value="lottery"
                 />
+                <StrategyCard
+                  description="Members bid a yield discount to receive early."
+                  kicker="Bidding"
+                  label="Dutch Auction"
+                  name="strategy"
+                  value="auction"
+                />
               </div>
             </fieldset>
           </Panel>
 
-          <Panel className="p-7">
-            <fieldset>
+          <Panel className="p-6">
+            <fieldset className="m-0 min-w-0">
               <legend className="font-mono text-[0.68rem] uppercase tracking-widest text-muted">
-                03. Trust Rules
+                03. Admission Rules
               </legend>
-              <div className="mt-6 grid gap-5 md:grid-cols-2">
-                <Field label="Minimum reputation" htmlFor="min-reputation">
-                  <input
-                    id="min-reputation"
-                    name="min-reputation"
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    defaultValue={180}
-                    autoComplete="off"
-                    className="input-control"
-                  />
-                </Field>
-                <Field label="Collateral per member" htmlFor="collateral">
-                  <AmountInput id="collateral" name="collateral" defaultValue="1.00" />
-                </Field>
-                <label className="md:col-span-2 flex min-h-14 cursor-pointer items-center gap-3 rounded-lg border border-border bg-surface/60 px-4 text-sm text-foreground">
+              <p className="mt-1 mb-[1.375rem] max-w-2xl text-sm leading-6 text-muted">
+                Keep the circle open enough to fill, but gated enough to feel trustworthy.
+              </p>
+              <div className="grid gap-[1.125rem] md:grid-cols-2">
+                <div className="flex min-w-0 flex-col gap-2">
+                  <span className="font-mono text-[0.66rem] uppercase tracking-[0.12em] text-muted">
+                    Minimum reputation
+                  </span>
+                  <div className="grid grid-cols-[minmax(0,1fr)_4.5rem] items-center gap-3.5">
+                    <input
+                      className="h-1.5 w-full cursor-pointer accent-[var(--accent)]"
+                      type="range"
+                      name="reputation"
+                      min="0"
+                      max="1000"
+                      defaultValue="450"
+                      aria-label="Minimum reputation"
+                    />
+                    <span className="flex min-h-11 items-center justify-center rounded-md border border-border bg-white/[0.035] font-mono text-[0.84rem] text-foreground">
+                      450
+                    </span>
+                  </div>
+                  <p className="m-0 text-[0.76rem] leading-5 text-muted">
+                    Recommended for public circles with 10 or more participants.
+                  </p>
+                </div>
+
+                <div className="flex min-w-0 flex-col gap-2">
+                  <span className="font-mono text-[0.66rem] uppercase tracking-[0.12em] text-muted">
+                    Privacy
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <ChoiceCard checked label="Public" name="privacy" value="public" />
+                    <ChoiceCard label="Invite Only" name="privacy" value="invite" />
+                  </div>
+                  <p className="m-0 text-[0.76rem] leading-5 text-muted">
+                    Invite-only circles require an approval list.
+                  </p>
+                </div>
+
+                <label className="flex min-h-14 cursor-pointer items-center gap-3 rounded-lg border border-border bg-white/[0.024] px-4 text-sm leading-5 text-foreground transition-colors hover:border-white/15 hover:bg-white/[0.035] focus-within:ring-2 focus-within:ring-ring md:col-span-2">
                   <input
                     type="checkbox"
-                    name="allow-vouches"
+                    name="identity-check"
                     defaultChecked
-                    className="h-4 w-4 accent-[var(--accent)]"
+                    className="h-4 w-4 shrink-0 cursor-pointer accent-[var(--accent)]"
                   />
-                  Allow active members to vouch stake behind new members
+                  <span>
+                    Require identity verification before a member can reserve a payout slot.
+                  </span>
                 </label>
+
+                <Field
+                  hint="Held in escrow until the circle completes."
+                  label="Security bond"
+                  htmlFor="security-bond"
+                >
+                  <AmountInput
+                    id="security-bond"
+                    name="security-bond"
+                    defaultValue="2.50"
+                    readOnly
+                  />
+                </Field>
               </div>
             </fieldset>
           </Panel>
 
-          <div className="flex flex-wrap justify-end gap-3">
+          <div className="flex flex-wrap justify-end gap-3 pt-1">
             <Button variant="secondary">Save Draft</Button>
-            <Button variant="primary">
-              Review Create Instruction
+            <Button type="submit" variant="primary">
+              Continue to Review
               <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
             </Button>
           </div>
         </form>
 
         <aside className="space-y-6">
-          <Panel className="p-7">
-            <div className="mb-5 flex items-center justify-between">
+          <Panel className="sticky top-24 p-6">
+            <div className="mb-7 flex items-center justify-between">
               <span className="font-mono text-[0.62rem] uppercase tracking-[0.12em] text-muted">
                 Live Preview
               </span>
-              <Badge tone="accent">Draft</Badge>
+              <Badge tone="accent">Draft Terms</Badge>
             </div>
             <span className="block font-mono text-[0.58rem] uppercase tracking-[0.1em] text-muted">
-              Projected pot
+              Projected pot value
             </span>
             <div className="mt-2 flex items-baseline gap-2">
-              <strong className="font-mono text-4xl font-medium">16.00</strong>
+              <strong className="font-mono text-[2.45rem] font-semibold tracking-tight">
+                60.00
+              </strong>
               <span className="font-mono text-sm text-muted">SOL</span>
             </div>
-            <p className="mt-3 text-sm leading-6 text-muted">
-              Based on 2.00 SOL across 8 committed member slots.
+            <p className="mt-1 mb-7 text-[0.78rem] leading-5 text-muted">
+              Based on 5.00 SOL across 12 committed member slots.
             </p>
             <div className="mt-6 grid grid-cols-2 gap-3">
               <PreviewStat label="Cycle" value="Monthly" />
-              <PreviewStat label="Members" value="8 max" />
-              <PreviewStat label="Mode" value="Fixed" />
-              <PreviewStat label="Collateral" value="1 SOL" />
+              <PreviewStat label="Length" value="12 Months" />
+              <PreviewStat label="Model" value="Fixed" />
+              <PreviewStat label="Gate" value="450 Rep" />
             </div>
 
             <div className="mt-7 border-t border-border pt-6">
               <div className="mb-3 font-mono text-[0.62rem] uppercase tracking-[0.12em] text-muted">
                 Projected payout schedule
               </div>
-              <PreviewRow label="Cycle 01" value="16.00 SOL" />
-              <PreviewRow label="Cycle 02" value="16.00 SOL" />
-              <PreviewRow label="Cycle 03" value="16.00 SOL" />
+              <PreviewRow label="Cycle 01 - Mar 2027" value="60.00 SOL" />
+              <PreviewRow label="Cycle 02 - Apr 2027" value="60.00 SOL" />
+              <PreviewRow label="Cycle 03 - May 2027" value="60.00 SOL" />
             </div>
 
             <div className="mt-7 border-t border-border pt-6">
               <div className="mb-3 font-mono text-[0.62rem] uppercase tracking-[0.12em] text-muted">
-                Program funds
+                Fee breakdown
               </div>
-              <PreviewRow label="Insurance reserve" value="0.32 SOL" />
-              <PreviewRow label="Collateral locked" value="8.00 SOL" />
-              <PreviewRow label="Settlement asset" value="SOL" />
+              <PreviewRow label="Protocol fee" value="0.30 SOL" />
+              <PreviewRow label="Insurance reserve" value="0.10 SOL" />
+              <PreviewRow label="Security bond" value="2.50 SOL" />
             </div>
           </Panel>
 
@@ -234,21 +278,36 @@ export default function NewCirclePage() {
 function Field({
   children,
   htmlFor,
+  hint,
   label,
 }: {
   children: ReactNode;
   htmlFor: string;
+  hint?: string;
   label: string;
 }) {
   return (
-    <div>
+    <div className="flex min-w-0 flex-col gap-2">
       <label
         htmlFor={htmlFor}
-        className="mb-2 block font-mono text-[0.62rem] uppercase tracking-[0.1em] text-muted"
+        className="font-mono text-[0.66rem] uppercase tracking-[0.12em] text-muted"
       >
         {label}
       </label>
       {children}
+      {hint ? <p className="m-0 text-[0.76rem] leading-5 text-muted">{hint}</p> : null}
+    </div>
+  );
+}
+
+function SelectShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="relative">
+      {children}
+      <ChevronDown
+        className="pointer-events-none absolute top-1/2 right-3.5 h-4 w-4 -translate-y-1/2 text-muted"
+        aria-hidden="true"
+      />
     </div>
   );
 }
@@ -257,13 +316,15 @@ function AmountInput({
   defaultValue,
   id,
   name,
+  readOnly,
 }: {
   defaultValue: string;
   id: string;
   name: string;
+  readOnly?: boolean;
 }) {
   return (
-    <div className="flex min-h-11 overflow-hidden rounded-md border border-border bg-surface/70 focus-within:ring-2 focus-within:ring-ring">
+    <div className="relative">
       <input
         id={id}
         name={name}
@@ -271,9 +332,10 @@ function AmountInput({
         inputMode="decimal"
         defaultValue={defaultValue}
         autoComplete="off"
-        className="min-w-0 flex-1 bg-transparent px-3 text-sm text-foreground focus:outline-none"
+        readOnly={readOnly}
+        className={cn("input-control pr-14 font-mono text-[0.84rem]", readOnly && "text-muted")}
       />
-      <span className="flex items-center border-l border-border px-3 font-mono text-[0.68rem] text-muted">
+      <span className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 font-mono text-[0.68rem] text-muted">
         SOL
       </span>
     </div>
@@ -283,35 +345,57 @@ function AmountInput({
 function StrategyCard({
   checked,
   description,
-  disabled,
+  kicker,
   label,
   name,
   value,
 }: {
   checked?: boolean;
   description: string;
-  disabled?: boolean;
+  kicker: string;
   label: string;
   name: string;
   value: string;
 }) {
   return (
-    <label
-      className={cn(
-        "flex min-h-[8.5rem] cursor-pointer flex-col rounded-lg border border-border bg-surface/60 p-4",
-        disabled && "cursor-not-allowed opacity-55",
-      )}
-    >
+    <label className="group relative flex min-h-[8.5rem] cursor-pointer flex-col overflow-hidden rounded-lg border border-border bg-white/[0.024] p-4 transition-colors hover:border-white/15 hover:bg-white/[0.035] has-checked:border-accent/35 has-checked:bg-accent/8 focus-within:ring-2 focus-within:ring-ring">
       <input
         type="radio"
         name={name}
         value={value}
         defaultChecked={checked}
-        disabled={disabled}
-        className="h-4 w-4 accent-[var(--accent)]"
+        className="peer absolute inset-0 cursor-pointer opacity-0"
       />
-      <span className="mt-4 text-sm font-semibold text-foreground">{label}</span>
-      <span className="mt-2 text-sm leading-6 text-muted">{description}</span>
+      <span className="mb-2.5 block font-mono text-[0.58rem] uppercase tracking-[0.12em] text-accent">
+        {kicker}
+      </span>
+      <span className="mb-1.5 block text-[0.92rem] font-medium text-foreground">{label}</span>
+      <span className="text-[0.76rem] leading-5 text-muted">{description}</span>
+    </label>
+  );
+}
+
+function ChoiceCard({
+  checked,
+  label,
+  name,
+  value,
+}: {
+  checked?: boolean;
+  label: string;
+  name: string;
+  value: string;
+}) {
+  return (
+    <label className="relative flex min-h-11 cursor-pointer items-center justify-center rounded-md border border-border bg-white/[0.024] px-3 font-mono text-[0.68rem] uppercase tracking-[0.08em] text-muted transition-colors hover:border-white/15 hover:text-foreground has-checked:border-accent/35 has-checked:bg-accent/8 has-checked:text-accent focus-within:ring-2 focus-within:ring-ring">
+      <input
+        type="radio"
+        name={name}
+        value={value}
+        defaultChecked={checked}
+        className="absolute inset-0 cursor-pointer opacity-0"
+      />
+      {label}
     </label>
   );
 }
