@@ -11,12 +11,20 @@ import {
   Layers,
   LayoutGrid,
   LogOut,
-  PanelLeft,
+  PanelLeftClose,
+  PanelLeftOpen,
   Users,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
 import { NoiseCanvas } from "@/components/layout/noise-canvas";
 import { appNavItems } from "@/lib/app-data";
 import { cn } from "@/lib/cn";
@@ -40,14 +48,14 @@ export function AppShell({
   title: string;
 }) {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
+  const [railCollapsed, setRailCollapsed] = useState(false);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 hidden w-[420px] overflow-hidden border-r border-[rgba(245,245,245,0.05)] bg-[#151719] p-10 transition-transform duration-[400ms] ease-[cubic-bezier(0.4,0,0.2,1)] lg:flex lg:flex-col",
-          collapsed && "-translate-x-full",
+          "fixed inset-y-0 left-0 z-50 hidden overflow-hidden border-r border-[rgba(245,245,245,0.05)] bg-[#151719] pt-6 pb-10 transition-[width] duration-[400ms] ease-[cubic-bezier(0.4,0,0.2,1)] lg:flex lg:flex-col",
+          railCollapsed ? "w-[88px]" : "w-[420px]",
         )}
       >
         <NoiseCanvas />
@@ -62,16 +70,38 @@ export function AppShell({
         <div className="relative z-[2]">
           <Link
             href="/"
-            className="flex w-fit items-center gap-2 text-[#f0ece6] [text-shadow:0_1px_0_rgba(0,0,0,0.45)]"
+            aria-label="Dhukuti home"
+            className="grid h-10 w-[420px] grid-cols-[88px_1fr] items-center overflow-hidden text-[#f0ece6] [text-shadow:0_1px_0_rgba(0,0,0,0.45)]"
           >
-            <Layers className="h-5 w-5" aria-hidden="true" />
-            <span className="text-[0.95rem] font-semibold tracking-tight">Dhukuti</span>
+            <Layers className="mx-auto h-5 w-5" aria-hidden="true" />
+            <span
+              className={cn(
+                "-ml-4 text-[0.95rem] font-semibold tracking-tight transition-[opacity,transform] duration-200 ease-out",
+                railCollapsed
+                  ? "translate-x-1 opacity-0"
+                  : "translate-x-0 opacity-100 delay-100",
+              )}
+              aria-hidden={railCollapsed}
+            >
+              Dhukuti
+            </span>
           </Link>
         </div>
 
-        <nav aria-label="Main Menu" className="relative z-[2] mt-24 mb-auto flex flex-col gap-7">
-          <div className="flex flex-col gap-3.5">
-            <span className="font-mono text-[0.6rem] font-medium uppercase tracking-[0.2em] text-[#7a756e]">
+        <nav
+          aria-label="Main Menu"
+          className="relative z-[2] mt-14 mb-auto flex w-[420px] flex-col gap-2"
+        >
+          <div className="flex w-[420px] flex-col gap-2">
+            <span
+              className={cn(
+                "ml-[72px] font-mono text-[0.6rem] font-medium uppercase tracking-[0.2em] text-[#7a756e] transition-[opacity,transform] duration-200 ease-out",
+                railCollapsed
+                  ? "translate-x-1 opacity-0"
+                  : "translate-x-0 opacity-100 delay-100",
+              )}
+              aria-hidden={railCollapsed}
+            >
               Main Menu
             </span>
             {appNavItems.map((item) => {
@@ -79,43 +109,86 @@ export function AppShell({
               const active = isActiveNavItem(pathname, item);
 
               return (
-                <Link
+                <PortalTooltip
                   key={item.href}
-                  href={item.href}
                   className={cn(
-                    "group relative flex min-h-7 items-center gap-2.5 text-[0.95rem] tracking-[-0.01em] text-[#aaa49b] no-underline transition-colors duration-150 ease-out before:absolute before:-inset-x-2.5 before:-inset-y-2 before:-z-10 before:rounded-md before:bg-[rgba(245,245,245,0.055)] before:opacity-0 before:transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    active ? "text-accent" : "hover:text-accent hover:before:opacity-100",
+                    "overflow-hidden",
+                    railCollapsed ? "w-[88px]" : "w-[420px]",
                   )}
+                  enabled={railCollapsed}
+                  label={item.label}
                 >
-                  <Icon
+                  <Link
+                    href={item.href}
+                    aria-label={item.label}
                     className={cn(
-                      "h-3.5 w-3.5 text-[#969189] transition-colors duration-150 ease-out group-hover:text-accent",
+                      "group relative grid h-11 w-[420px] grid-cols-[88px_1fr] items-center overflow-hidden text-[#aaa49b] no-underline transition-colors duration-150 ease-out hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                       active && "text-accent",
                     )}
-                    aria-hidden="true"
-                  />
-                  {item.label}
-                </Link>
+                  >
+                    <span
+                      className={cn(
+                        "pointer-events-none absolute inset-y-0 left-3 rounded-md border border-transparent transition-colors duration-150 ease-out",
+                        railCollapsed ? "w-16" : "right-3",
+                        active
+                          ? "border-accent/20 bg-accent/10"
+                          : "group-hover:bg-white/[0.055]",
+                      )}
+                      aria-hidden="true"
+                    />
+                    <Icon
+                      className={cn(
+                        "relative z-[1] mx-auto text-[#969189] transition-colors duration-150 ease-out group-hover:text-accent",
+                        railCollapsed ? "h-4 w-4" : "h-3.5 w-3.5",
+                        active && "text-accent",
+                      )}
+                      aria-hidden="true"
+                    />
+                    <span
+                      className={cn(
+                        "relative z-[1] -ml-4 text-[0.95rem] tracking-[-0.01em] transition-[opacity,transform] duration-200 ease-out",
+                        railCollapsed
+                          ? "translate-x-1 opacity-0"
+                          : "translate-x-0 opacity-100 delay-100",
+                      )}
+                      aria-hidden={railCollapsed}
+                    >
+                      {item.label}
+                    </span>
+                  </Link>
+                </PortalTooltip>
               );
             })}
           </div>
         </nav>
 
-        <div className="relative z-[2] mt-auto">
-          <div className="mb-8 rounded-lg border border-[rgba(240,236,230,0.08)] bg-[rgba(20,22,22,0.74)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
+        <div
+          className={cn(
+            "relative z-[2] mt-auto w-[420px] transition-[opacity,transform] duration-200 ease-out",
+            railCollapsed
+              ? "pointer-events-none translate-x-1 opacity-0"
+              : "translate-x-0 opacity-100 delay-100",
+          )}
+          aria-hidden={railCollapsed}
+        >
+          <div className="mx-10 mb-8 rounded-lg border border-[rgba(240,236,230,0.08)] bg-[rgba(20,22,22,0.74)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
             <div className="mb-4 flex items-center justify-between">
               <span className="font-mono text-[0.6rem] uppercase tracking-[0.08em] text-[#8d877f]">
                 Your Reputation
               </span>
-              <span className="font-mono text-[0.7rem] text-accent">Level 4</span>
+              <span className="font-mono text-[0.7rem] text-accent">
+                Level 4
+              </span>
             </div>
             <div className="mb-2 h-1 overflow-hidden rounded-full bg-[rgba(245,242,237,0.06)]">
               <div className="h-full w-[72%] rounded-full bg-accent" />
             </div>
-            <p className="font-mono text-[0.56rem] text-[#7a756e]">Next Tier: 850 Points</p>
+            <p className="font-mono text-[0.56rem] text-[#7a756e]">
+              Next Tier: 850 Points
+            </p>
           </div>
 
-          <div className="flex items-center gap-3 font-mono text-[0.62rem] uppercase tracking-[0.16em] text-[#6c665f]">
+          <div className="mx-10 flex items-center gap-3 font-mono text-[0.62rem] uppercase tracking-[0.16em] text-[#6c665f]">
             <span>dhukuti.io</span>
             <span className="text-[#4b4742]">/</span>
             <span>v1.2.0</span>
@@ -123,29 +196,50 @@ export function AppShell({
         </div>
       </aside>
 
-      <button
-        type="button"
-        aria-label="Toggle sidebar"
+      <PortalTooltip
         className={cn(
-          "fixed bottom-5 z-[60] hidden h-10 w-10 items-center justify-center rounded-md border border-[rgba(245,245,245,0.1)] bg-[rgba(245,245,245,0.05)] text-white/60 backdrop-blur-lg transition-[left,background,color] duration-[400ms] ease-[cubic-bezier(0.4,0,0.2,1)] hover:bg-[rgba(245,245,245,0.1)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:flex",
-          collapsed ? "left-5" : "left-[360px]",
+          "fixed bottom-5 z-[60] hidden lg:inline-flex",
+          railCollapsed ? "left-6" : "left-[360px]",
         )}
-        onClick={() => setCollapsed((value) => !value)}
+        label={railCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        side={railCollapsed ? "right" : "top"}
       >
-        <PanelLeft className="h-4 w-4" aria-hidden="true" />
-      </button>
+        <button
+          type="button"
+          aria-label={railCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="group flex h-10 w-10 cursor-pointer items-center justify-center rounded-md border border-white/10 bg-white/[0.08] backdrop-blur-xl transition-[background] duration-[400ms] ease-in-out hover:bg-white/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(255,210,196,0.85)]"
+          onClick={() => setRailCollapsed((value) => !value)}
+        >
+          {railCollapsed ? (
+            <PanelLeftOpen
+              className="h-4 w-4 cursor-pointer text-white/60 transition-colors duration-200 group-hover:text-[var(--accent)]"
+              aria-hidden="true"
+            />
+          ) : (
+            <PanelLeftClose
+              className="h-4 w-4 cursor-pointer text-white/60 transition-colors duration-200 group-hover:text-[var(--accent)]"
+              aria-hidden="true"
+            />
+          )}
+        </button>
+      </PortalTooltip>
 
       <main
         className={cn(
-          "dhukuti-scrollbar h-screen overflow-y-auto bg-background transition-[margin-left,width] duration-[400ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
-          collapsed ? "lg:ml-0 lg:w-full" : "lg:ml-[420px] lg:w-[calc(100%_-_420px)]",
+          "dhukuti-scrollbar h-screen overflow-y-auto bg-background transition-[margin-left] duration-[400ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
+          railCollapsed ? "lg:ml-[88px]" : "lg:ml-[420px]",
         )}
       >
         <header className="sticky top-0 z-40 flex h-[72px] items-center justify-between gap-4 border-b border-[rgba(245,245,245,0.05)] bg-[rgba(10,10,10,0.86)] px-6 backdrop-blur-[12px] md:px-10">
           <h1 className="text-[1.1rem] font-medium tracking-tight">{title}</h1>
           <WalletSummary />
         </header>
-        <div className={cn("mx-auto w-full max-w-[1120px] px-6 py-10 md:px-10", contentClassName)}>
+        <div
+          className={cn(
+            "mx-auto w-full max-w-[1120px] px-6 py-10 md:px-10",
+            contentClassName,
+          )}
+        >
           {children}
         </div>
       </main>
@@ -167,6 +261,87 @@ function isActiveNavItem(pathname: string, item: (typeof appNavItems)[number]) {
   }
 
   return pathname === item.href;
+}
+
+function PortalTooltip({
+  children,
+  className,
+  enabled = true,
+  label,
+  side = "right",
+}: {
+  children: ReactNode;
+  className?: string;
+  enabled?: boolean;
+  label: string;
+  side?: "right" | "top";
+}) {
+  const triggerRef = useRef<HTMLSpanElement>(null);
+  const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState({ left: 0, top: 0 });
+
+  const updatePosition = useCallback(() => {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    setPosition(
+      side === "right"
+        ? { left: rect.right + 12, top: rect.top + rect.height / 2 }
+        : { left: rect.left + rect.width / 2, top: rect.top - 10 },
+    );
+  }, [side]);
+
+  const show = () => {
+    if (!enabled) return;
+    updatePosition();
+    setOpen(true);
+  };
+
+  const hide = () => setOpen(false);
+
+  useEffect(() => {
+    if (!open) return;
+
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open, updatePosition]);
+
+  return (
+    <span
+      ref={triggerRef}
+      className={cn("inline-flex", className)}
+      onBlurCapture={hide}
+      onFocusCapture={show}
+      onPointerEnter={show}
+      onPointerLeave={hide}
+    >
+      {children}
+      {open && enabled && typeof document !== "undefined"
+        ? createPortal(
+            <span
+              role="tooltip"
+              className="pointer-events-none fixed z-[100] whitespace-nowrap rounded border border-white/10 bg-[#151719] px-2.5 py-1.5 font-mono text-[0.58rem] uppercase tracking-[0.08em] text-white/72 opacity-100 shadow-[0_10px_24px_rgba(0,0,0,0.32)]"
+              style={{
+                left: position.left,
+                top: position.top,
+                transform:
+                  side === "right"
+                    ? "translateY(-50%)"
+                    : "translate(-50%, -100%)",
+              }}
+            >
+              {label}
+            </span>,
+            document.body,
+          )
+        : null}
+    </span>
+  );
 }
 
 function WalletSummary() {
@@ -246,8 +421,12 @@ function WalletSummary() {
           className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-md border border-border bg-[#151719] p-1 shadow-[0_16px_40px_rgba(0,0,0,0.42)]"
         >
           <div className="border-b border-border px-3 py-2">
-            <p className="font-mono text-[0.62rem] text-foreground">{truncateAddress(address)}</p>
-            <p className="mt-1 font-mono text-[0.55rem] text-muted">Devnet wallet</p>
+            <p className="font-mono text-[0.62rem] text-foreground">
+              {truncateAddress(address)}
+            </p>
+            <p className="mt-1 font-mono text-[0.55rem] text-muted">
+              Devnet wallet
+            </p>
           </div>
           <button
             type="button"
@@ -310,12 +489,22 @@ export function AppPageHeader({
         <h2 className="mt-2 text-3xl font-semibold tracking-tight">{title}</h2>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">{copy}</p>
       </div>
-      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-3">{actions}</div> : null}
+      {actions ? (
+        <div className="flex shrink-0 flex-wrap items-center gap-3">
+          {actions}
+        </div>
+      ) : null}
     </div>
   );
 }
 
-export function Panel({ children, className }: { children: ReactNode; className?: string }) {
+export function Panel({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return (
     <div
       className={cn(
@@ -334,7 +523,9 @@ export function StatTile({ label, value }: { label: string; value: string }) {
       <span className="block font-mono text-[0.58rem] uppercase tracking-[0.1em] text-muted">
         {label}
       </span>
-      <span className="mt-1 block text-[1rem] font-medium text-foreground">{value}</span>
+      <span className="mt-1 block text-[1rem] font-medium text-foreground">
+        {value}
+      </span>
     </div>
   );
 }
@@ -347,14 +538,18 @@ export function TokenScopeNotice({ className }: { className?: string }) {
         className,
       )}
     >
-      <BadgeDollarSign className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+      <BadgeDollarSign
+        className="mt-0.5 h-4 w-4 shrink-0 text-warning"
+        aria-hidden="true"
+      />
       <div>
         <p className="font-mono text-[0.62rem] uppercase tracking-[0.1em] text-warning">
           Native SOL V1
         </p>
         <p className="mt-1 text-sm leading-6 text-muted">
-          The deployed program rejects custom token settlement today. USDC or Token-2022 support
-          should be added only after program-level SPL account, mint, decimal, and transfer tests.
+          The deployed program rejects custom token settlement today. USDC or
+          Token-2022 support should be added only after program-level SPL
+          account, mint, decimal, and transfer tests.
         </p>
       </div>
     </div>
