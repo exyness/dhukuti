@@ -17,15 +17,9 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-import { createPortal } from "react-dom";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { NoiseCanvas } from "@/components/layout/noise-canvas";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { appNavItems } from "@/lib/app-data";
 import { cn } from "@/lib/cn";
 import { explorerAddressUrl } from "@/lib/constants";
@@ -77,9 +71,7 @@ export function AppShell({
             <span
               className={cn(
                 "-ml-4 text-[0.95rem] font-semibold tracking-tight transition-[opacity,transform] duration-200 ease-out",
-                railCollapsed
-                  ? "translate-x-1 opacity-0"
-                  : "translate-x-0 opacity-100 delay-100",
+                railCollapsed ? "translate-x-1 opacity-0" : "translate-x-0 opacity-100 delay-100",
               )}
               aria-hidden={railCollapsed}
             >
@@ -96,9 +88,7 @@ export function AppShell({
             <span
               className={cn(
                 "ml-[72px] font-mono text-[0.6rem] font-medium uppercase tracking-[0.2em] text-[#7a756e] transition-[opacity,transform] duration-200 ease-out",
-                railCollapsed
-                  ? "translate-x-1 opacity-0"
-                  : "translate-x-0 opacity-100 delay-100",
+                railCollapsed ? "translate-x-1 opacity-0" : "translate-x-0 opacity-100 delay-100",
               )}
               aria-hidden={railCollapsed}
             >
@@ -109,12 +99,9 @@ export function AppShell({
               const active = isActiveNavItem(pathname, item);
 
               return (
-                <PortalTooltip
+                <Tooltip
                   key={item.href}
-                  className={cn(
-                    "overflow-hidden",
-                    railCollapsed ? "w-[88px]" : "w-[420px]",
-                  )}
+                  className={cn("overflow-hidden", railCollapsed ? "w-[88px]" : "w-[420px]")}
                   enabled={railCollapsed}
                   label={item.label}
                 >
@@ -130,9 +117,7 @@ export function AppShell({
                       className={cn(
                         "pointer-events-none absolute inset-y-0 left-3 rounded-md border border-transparent transition-colors duration-150 ease-out",
                         railCollapsed ? "w-16" : "right-3",
-                        active
-                          ? "border-accent/20 bg-accent/10"
-                          : "group-hover:bg-white/[0.055]",
+                        active ? "border-accent/20 bg-accent/10" : "group-hover:bg-white/[0.055]",
                       )}
                       aria-hidden="true"
                     />
@@ -156,7 +141,7 @@ export function AppShell({
                       {item.label}
                     </span>
                   </Link>
-                </PortalTooltip>
+                </Tooltip>
               );
             })}
           </div>
@@ -176,16 +161,12 @@ export function AppShell({
               <span className="font-mono text-[0.6rem] uppercase tracking-[0.08em] text-[#8d877f]">
                 Your Reputation
               </span>
-              <span className="font-mono text-[0.7rem] text-accent">
-                Level 4
-              </span>
+              <span className="font-mono text-[0.7rem] text-accent">Level 4</span>
             </div>
             <div className="mb-2 h-1 overflow-hidden rounded-full bg-[rgba(245,242,237,0.06)]">
               <div className="h-full w-[72%] rounded-full bg-accent" />
             </div>
-            <p className="font-mono text-[0.56rem] text-[#7a756e]">
-              Next Tier: 850 Points
-            </p>
+            <p className="font-mono text-[0.56rem] text-[#7a756e]">Next Tier: 850 Points</p>
           </div>
 
           <div className="mx-10 flex items-center gap-3 font-mono text-[0.62rem] uppercase tracking-[0.16em] text-[#6c665f]">
@@ -196,7 +177,7 @@ export function AppShell({
         </div>
       </aside>
 
-      <PortalTooltip
+      <Tooltip
         className={cn(
           "fixed bottom-5 z-[60] hidden lg:inline-flex",
           railCollapsed ? "left-6" : "left-[360px]",
@@ -222,7 +203,7 @@ export function AppShell({
             />
           )}
         </button>
-      </PortalTooltip>
+      </Tooltip>
 
       <main
         className={cn(
@@ -234,12 +215,7 @@ export function AppShell({
           <h1 className="text-[1.1rem] font-medium tracking-tight">{title}</h1>
           <WalletSummary />
         </header>
-        <div
-          className={cn(
-            "mx-auto w-full max-w-[1120px] px-6 py-10 md:px-10",
-            contentClassName,
-          )}
-        >
+        <div className={cn("mx-auto w-full max-w-[1120px] px-6 py-10 md:px-10", contentClassName)}>
           {children}
         </div>
       </main>
@@ -261,87 +237,6 @@ function isActiveNavItem(pathname: string, item: (typeof appNavItems)[number]) {
   }
 
   return pathname === item.href;
-}
-
-function PortalTooltip({
-  children,
-  className,
-  enabled = true,
-  label,
-  side = "right",
-}: {
-  children: ReactNode;
-  className?: string;
-  enabled?: boolean;
-  label: string;
-  side?: "right" | "top";
-}) {
-  const triggerRef = useRef<HTMLSpanElement>(null);
-  const [open, setOpen] = useState(false);
-  const [position, setPosition] = useState({ left: 0, top: 0 });
-
-  const updatePosition = useCallback(() => {
-    const rect = triggerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    setPosition(
-      side === "right"
-        ? { left: rect.right + 12, top: rect.top + rect.height / 2 }
-        : { left: rect.left + rect.width / 2, top: rect.top - 10 },
-    );
-  }, [side]);
-
-  const show = () => {
-    if (!enabled) return;
-    updatePosition();
-    setOpen(true);
-  };
-
-  const hide = () => setOpen(false);
-
-  useEffect(() => {
-    if (!open) return;
-
-    window.addEventListener("resize", updatePosition);
-    window.addEventListener("scroll", updatePosition, true);
-
-    return () => {
-      window.removeEventListener("resize", updatePosition);
-      window.removeEventListener("scroll", updatePosition, true);
-    };
-  }, [open, updatePosition]);
-
-  return (
-    <span
-      ref={triggerRef}
-      className={cn("inline-flex", className)}
-      onBlurCapture={hide}
-      onFocusCapture={show}
-      onPointerEnter={show}
-      onPointerLeave={hide}
-    >
-      {children}
-      {open && enabled && typeof document !== "undefined"
-        ? createPortal(
-            <span
-              role="tooltip"
-              className="pointer-events-none fixed z-[100] whitespace-nowrap rounded border border-white/10 bg-[#151719] px-2.5 py-1.5 font-mono text-[0.58rem] uppercase tracking-[0.08em] text-white/72 opacity-100 shadow-[0_10px_24px_rgba(0,0,0,0.32)]"
-              style={{
-                left: position.left,
-                top: position.top,
-                transform:
-                  side === "right"
-                    ? "translateY(-50%)"
-                    : "translate(-50%, -100%)",
-              }}
-            >
-              {label}
-            </span>,
-            document.body,
-          )
-        : null}
-    </span>
-  );
 }
 
 function WalletSummary() {
@@ -421,12 +316,8 @@ function WalletSummary() {
           className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-md border border-border bg-[#151719] p-1 shadow-[0_16px_40px_rgba(0,0,0,0.42)]"
         >
           <div className="border-b border-border px-3 py-2">
-            <p className="font-mono text-[0.62rem] text-foreground">
-              {truncateAddress(address)}
-            </p>
-            <p className="mt-1 font-mono text-[0.55rem] text-muted">
-              Devnet wallet
-            </p>
+            <p className="font-mono text-[0.62rem] text-foreground">{truncateAddress(address)}</p>
+            <p className="mt-1 font-mono text-[0.55rem] text-muted">Devnet wallet</p>
           </div>
           <button
             type="button"
@@ -489,22 +380,12 @@ export function AppPageHeader({
         <h2 className="mt-2 text-3xl font-semibold tracking-tight">{title}</h2>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">{copy}</p>
       </div>
-      {actions ? (
-        <div className="flex shrink-0 flex-wrap items-center gap-3">
-          {actions}
-        </div>
-      ) : null}
+      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-3">{actions}</div> : null}
     </div>
   );
 }
 
-export function Panel({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
+export function Panel({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <div
       className={cn(
@@ -523,9 +404,7 @@ export function StatTile({ label, value }: { label: string; value: string }) {
       <span className="block font-mono text-[0.58rem] uppercase tracking-[0.1em] text-muted">
         {label}
       </span>
-      <span className="mt-1 block text-[1rem] font-medium text-foreground">
-        {value}
-      </span>
+      <span className="mt-1 block text-[1rem] font-medium text-foreground">{value}</span>
     </div>
   );
 }
@@ -538,18 +417,14 @@ export function TokenScopeNotice({ className }: { className?: string }) {
         className,
       )}
     >
-      <BadgeDollarSign
-        className="mt-0.5 h-4 w-4 shrink-0 text-warning"
-        aria-hidden="true"
-      />
+      <BadgeDollarSign className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
       <div>
         <p className="font-mono text-[0.62rem] uppercase tracking-[0.1em] text-warning">
           Native SOL V1
         </p>
         <p className="mt-1 text-sm leading-6 text-muted">
-          The deployed program rejects custom token settlement today. USDC or
-          Token-2022 support should be added only after program-level SPL
-          account, mint, decimal, and transfer tests.
+          The deployed program rejects custom token settlement today. USDC or Token-2022 support
+          should be added only after program-level SPL account, mint, decimal, and transfer tests.
         </p>
       </div>
     </div>
