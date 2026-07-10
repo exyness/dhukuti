@@ -12,6 +12,7 @@ import {
   Verified,
   Wallet,
 } from "lucide-react";
+import Link from "next/link";
 import { type ReactNode, useState } from "react";
 import { cn } from "@/lib/cn";
 import { DHUKUTI_PROGRAM, explorerAddressUrl } from "@/lib/constants";
@@ -59,29 +60,29 @@ function MainNav({
   return (
     <nav className="sticky top-0 z-40 flex items-center justify-end border-b border-[rgba(245,245,245,0.05)] bg-[rgba(10,10,10,0.9)] px-8 py-5 backdrop-blur-[12px]">
       <div className="mr-8 flex items-center gap-8 font-mono text-[0.72rem] tracking-wide text-[var(--ink-dim)]">
-        <a
-          href="#circles"
+        <Link
+          href="/circles"
           className="cursor-pointer transition-colors duration-100 ease-out hover:text-[var(--ink)]"
         >
           Circles
-        </a>
-        <a
-          href="#reputation"
+        </Link>
+        <Link
+          href="/profile"
           className="cursor-pointer transition-colors duration-100 ease-out hover:text-[var(--ink)]"
         >
           Reputation
-        </a>
-        <a
-          href="#program-surface"
+        </Link>
+        <Link
+          href="/market"
           className="cursor-pointer transition-colors duration-100 ease-out hover:text-[var(--ink)]"
         >
-          Governance
-        </a>
+          Market
+        </Link>
       </div>
 
       {walletConnected ? (
-        <a
-          href="#circles"
+        <Link
+          href="/circles"
           className="group flex cursor-pointer items-center gap-2 rounded-md bg-[var(--ink)] px-4 py-2 font-mono text-[0.7rem] uppercase tracking-wide text-[var(--bg)] transition-opacity duration-100 ease-out hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(255,210,196,0.85)]"
         >
           Launch App
@@ -89,7 +90,7 @@ function MainNav({
             className="h-3 w-3 transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:translate-x-1"
             aria-hidden="true"
           />
-        </a>
+        </Link>
       ) : (
         <button
           type="button"
@@ -266,12 +267,12 @@ function LiveCirclesSection() {
         <span className="font-mono text-[0.68rem] uppercase tracking-widest text-[var(--ink-dim)]">
           Circle Flow Preview
         </span>
-        <a
-          href="#program-surface"
+        <Link
+          href="/circles/early-payout-auction"
           className="cursor-pointer border-b border-[var(--ink-faint)] pb-px font-mono text-[0.65rem] tracking-wide text-[var(--ink-dim)] transition-colors duration-100 ease-out hover:border-[var(--ink)] hover:text-[var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(255,210,196,0.85)]"
         >
           View Program Surface →
-        </a>
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -539,9 +540,9 @@ function LandingFooter() {
           <FooterColumn
             title="Product"
             links={[
-              { label: "Create Circle", href: "#circles" },
-              { label: "Position Market", href: "#circles" },
-              { label: "Reputation", href: "#reputation" },
+              { label: "Create Circle", href: "/circles/new" },
+              { label: "Position Market", href: "/market" },
+              { label: "Reputation", href: "/profile" },
             ]}
           />
           <FooterColumn
