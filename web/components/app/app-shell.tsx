@@ -4,18 +4,23 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import {
   Award,
   BadgeDollarSign,
+  Check,
+  Copy,
+  ExternalLink,
   History,
   Layers,
   LayoutGrid,
+  LogOut,
   PanelLeft,
   Users,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { NoiseCanvas } from "@/components/layout/noise-canvas";
 import { appNavItems } from "@/lib/app-data";
 import { cn } from "@/lib/cn";
+import { explorerAddressUrl } from "@/lib/constants";
 import { truncateAddress } from "@/lib/wallet";
 
 const navIcons = {
@@ -25,7 +30,15 @@ const navIcons = {
   "Reputation Score": Award,
 };
 
-export function AppShell({ children, title }: { children: ReactNode; title: string }) {
+export function AppShell({
+  children,
+  contentClassName,
+  title,
+}: {
+  children: ReactNode;
+  contentClassName?: string;
+  title: string;
+}) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -132,7 +145,9 @@ export function AppShell({ children, title }: { children: ReactNode; title: stri
           <h1 className="text-[1.1rem] font-medium tracking-tight">{title}</h1>
           <WalletSummary />
         </header>
-        <div className="mx-auto w-full max-w-[1120px] px-6 py-10 md:px-10">{children}</div>
+        <div className={cn("mx-auto w-full max-w-[1120px] px-6 py-10 md:px-10", contentClassName)}>
+          {children}
+        </div>
       </main>
     </div>
   );
@@ -155,8 +170,33 @@ function isActiveNavItem(pathname: string, item: (typeof appNavItems)[number]) {
 }
 
 function WalletSummary() {
-  const { connected, publicKey, wallet } = useWallet();
+  const { connected, disconnect, publicKey, wallet } = useWallet();
+  const [copied, setCopied] = useState(false);
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
   const address = publicKey?.toBase58();
+
+  useEffect(() => {
+    function onPointerDown(event: PointerEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
 
   if (!connected || !address) {
     return (
@@ -169,19 +209,83 @@ function WalletSummary() {
     );
   }
 
+  async function copyAddress() {
+    if (!address) return;
+
+    await navigator.clipboard.writeText(address);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1400);
+  }
+
   return (
-    <div className="flex items-center gap-3">
-      <div className="text-right">
-        <p className="font-mono text-[0.7rem] leading-none text-foreground">
-          {truncateAddress(address)}
-        </p>
-        <p className="mt-1 font-mono text-[0.55rem] text-muted">
-          {wallet?.adapter.name ?? "Wallet"}
-        </p>
-      </div>
-      <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-gradient-to-tr from-[#ff6b4a] to-[#ffb09c] font-mono text-[0.65rem] text-background">
-        {wallet?.adapter.name?.slice(0, 1) ?? "W"}
-      </div>
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="menu"
+        className="flex min-h-11 items-center gap-3 rounded-md px-2 transition-colors hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        onClick={() => setOpen((current) => !current)}
+      >
+        <div className="text-right">
+          <p className="font-mono text-[0.7rem] leading-none text-foreground">
+            {truncateAddress(address)}
+          </p>
+          <p className="mt-1 font-mono text-[0.55rem] text-muted">
+            {wallet?.adapter.name ?? "Wallet"}
+          </p>
+        </div>
+        <div
+          className="h-9 w-9 rounded-full border border-white/10 bg-gradient-to-tr from-[#ff6b4a] to-[#ffb09c]"
+          aria-hidden="true"
+        />
+      </button>
+
+      {open ? (
+        <div
+          role="menu"
+          className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-md border border-border bg-[#151719] p-1 shadow-[0_16px_40px_rgba(0,0,0,0.42)]"
+        >
+          <div className="border-b border-border px-3 py-2">
+            <p className="font-mono text-[0.62rem] text-foreground">{truncateAddress(address)}</p>
+            <p className="mt-1 font-mono text-[0.55rem] text-muted">Devnet wallet</p>
+          </div>
+          <button
+            type="button"
+            role="menuitem"
+            className="flex min-h-9 w-full items-center gap-2 rounded px-3 font-mono text-[0.65rem] uppercase tracking-[0.06em] text-muted transition-colors hover:bg-white/[0.055] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={copyAddress}
+          >
+            {copied ? (
+              <Check className="h-3.5 w-3.5 text-success" aria-hidden="true" />
+            ) : (
+              <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
+            {copied ? "Copied" : "Copy address"}
+          </button>
+          <a
+            role="menuitem"
+            href={explorerAddressUrl(address)}
+            target="_blank"
+            rel="noreferrer"
+            className="flex min-h-9 w-full items-center gap-2 rounded px-3 font-mono text-[0.65rem] uppercase tracking-[0.06em] text-muted transition-colors hover:bg-white/[0.055] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+            View explorer
+          </a>
+          <button
+            type="button"
+            role="menuitem"
+            className="flex min-h-9 w-full items-center gap-2 rounded px-3 font-mono text-[0.65rem] uppercase tracking-[0.06em] text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={() => {
+              setOpen(false);
+              void disconnect();
+            }}
+          >
+            <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
+            Disconnect
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

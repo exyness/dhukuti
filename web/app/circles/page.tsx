@@ -1,17 +1,86 @@
-import { ArrowRight, ChevronDown, Search } from "lucide-react";
+"use client";
+
+import { Plus, Search } from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { AppShell, Panel, StatTile, TokenScopeNotice } from "@/components/app/app-shell";
-import { Badge } from "@/components/ui/badge";
+import { Badge, BadgeButton } from "@/components/ui/badge";
+import { DropdownSelect } from "@/components/ui/dropdown-select";
 import { circles } from "@/lib/app-data";
 
+type ContributionFilter = "all" | "gt-5" | "lt-1" | "one-five";
+type ModeFilter = "all" | "dutch" | "fixed";
+type SortMode = "newest" | "pot-high" | "rep-low";
+
+const modeOptions: { label: string; value: ModeFilter }[] = [
+  { label: "Payout Mode: All", value: "all" },
+  { label: "Fixed Rotation", value: "fixed" },
+  { label: "Dutch Bid", value: "dutch" },
+];
+
+const contributionOptions: { label: string; value: ContributionFilter }[] = [
+  { label: "Contribution: All", value: "all" },
+  { label: "< 1 SOL", value: "lt-1" },
+  { label: "1 - 5 SOL", value: "one-five" },
+  { label: "5+ SOL", value: "gt-5" },
+];
+
+const sortOptions: { label: string; value: SortMode }[] = [
+  { label: "Sort: Newest", value: "newest" },
+  { label: "Pot: High First", value: "pot-high" },
+  { label: "Rep: Low First", value: "rep-low" },
+];
+
 export default function CirclesPage() {
+  const [contributionFilter, setContributionFilter] = useState<ContributionFilter>("all");
+  const [memberRangeOnly, setMemberRangeOnly] = useState(true);
+  const [modeFilter, setModeFilter] = useState<ModeFilter>("all");
+  const [query, setQuery] = useState("");
+  const [solOnly, setSolOnly] = useState(true);
+  const [sortMode, setSortMode] = useState<SortMode>("newest");
+
   const openCircles = circles.filter((circle) => circle.status === "Forming").length;
   const activeCircles = circles.filter((circle) => circle.status === "Active").length;
+  const filteredCircles = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    return circles
+      .filter((circle) => {
+        const contribution = parseSol(circle.contribution);
+        const matchesQuery =
+          !normalizedQuery ||
+          circle.name.toLowerCase().includes(normalizedQuery) ||
+          circle.host.toLowerCase().includes(normalizedQuery) ||
+          circle.mode.toLowerCase().includes(normalizedQuery);
+        const matchesMode =
+          modeFilter === "all" ||
+          (modeFilter === "fixed" && circle.mode === "Fixed order") ||
+          (modeFilter === "dutch" && circle.mode === "Dutch bid");
+        const matchesContribution =
+          contributionFilter === "all" ||
+          (contributionFilter === "lt-1" && contribution < 1) ||
+          (contributionFilter === "one-five" && contribution >= 1 && contribution <= 5) ||
+          (contributionFilter === "gt-5" && contribution > 5);
+        const matchesMemberRange = !memberRangeOnly || circle.memberCap <= 64;
+
+        return matchesQuery && matchesMode && matchesContribution && matchesMemberRange;
+      })
+      .sort((a, b) => {
+        if (sortMode === "pot-high") {
+          return parseSol(b.pot) - parseSol(a.pot);
+        }
+
+        if (sortMode === "rep-low") {
+          return a.minReputation - b.minReputation;
+        }
+
+        return 0;
+      });
+  }, [contributionFilter, memberRangeOnly, modeFilter, query, sortMode]);
 
   return (
-    <AppShell title="Browse Circles">
-      <header className="mb-8 flex flex-col justify-between gap-6 md:flex-row md:items-end">
+    <AppShell title="Browse Circles" contentClassName="max-w-none px-6 py-10 md:px-12">
+      <header className="mb-12 flex flex-col justify-between gap-6 md:flex-row md:items-end">
         <div>
           <span className="mb-2 block font-mono text-[0.68rem] uppercase tracking-widest text-accent">
             Marketplace
@@ -29,36 +98,35 @@ export default function CirclesPage() {
             <input
               type="search"
               placeholder="Search circles..."
-              className="h-10 w-full min-w-[13rem] rounded-md border border-border bg-white/[0.03] pl-9 pr-3 font-mono text-[0.7rem] text-foreground placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-[14rem]"
+              className="search-input"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
             />
           </label>
-          <label className="sr-only" htmlFor="payout-mode">
-            Payout mode
-          </label>
-          <select id="payout-mode" className="filter-control" defaultValue="all">
-            <option value="all">Payout Mode: All</option>
-            <option value="fixed">Fixed Rotation</option>
-            <option value="dutch">Dutch Bid</option>
-          </select>
-          <label className="sr-only" htmlFor="contribution-range">
-            Contribution range
-          </label>
-          <select id="contribution-range" className="filter-control" defaultValue="all">
-            <option value="all">Contribution: All</option>
-            <option value="lt-1">&lt; 1 SOL</option>
-            <option value="one-five">1 - 5 SOL</option>
-            <option value="gt-5">5+ SOL</option>
-          </select>
-          <button type="button" className="filter-control inline-flex items-center gap-2">
-            Sort: Newest
-            <ChevronDown className="h-3 w-3" aria-hidden="true" />
-          </button>
+          <DropdownSelect
+            label="Payout mode"
+            options={modeOptions}
+            value={modeFilter}
+            onChange={setModeFilter}
+          />
+          <DropdownSelect
+            label="Contribution range"
+            options={contributionOptions}
+            value={contributionFilter}
+            onChange={setContributionFilter}
+          />
+          <DropdownSelect
+            label="Sort listings"
+            options={sortOptions}
+            value={sortMode}
+            onChange={setSortMode}
+          />
         </div>
       </header>
 
       <TokenScopeNotice className="mb-6" />
 
-      <Panel className="mb-6 grid grid-cols-1 overflow-hidden md:grid-cols-4">
+      <Panel className="mb-4 grid grid-cols-1 overflow-hidden md:grid-cols-4">
         <StatTile label="Open circles" value={String(openCircles)} />
         <StatTile label="Active circles" value={String(activeCircles)} />
         <StatTile label="Settlement" value="SOL only" />
@@ -66,33 +134,70 @@ export default function CirclesPage() {
       </Panel>
 
       <div className="mb-8 flex flex-wrap items-center gap-2">
-        <FilterChip active>Fixed order</FilterChip>
-        <FilterChip>Dutch bid</FilterChip>
-        <FilterChip>Native SOL</FilterChip>
-        <FilterChip>2-64 members</FilterChip>
+        <BadgeButton
+          tone={modeFilter === "fixed" ? "filterActive" : "filter"}
+          shape="pill"
+          size="xs"
+          aria-pressed={modeFilter === "fixed"}
+          onClick={() => setModeFilter((current) => (current === "fixed" ? "all" : "fixed"))}
+        >
+          Fixed order
+        </BadgeButton>
+        <BadgeButton
+          tone={modeFilter === "dutch" ? "filterActive" : "filter"}
+          shape="pill"
+          size="xs"
+          aria-pressed={modeFilter === "dutch"}
+          onClick={() => setModeFilter((current) => (current === "dutch" ? "all" : "dutch"))}
+        >
+          Dutch bid
+        </BadgeButton>
+        <BadgeButton
+          tone={solOnly ? "filterActive" : "filter"}
+          shape="pill"
+          size="xs"
+          aria-pressed={solOnly}
+          onClick={() => setSolOnly((current) => !current)}
+        >
+          Native SOL
+        </BadgeButton>
+        <BadgeButton
+          tone={memberRangeOnly ? "filterActive" : "filter"}
+          shape="pill"
+          size="xs"
+          aria-pressed={memberRangeOnly}
+          onClick={() => setMemberRangeOnly((current) => !current)}
+        >
+          2-64 members
+        </BadgeButton>
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {circles.map((circle) => (
+        {filteredCircles.map((circle) => (
           <Panel
             key={circle.id}
-            className="p-6 transition-[border-color,background] duration-150 ease-out hover:border-white/10 hover:bg-white/[0.035]"
+            className="p-6 transition-[border-color,background,transform] duration-150 ease-out hover:-translate-y-0.5 hover:border-accent/30 hover:bg-white/[0.04]"
           >
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-lg font-semibold tracking-tight">{circle.name}</h3>
                 <p className="mt-1 font-mono text-[0.65rem] text-muted">Host: {circle.host}</p>
               </div>
-              <Badge tone={circle.status === "Default vote" ? "warning" : "accent"}>
-                {circle.mode}
+              <Badge
+                tone={circle.mode === "Fixed order" ? "fixed" : "accent"}
+                shape="square"
+                size="xs"
+              >
+                {circle.mode === "Fixed order" ? "Fixed" : "Dutch"}
               </Badge>
             </div>
 
-            <div className="mb-5 flex flex-wrap gap-2">
-              <Badge tone="muted">Min rep {circle.minReputation}</Badge>
-              <Badge tone={circle.status === "Active" ? "success" : "info"}>{circle.status}</Badge>
-              <Badge tone="muted">
-                {circle.members}/{circle.memberCap} members
+            <div className="mb-6 flex flex-wrap gap-2">
+              <Badge tone="rep" shape="square" size="xs">
+                Min Rep: {circle.minReputation}
+              </Badge>
+              <Badge tone="muted" shape="square" size="xs">
+                {circle.members}/{circle.memberCap} Slots
               </Badge>
             </div>
 
@@ -109,27 +214,34 @@ export default function CirclesPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-              <CircleCardStat label="Contribution" value={circle.contribution} />
-              <CircleCardStat label="Pot" value={circle.pot} />
-              <CircleCardStat label="Collateral" value={circle.collateral} />
-              <CircleCardStat label="Round" value={circle.round} />
+            <div className="mt-6 grid grid-cols-2 gap-4 border-t border-border pt-5">
+              <CircleCardStat label={`${circle.cycle} Contribution`} value={circle.contribution} />
+              <CircleCardStat label="Total Pot Value" value={circle.pot} />
+              <CircleCardStat label="Cycle Length" value={circle.round} />
+              <CircleCardStat label="Next Payout" value={circle.deadline} />
             </div>
 
-            <div className="mt-7 border-t border-border pt-5">
-              <span className="font-mono text-[0.68rem] text-muted">
-                Next: {circle.nextPayout} · deadline {circle.deadline}
-              </span>
-              <Link
-                href={`/circles/${circle.id}`}
-                className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-white/5 bg-white/5 px-4 font-mono text-[0.68rem] font-medium uppercase tracking-[0.08em] text-foreground transition-colors hover:border-white/10 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {circle.nextAction}
-                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-              </Link>
-            </div>
+            <Link
+              href={`/circles/${circle.id}`}
+              className="mt-8 inline-flex min-h-11 w-full items-center justify-center rounded-md border border-white/5 bg-white/5 px-4 font-mono text-[0.7rem] font-medium uppercase tracking-wider text-foreground transition-colors hover:border-white/10 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {circle.nextAction}
+            </Link>
           </Panel>
         ))}
+
+        <Link
+          href="/circles/new"
+          className="flex min-h-[21rem] flex-col items-center justify-center rounded-lg border border-dashed border-border bg-white/[0.02] p-6 text-left no-underline transition-[border-color,background,transform] duration-150 ease-out hover:-translate-y-0.5 hover:border-accent/30 hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white/5">
+            <Plus className="h-6 w-6 text-white/40" aria-hidden="true" />
+          </div>
+          <h3 className="mb-1 font-medium text-white/60">Create New Circle</h3>
+          <p className="px-6 text-center font-mono text-[0.6rem] text-white/30">
+            Host your own pool and earn reputation for coordination.
+          </p>
+        </Link>
       </div>
 
       <footer className="mt-20 flex items-center justify-between border-t border-[var(--ink-faint)] pt-12">
@@ -152,18 +264,8 @@ export default function CirclesPage() {
   );
 }
 
-function FilterChip({ active, children }: { active?: boolean; children: ReactNode }) {
-  return (
-    <span
-      className={
-        active
-          ? "inline-flex min-h-[30px] items-center rounded-full border border-accent/30 bg-accent/10 px-3 font-mono text-[0.6rem] uppercase tracking-[0.06em] text-accent"
-          : "inline-flex min-h-[30px] items-center rounded-full border border-white/[0.08] bg-white/[0.035] px-3 font-mono text-[0.6rem] uppercase tracking-[0.06em] text-muted"
-      }
-    >
-      {children}
-    </span>
-  );
+function parseSol(value: string) {
+  return Number.parseFloat(value.replace(/[^\d.]/g, "")) || 0;
 }
 
 function CircleCardStat({ label, value }: { label: string; value: string }) {
@@ -172,9 +274,7 @@ function CircleCardStat({ label, value }: { label: string; value: string }) {
       <span className="block font-mono text-[0.56rem] uppercase tracking-[0.08em] text-muted">
         {label}
       </span>
-      <span className="mt-1 block font-mono text-[0.88rem] font-medium text-foreground">
-        {value}
-      </span>
+      <span className="mt-1 block text-[1rem] font-medium text-foreground">{value}</span>
     </div>
   );
 }
