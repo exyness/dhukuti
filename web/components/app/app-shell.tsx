@@ -2,28 +2,27 @@
 
 import { useWallet } from "@solana/wallet-adapter-react";
 import {
+  Award,
   BadgeDollarSign,
-  CircleDollarSign,
+  History,
   Layers,
   LayoutGrid,
   PanelLeft,
-  Plus,
-  ShieldCheck,
-  UserRound,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useState } from "react";
 import { NoiseCanvas } from "@/components/layout/noise-canvas";
-import { appNavItems, programExplorerUrl, programFacts } from "@/lib/app-data";
+import { appNavItems } from "@/lib/app-data";
 import { cn } from "@/lib/cn";
 import { truncateAddress } from "@/lib/wallet";
 
 const navIcons = {
-  Browse: LayoutGrid,
-  Create: Plus,
-  Market: CircleDollarSign,
-  Profile: UserRound,
+  "Contribution History": History,
+  "Explore Marketplace": LayoutGrid,
+  "My Circles": Users,
+  "Reputation Score": Award,
 };
 
 export function AppShell({ children, title }: { children: ReactNode; title: string }) {
@@ -50,31 +49,28 @@ export function AppShell({ children, title }: { children: ReactNode; title: stri
         <div className="relative z-[2]">
           <Link
             href="/"
-            className="sidebar-brand flex w-fit items-center gap-2 text-[#f0ece6] [text-shadow:0_1px_0_rgba(0,0,0,0.45)]"
+            className="flex w-fit items-center gap-2 text-[#f0ece6] [text-shadow:0_1px_0_rgba(0,0,0,0.45)]"
           >
             <Layers className="h-5 w-5" aria-hidden="true" />
-            <span className="text-[0.95rem] font-semibold tracking-normal">Dhukuti</span>
+            <span className="text-[0.95rem] font-semibold tracking-tight">Dhukuti</span>
           </Link>
         </div>
 
-        <nav aria-label="App" className="relative z-[2] mt-24 flex flex-col">
-          <span className="mb-4 font-mono text-[0.62rem] font-medium uppercase tracking-[0.2em] text-[#7a756e]">
-            Protocol
-          </span>
-          <div className="flex flex-col gap-3.5">
+        <nav aria-label="Main Menu" className="relative z-[2] mt-24 mb-auto flex flex-col gap-8">
+          <div className="flex flex-col gap-4">
+            <span className="font-mono text-[0.62rem] font-medium uppercase tracking-[0.2em] text-[#7a756e]">
+              Main Menu
+            </span>
             {appNavItems.map((item) => {
               const Icon = navIcons[item.label];
-              const active =
-                item.href === "/circles"
-                  ? pathname === "/circles" || pathname.startsWith("/circles/")
-                  : pathname === item.href;
+              const active = isActiveNavItem(pathname, item);
 
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "group relative flex min-h-8 items-center gap-3 text-[1rem] tracking-normal text-[#aaa49b] transition-colors duration-150 ease-out before:absolute before:-inset-x-2.5 before:-inset-y-2 before:-z-10 before:rounded-md before:bg-[rgba(245,245,245,0.055)] before:opacity-0 before:transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    "group relative flex min-h-8 items-center gap-3 text-[1rem] tracking-[-0.01em] text-[#aaa49b] no-underline transition-colors duration-150 ease-out before:absolute before:-inset-x-2.5 before:-inset-y-2 before:-z-10 before:rounded-md before:bg-[rgba(245,245,245,0.055)] before:opacity-0 before:transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     active ? "text-accent" : "hover:text-accent hover:before:opacity-100",
                   )}
                 >
@@ -85,9 +81,7 @@ export function AppShell({ children, title }: { children: ReactNode; title: stri
                     )}
                     aria-hidden="true"
                   />
-                  <span>
-                    <span className="block leading-[1.1]">{item.label}</span>
-                  </span>
+                  {item.label}
                 </Link>
               );
             })}
@@ -100,49 +94,18 @@ export function AppShell({ children, title }: { children: ReactNode; title: stri
               <span className="font-mono text-[0.6rem] uppercase tracking-[0.08em] text-[#8d877f]">
                 Your Reputation
               </span>
-              <span className="font-mono text-[0.7rem] text-accent">642</span>
+              <span className="font-mono text-[0.7rem] text-accent">Level 4</span>
             </div>
             <div className="mb-2 h-1 overflow-hidden rounded-full bg-[rgba(245,242,237,0.06)]">
-              <div className="h-full w-[64%] rounded-full bg-accent" />
+              <div className="h-full w-[72%] rounded-full bg-accent" />
             </div>
-            <p className="font-mono text-[0.56rem] text-[#7a756e]">
-              SOL-only devnet reputation preview
-            </p>
-          </div>
-
-          <div className="mb-8 rounded-lg border border-[rgba(240,236,230,0.08)] bg-[rgba(20,22,22,0.48)] p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-success" aria-hidden="true" />
-              <span className="font-mono text-[0.58rem] uppercase tracking-[0.12em] text-[#8d877f]">
-                Program
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-              {programFacts.map((fact) => (
-                <div key={fact.label}>
-                  <span className="block font-mono text-[0.52rem] uppercase text-[#7a756e]">
-                    {fact.label}
-                  </span>
-                  <span className="mt-1 block font-mono text-[0.66rem] text-[#f0ece6]">
-                    {fact.value}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <a
-              href={programExplorerUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-4 inline-flex min-h-8 items-center rounded border border-[rgba(245,245,245,0.08)] px-3 font-mono text-[0.58rem] uppercase tracking-[0.08em] text-[#aaa49b] transition-colors hover:border-accent/30 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              View Explorer
-            </a>
+            <p className="font-mono text-[0.56rem] text-[#7a756e]">Next Tier: 850 Points</p>
           </div>
 
           <div className="flex items-center gap-3 font-mono text-[0.62rem] uppercase tracking-[0.16em] text-[#6c665f]">
-            <span>Devnet</span>
+            <span>dhukuti.io</span>
             <span className="text-[#4b4742]">/</span>
-            <span>Anchor V1</span>
+            <span>v1.2.0</span>
           </div>
         </div>
       </aside>
@@ -173,6 +136,22 @@ export function AppShell({ children, title }: { children: ReactNode; title: stri
       </main>
     </div>
   );
+}
+
+function isActiveNavItem(pathname: string, item: (typeof appNavItems)[number]) {
+  if (item.href === "/circles") {
+    return pathname === "/circles";
+  }
+
+  if (item.label === "My Circles") {
+    return pathname.startsWith("/circles/") && pathname !== "/circles/new";
+  }
+
+  if (item.label === "Reputation Score") {
+    return pathname === "/profile";
+  }
+
+  return pathname === item.href;
 }
 
 function WalletSummary() {

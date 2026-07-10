@@ -12,7 +12,7 @@ export default function ProfilePage() {
   return (
     <AppShell title="Profile & Assets">
       <div className="space-y-12">
-        <section className="grid grid-cols-1 gap-8 md:grid-cols-3">
+        <section id="reputation" className="scroll-mt-24 grid grid-cols-1 gap-8 md:grid-cols-3">
           <Panel className="flex flex-col justify-between gap-8 p-8 md:col-span-2 lg:flex-row lg:items-center">
             <div className="space-y-4">
               <div className="flex items-center gap-3">
@@ -91,7 +91,7 @@ export default function ProfilePage() {
           </div>
         </section>
 
-        <section className="grid grid-cols-1 gap-12 xl:grid-cols-3">
+        <section id="contributions" className="scroll-mt-24 grid grid-cols-1 gap-12 xl:grid-cols-3">
           <div className="space-y-6 xl:col-span-2">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Contribution History</h2>

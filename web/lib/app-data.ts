@@ -1,10 +1,10 @@
 import { DHUKUTI_PROGRAM, explorerAddressUrl } from "@/lib/constants";
 
 export const appNavItems = [
-  { href: "/circles", label: "Browse", description: "Open circles" },
-  { href: "/circles/new", label: "Create", description: "Host a circle" },
-  { href: "/market", label: "Market", description: "Position listings" },
-  { href: "/profile", label: "Profile", description: "Reputation + assets" },
+  { href: "/circles", label: "Explore Marketplace" },
+  { href: "/circles/early-payout-auction", label: "My Circles" },
+  { href: "/profile#reputation", label: "Reputation Score" },
+  { href: "/profile#contributions", label: "Contribution History" },
 ] as const;
 
 export type CircleMode = "Fixed order" | "Dutch bid";
