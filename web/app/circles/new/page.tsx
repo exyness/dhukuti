@@ -10,22 +10,18 @@ export default function NewCirclePage() {
     <AppShell title="Create Circle">
       <AppPageHeader
         eyebrow="Circle Builder"
-        title="Configure a SOL savings circle"
-        copy="Set the member cap, contribution amount, collateral rule, and payout curve. These values become program state after create_circle and cannot be treated as marketing copy."
+        title="Configure a savings circle."
+        copy="Set the economic rules, collateral, and payout model before publishing. These terms become fixed after the first member joins."
       />
-
-      <div className="mb-8">
-        <TokenScopeNotice />
-      </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
         <form className="space-y-6">
-          <Panel className="p-6">
+          <Panel className="p-7">
             <fieldset>
               <legend className="font-mono text-[0.68rem] uppercase tracking-widest text-muted">
                 01. Circle Terms
               </legend>
-              <p className="mt-2 text-sm leading-6 text-muted">
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
                 V1 circles settle in native SOL and enforce 2 to 64 members so contribution and vote
                 bitmaps fit safely in program state.
               </p>
@@ -72,12 +68,12 @@ export default function NewCirclePage() {
             </fieldset>
           </Panel>
 
-          <Panel className="p-6">
+          <Panel className="p-7">
             <fieldset>
               <legend className="font-mono text-[0.68rem] uppercase tracking-widest text-muted">
                 02. Payout Curve
               </legend>
-              <p className="mt-2 text-sm leading-6 text-muted">
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
                 The deployed program supports fixed-order payouts and early payout Dutch bids.
               </p>
               <div className="mt-6 grid gap-4 md:grid-cols-3">
@@ -105,7 +101,7 @@ export default function NewCirclePage() {
             </fieldset>
           </Panel>
 
-          <Panel className="p-6">
+          <Panel className="p-7">
             <fieldset>
               <legend className="font-mono text-[0.68rem] uppercase tracking-widest text-muted">
                 03. Trust Rules
@@ -149,7 +145,7 @@ export default function NewCirclePage() {
         </form>
 
         <aside className="space-y-6">
-          <Panel className="p-6">
+          <Panel className="p-7">
             <div className="mb-5 flex items-center justify-between">
               <span className="font-mono text-[0.62rem] uppercase tracking-[0.12em] text-muted">
                 Live Preview
@@ -172,7 +168,27 @@ export default function NewCirclePage() {
               <PreviewStat label="Mode" value="Fixed" />
               <PreviewStat label="Collateral" value="1 SOL" />
             </div>
+
+            <div className="mt-7 border-t border-border pt-6">
+              <div className="mb-3 font-mono text-[0.62rem] uppercase tracking-[0.12em] text-muted">
+                Projected payout schedule
+              </div>
+              <PreviewRow label="Cycle 01" value="16.00 SOL" />
+              <PreviewRow label="Cycle 02" value="16.00 SOL" />
+              <PreviewRow label="Cycle 03" value="16.00 SOL" />
+            </div>
+
+            <div className="mt-7 border-t border-border pt-6">
+              <div className="mb-3 font-mono text-[0.62rem] uppercase tracking-[0.12em] text-muted">
+                Program funds
+              </div>
+              <PreviewRow label="Insurance reserve" value="0.32 SOL" />
+              <PreviewRow label="Collateral locked" value="8.00 SOL" />
+              <PreviewRow label="Settlement asset" value="SOL" />
+            </div>
           </Panel>
+
+          <TokenScopeNotice />
 
           <Panel className="p-6">
             <div className="mb-4 flex items-center gap-2">
@@ -307,6 +323,15 @@ function PreviewStat({ label, value }: { label: string; value: string }) {
         {label}
       </span>
       <span className="mt-1 block font-mono text-[0.75rem] text-foreground">{value}</span>
+    </div>
+  );
+}
+
+function PreviewRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between border-b border-border py-2 last:border-b-0">
+      <span className="font-mono text-[0.64rem] text-muted">{label}</span>
+      <strong className="font-mono text-[0.72rem] font-medium text-foreground">{value}</strong>
     </div>
   );
 }
