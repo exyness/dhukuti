@@ -56,9 +56,9 @@ export function AppShell({ children, title }: { children: ReactNode; title: stri
           </Link>
         </div>
 
-        <nav aria-label="Main Menu" className="relative z-[2] mt-24 mb-auto flex flex-col gap-8">
-          <div className="flex flex-col gap-4">
-            <span className="font-mono text-[0.62rem] font-medium uppercase tracking-[0.2em] text-[#7a756e]">
+        <nav aria-label="Main Menu" className="relative z-[2] mt-24 mb-auto flex flex-col gap-7">
+          <div className="flex flex-col gap-3.5">
+            <span className="font-mono text-[0.6rem] font-medium uppercase tracking-[0.2em] text-[#7a756e]">
               Main Menu
             </span>
             {appNavItems.map((item) => {
@@ -70,13 +70,13 @@ export function AppShell({ children, title }: { children: ReactNode; title: stri
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "group relative flex min-h-8 items-center gap-3 text-[1rem] tracking-[-0.01em] text-[#aaa49b] no-underline transition-colors duration-150 ease-out before:absolute before:-inset-x-2.5 before:-inset-y-2 before:-z-10 before:rounded-md before:bg-[rgba(245,245,245,0.055)] before:opacity-0 before:transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    "group relative flex min-h-7 items-center gap-2.5 text-[0.95rem] tracking-[-0.01em] text-[#aaa49b] no-underline transition-colors duration-150 ease-out before:absolute before:-inset-x-2.5 before:-inset-y-2 before:-z-10 before:rounded-md before:bg-[rgba(245,245,245,0.055)] before:opacity-0 before:transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     active ? "text-accent" : "hover:text-accent hover:before:opacity-100",
                   )}
                 >
                   <Icon
                     className={cn(
-                      "h-4 w-4 text-[#969189] transition-colors duration-150 ease-out group-hover:text-accent",
+                      "h-3.5 w-3.5 text-[#969189] transition-colors duration-150 ease-out group-hover:text-accent",
                       active && "text-accent",
                     )}
                     aria-hidden="true"
@@ -235,9 +235,14 @@ export function StatTile({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function TokenScopeNotice() {
+export function TokenScopeNotice({ className }: { className?: string }) {
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-warning/20 bg-warning/8 p-4">
+    <div
+      className={cn(
+        "flex items-start gap-3 rounded-lg border border-warning/20 bg-warning/8 p-4",
+        className,
+      )}
+    >
       <BadgeDollarSign className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
       <div>
         <p className="font-mono text-[0.62rem] uppercase tracking-[0.1em] text-warning">

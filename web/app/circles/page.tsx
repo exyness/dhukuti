@@ -1,15 +1,8 @@
-import { ArrowRight, Search, SlidersHorizontal } from "lucide-react";
+import { ArrowRight, ChevronDown, Search } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import {
-  AppPageHeader,
-  AppShell,
-  Panel,
-  StatTile,
-  TokenScopeNotice,
-} from "@/components/app/app-shell";
+import { AppShell, Panel, StatTile, TokenScopeNotice } from "@/components/app/app-shell";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { circles } from "@/lib/app-data";
 
 export default function CirclesPage() {
@@ -18,63 +11,59 @@ export default function CirclesPage() {
 
   return (
     <AppShell title="Browse Circles">
-      <AppPageHeader
-        eyebrow="Marketplace"
-        title="Open Dhukuti circles"
-        copy="Find SOL-only savings circles backed by collateral, insurance fees, wallet reputation, and transferable position NFTs."
-        actions={
-          <Link
-            href="/circles/new"
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-[rgba(255,196,178,0.42)] bg-[#bf4934] px-5 font-mono text-[0.7rem] font-medium uppercase tracking-[0.08em] text-white transition-[filter,border-color] hover:border-[rgba(255,225,216,0.5)] hover:brightness-[1.01] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            Create Circle
-            <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-          </Link>
-        }
-      />
+      <header className="mb-8 flex flex-col justify-between gap-6 md:flex-row md:items-end">
+        <div>
+          <span className="mb-2 block font-mono text-[0.68rem] uppercase tracking-widest text-accent">
+            Marketplace
+          </span>
+          <h2 className="text-3xl font-semibold tracking-tight">Open Saving Circles</h2>
+        </div>
 
-      <Panel className="mb-4 grid grid-cols-1 overflow-hidden md:grid-cols-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="relative block">
+            <span className="sr-only">Search circles</span>
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/20"
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              placeholder="Search circles..."
+              className="h-10 w-full min-w-[13rem] rounded-md border border-border bg-white/[0.03] pl-9 pr-3 font-mono text-[0.7rem] text-foreground placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-[14rem]"
+            />
+          </label>
+          <label className="sr-only" htmlFor="payout-mode">
+            Payout mode
+          </label>
+          <select id="payout-mode" className="filter-control" defaultValue="all">
+            <option value="all">Payout Mode: All</option>
+            <option value="fixed">Fixed Rotation</option>
+            <option value="dutch">Dutch Bid</option>
+          </select>
+          <label className="sr-only" htmlFor="contribution-range">
+            Contribution range
+          </label>
+          <select id="contribution-range" className="filter-control" defaultValue="all">
+            <option value="all">Contribution: All</option>
+            <option value="lt-1">&lt; 1 SOL</option>
+            <option value="one-five">1 - 5 SOL</option>
+            <option value="gt-5">5+ SOL</option>
+          </select>
+          <button type="button" className="filter-control inline-flex items-center gap-2">
+            Sort: Newest
+            <ChevronDown className="h-3 w-3" aria-hidden="true" />
+          </button>
+        </div>
+      </header>
+
+      <TokenScopeNotice className="mb-6" />
+
+      <Panel className="mb-6 grid grid-cols-1 overflow-hidden md:grid-cols-4">
         <StatTile label="Open circles" value={String(openCircles)} />
         <StatTile label="Active circles" value={String(activeCircles)} />
         <StatTile label="Settlement" value="SOL only" />
         <StatTile label="Payout modes" value="Fixed + Dutch" />
       </Panel>
-
-      <div className="mb-4 grid gap-4 lg:grid-cols-[1fr_22rem]">
-        <Panel className="p-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center">
-            <label className="relative block flex-1">
-              <span className="sr-only">Search circles</span>
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
-                aria-hidden="true"
-              />
-              <input
-                type="search"
-                placeholder="Search by circle, host, or mode"
-                className="min-h-11 w-full rounded-md border border-border bg-surface/70 pl-10 pr-3 text-sm text-foreground placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-            </label>
-            <label className="sr-only" htmlFor="mode-filter">
-              Payout mode
-            </label>
-            <select
-              id="mode-filter"
-              className="min-h-11 rounded-md border border-border bg-surface/70 px-3 font-mono text-[0.72rem] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              defaultValue="all"
-            >
-              <option value="all">Mode: All supported</option>
-              <option value="fixed">Fixed order</option>
-              <option value="dutch">Dutch bid</option>
-            </select>
-            <Button variant="secondary" size="md">
-              <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
-              Filters
-            </Button>
-          </div>
-        </Panel>
-        <TokenScopeNotice />
-      </div>
 
       <div className="mb-8 flex flex-wrap items-center gap-2">
         <FilterChip active>Fixed order</FilterChip>
@@ -83,11 +72,11 @@ export default function CirclesPage() {
         <FilterChip>2-64 members</FilterChip>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
         {circles.map((circle) => (
           <Panel
             key={circle.id}
-            className="p-6 transition-[border-color,background,transform] duration-150 ease-out hover:-translate-y-0.5 hover:border-accent/30 hover:bg-white/[0.04]"
+            className="p-6 transition-[border-color,background] duration-150 ease-out hover:border-white/10 hover:bg-white/[0.035]"
           >
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
@@ -127,13 +116,13 @@ export default function CirclesPage() {
               <CircleCardStat label="Round" value={circle.round} />
             </div>
 
-            <div className="mt-7 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mt-7 border-t border-border pt-5">
               <span className="font-mono text-[0.68rem] text-muted">
                 Next: {circle.nextPayout} · deadline {circle.deadline}
               </span>
               <Link
                 href={`/circles/${circle.id}`}
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-border px-4 font-mono text-[0.68rem] font-medium uppercase tracking-[0.08em] text-foreground transition-colors hover:border-accent/40 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-white/5 bg-white/5 px-4 font-mono text-[0.68rem] font-medium uppercase tracking-[0.08em] text-foreground transition-colors hover:border-white/10 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {circle.nextAction}
                 <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
