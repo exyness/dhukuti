@@ -32,12 +32,12 @@ export default function CircleDetailsPage() {
         }
       />
 
-      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
+      <Panel className="mb-6 grid grid-cols-1 overflow-hidden md:grid-cols-4">
         <StatTile label="Round" value={currentCircle.round} />
         <StatTile label="Contribution" value={currentCircle.contribution} />
         <StatTile label="Insurance" value={currentCircle.insurance} />
         <StatTile label="Deadline" value={currentCircle.deadline} />
-      </div>
+      </Panel>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(22rem,0.55fr)]">
         <div className="space-y-6">

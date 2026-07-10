@@ -14,12 +14,12 @@ export default function ProfilePage() {
         copy="A wallet-scoped profile for completion/default outcomes, host reputation, vouches, active memberships, and listed position NFTs."
       />
 
-      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
+      <Panel className="mb-6 grid grid-cols-1 overflow-hidden md:grid-cols-4">
         <StatTile label="Member reputation" value={profileStats.memberReputation} />
         <StatTile label="Active circles" value={profileStats.activeCircles} />
         <StatTile label="Collateral locked" value={profileStats.collateralLocked} />
         <StatTile label="Vouched stake" value={profileStats.vouchedStake} />
-      </div>
+      </Panel>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(22rem,0.8fr)]">
         <div className="space-y-6">

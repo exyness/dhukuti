@@ -19,12 +19,12 @@ export default function MarketPage() {
         }
       />
 
-      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
+      <Panel className="mb-6 grid grid-cols-1 overflow-hidden md:grid-cols-4">
         <StatTile label="Active listings" value={String(marketListings.length)} />
         <StatTile label="Settlement" value="SOL escrow" />
         <StatTile label="Position asset" value="1-of-1 NFT" />
         <StatTile label="Program flow" value="list / buy" />
-      </div>
+      </Panel>
 
       <Panel className="mb-8 p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

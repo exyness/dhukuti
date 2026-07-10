@@ -1,5 +1,6 @@
 import { ArrowRight, Search, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import {
   AppPageHeader,
   AppShell,
@@ -32,14 +33,14 @@ export default function CirclesPage() {
         }
       />
 
-      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
+      <Panel className="mb-4 grid grid-cols-1 overflow-hidden md:grid-cols-4">
         <StatTile label="Open circles" value={String(openCircles)} />
         <StatTile label="Active circles" value={String(activeCircles)} />
         <StatTile label="Settlement" value="SOL only" />
         <StatTile label="Payout modes" value="Fixed + Dutch" />
-      </div>
+      </Panel>
 
-      <div className="mb-8 grid gap-4 lg:grid-cols-[1fr_22rem]">
+      <div className="mb-4 grid gap-4 lg:grid-cols-[1fr_22rem]">
         <Panel className="p-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center">
             <label className="relative block flex-1">
@@ -75,9 +76,19 @@ export default function CirclesPage() {
         <TokenScopeNotice />
       </div>
 
+      <div className="mb-8 flex flex-wrap items-center gap-2">
+        <FilterChip active>Fixed order</FilterChip>
+        <FilterChip>Dutch bid</FilterChip>
+        <FilterChip>Native SOL</FilterChip>
+        <FilterChip>2-64 members</FilterChip>
+      </div>
+
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         {circles.map((circle) => (
-          <Panel key={circle.id} className="p-6 transition-colors hover:border-foreground/20">
+          <Panel
+            key={circle.id}
+            className="p-6 transition-[border-color,background,transform] duration-150 ease-out hover:-translate-y-0.5 hover:border-accent/30 hover:bg-white/[0.04]"
+          >
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-lg font-semibold tracking-tight">{circle.name}</h3>
@@ -131,7 +142,38 @@ export default function CirclesPage() {
           </Panel>
         ))}
       </div>
+
+      <footer className="mt-20 flex items-center justify-between border-t border-[var(--ink-faint)] pt-12">
+        <div className="flex items-center gap-6 font-mono text-[0.65rem] text-muted">
+          <span>Marketplace Status: devnet preview</span>
+          <span>Settlement: native SOL</span>
+        </div>
+        <div className="flex items-center gap-3 font-mono text-[0.7rem]">
+          <button
+            type="button"
+            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded bg-white/[0.05] text-muted transition-colors hover:bg-white/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            1
+          </button>
+          <span className="text-muted">of</span>
+          <span>1</span>
+        </div>
+      </footer>
     </AppShell>
+  );
+}
+
+function FilterChip({ active, children }: { active?: boolean; children: ReactNode }) {
+  return (
+    <span
+      className={
+        active
+          ? "inline-flex min-h-[30px] items-center rounded-full border border-accent/30 bg-accent/10 px-3 font-mono text-[0.6rem] uppercase tracking-[0.06em] text-accent"
+          : "inline-flex min-h-[30px] items-center rounded-full border border-white/[0.08] bg-white/[0.035] px-3 font-mono text-[0.6rem] uppercase tracking-[0.06em] text-muted"
+      }
+    >
+      {children}
+    </span>
   );
 }
 
