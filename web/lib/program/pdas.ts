@@ -4,6 +4,7 @@ import { DHUKUTI_PROGRAM } from "@/lib/constants";
 import type { CreateCirclePdas } from "@/lib/program/types";
 
 export const DHUKUTI_PROGRAM_ID = new PublicKey(DHUKUTI_PROGRAM.programId);
+export const SPL_TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 export const CIRCLE_ACCOUNT_SPACE = 209;
 export const INSURANCE_POOL_ACCOUNT_SPACE = 59;
 export const NATIVE_SOL_DENOM_MINT = SystemProgram.programId;
@@ -43,6 +44,58 @@ export function deriveMembershipPda(circle: PublicKey, member: PublicKey) {
     [SEED_MEMBERSHIP, circle.toBuffer(), member.toBuffer()],
     DHUKUTI_PROGRAM_ID,
   )[0];
+}
+
+export function derivePositionNftPda(circle: PublicKey, member: PublicKey) {
+  return PublicKey.findProgramAddressSync(
+    [SEED_POSITION_NFT, circle.toBuffer(), member.toBuffer()],
+    DHUKUTI_PROGRAM_ID,
+  )[0];
+}
+
+export function deriveListingPda(circle: PublicKey, membership: PublicKey) {
+  return PublicKey.findProgramAddressSync(
+    [SEED_LISTING, circle.toBuffer(), membership.toBuffer()],
+    DHUKUTI_PROGRAM_ID,
+  )[0];
+}
+
+export function deriveListingEscrowPda(listing: PublicKey) {
+  return PublicKey.findProgramAddressSync(
+    [SEED_LISTING_ESCROW, listing.toBuffer()],
+    DHUKUTI_PROGRAM_ID,
+  )[0];
+}
+
+export function deriveVouchPda(circle: PublicKey, voucher: PublicKey, candidate: PublicKey) {
+  return PublicKey.findProgramAddressSync(
+    [SEED_VOUCH, circle.toBuffer(), voucher.toBuffer(), candidate.toBuffer()],
+    DHUKUTI_PROGRAM_ID,
+  )[0];
+}
+
+export function deriveDefaultProposalPda(
+  circle: PublicKey,
+  round: PublicKey,
+  defaultingMember: PublicKey,
+) {
+  return PublicKey.findProgramAddressSync(
+    [SEED_DEFAULT_PROPOSAL, circle.toBuffer(), round.toBuffer(), defaultingMember.toBuffer()],
+    DHUKUTI_PROGRAM_ID,
+  )[0];
+}
+
+export function deriveCircleAssetPdas(circle: PublicKey) {
+  const [vault] = PublicKey.findProgramAddressSync(
+    [SEED_VAULT, circle.toBuffer()],
+    DHUKUTI_PROGRAM_ID,
+  );
+  const [insurancePool] = PublicKey.findProgramAddressSync(
+    [SEED_INSURANCE, circle.toBuffer()],
+    DHUKUTI_PROGRAM_ID,
+  );
+
+  return { insurancePool, vault };
 }
 
 export function deriveRoundPda(circle: PublicKey, roundIndex: number) {

@@ -13,19 +13,23 @@ import {
   Loader2,
   LockKeyhole,
   LogOut,
+  Menu,
   PanelLeftClose,
   PanelLeftOpen,
+  ScrollText,
   Users,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type HTMLAttributes, type ReactNode, useEffect, useRef, useState } from "react";
 import { NoiseCanvas } from "@/components/layout/noise-canvas";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { WalletConnectCard } from "@/components/wallet/wallet-connect";
 import { cn } from "@/lib/cn";
 import { explorerAddressUrl } from "@/lib/constants";
+import { useProfileQuery } from "@/lib/data/queries";
+import type { ProfileData } from "@/lib/data/types";
 import { appNavItems } from "@/lib/navigation";
 import { useSupabaseAuth } from "@/lib/supabase/auth-context";
 import { useWalletIdentity } from "@/lib/use-wallet-identity";
@@ -36,6 +40,7 @@ const navIcons = {
   "Explore Marketplace": LayoutGrid,
   "My Circles": Users,
   "Reputation Score": Award,
+  "Activity Log": ScrollText,
 };
 
 export function AppShell({
@@ -48,8 +53,11 @@ export function AppShell({
   title: string;
 }) {
   const pathname = usePathname();
+  const mobileMenuTriggerRef = useRef<HTMLButtonElement>(null);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [railCollapsed, setRailCollapsed] = useState(false);
-  const { isConnected } = useWalletIdentity();
+  const { address, isConnected } = useWalletIdentity();
+  const reputationQuery = useProfileQuery(address);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -163,18 +171,12 @@ export function AppShell({
           )}
           aria-hidden={railCollapsed}
         >
-          <div className="mx-10 mb-8 rounded-lg border border-[rgba(240,236,230,0.08)] bg-[rgba(20,22,22,0.74)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
-            <div className="mb-4 flex items-center justify-between">
-              <span className="font-mono text-[0.6rem] uppercase tracking-[0.08em] text-[#8d877f]">
-                Your Reputation
-              </span>
-              <span className="font-mono text-[0.7rem] text-accent">Level 4</span>
-            </div>
-            <div className="mb-2 h-1 overflow-hidden rounded-full bg-[rgba(245,242,237,0.06)]">
-              <div className="h-full w-[72%] rounded-full bg-accent" />
-            </div>
-            <p className="font-mono text-[0.56rem] text-[#7a756e]">Next Tier: 850 Points</p>
-          </div>
+          <SidebarReputation
+            error={reputationQuery.error}
+            isConnected={isConnected}
+            isLoading={reputationQuery.isLoading}
+            profile={reputationQuery.data}
+          />
 
           <div className="mx-10 flex items-center gap-3 font-mono text-[0.62rem] uppercase tracking-[0.16em] text-[#6c665f]">
             <span>dhukuti.io</span>
@@ -220,14 +222,213 @@ export function AppShell({
       >
         <header className="sticky top-0 z-40 flex h-[72px] items-center justify-between gap-4 border-b border-[rgba(245,245,245,0.05)] bg-[rgba(10,10,10,0.86)] px-6 backdrop-blur-[12px] md:px-10">
           <h1 className="text-[1.1rem] font-medium tracking-tight">{title}</h1>
-          <WalletSummary />
+          <div className="flex items-center gap-2">
+            <button
+              ref={mobileMenuTriggerRef}
+              type="button"
+              aria-controls="mobile-navigation"
+              aria-expanded={mobileNavOpen}
+              className="flex h-10 w-10 items-center justify-center rounded-md border border-white/10 text-muted transition-colors hover:bg-white/[0.05] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
+              onClick={() => setMobileNavOpen((open) => !open)}
+            >
+              <Menu className="h-4 w-4" aria-hidden="true" />
+              <span className="sr-only">Open navigation</span>
+            </button>
+            <WalletSummary />
+          </div>
         </header>
         <div className={cn("mx-auto w-full max-w-[1120px] px-6 py-10 md:px-10", contentClassName)}>
           {isConnected ? children : <WalletRequiredPanel />}
         </div>
       </main>
+      <MobileNavigation
+        onClose={() => {
+          setMobileNavOpen(false);
+          mobileMenuTriggerRef.current?.focus();
+        }}
+        open={mobileNavOpen}
+        pathname={pathname}
+      />
     </div>
   );
+}
+
+function MobileNavigation({
+  onClose,
+  open,
+  pathname,
+}: {
+  onClose: () => void;
+  open: boolean;
+  pathname: string;
+}) {
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const getFocusableElements = () =>
+      Array.from(
+        panelRef.current?.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      );
+    const initialFocus = getFocusableElements()[0];
+    initialFocus?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+
+      const focusableElements = getFocusableElements();
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements.at(-1);
+      if (!firstElement || !lastElement) {
+        event.preventDefault();
+        return;
+      }
+
+      const activeElement = document.activeElement;
+      if (!panelRef.current?.contains(activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? lastElement : firstElement).focus();
+      } else if (event.shiftKey && activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (!event.shiftKey && activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onClose, open]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[80] lg:hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Navigation"
+    >
+      <button
+        type="button"
+        aria-label="Close navigation"
+        className="absolute inset-0 cursor-default bg-black/60"
+        onClick={onClose}
+      />
+      <div
+        ref={panelRef}
+        id="mobile-navigation"
+        className="absolute inset-x-4 top-4 rounded-lg border border-border bg-popover p-4 shadow-[0_18px_44px_rgba(0,0,0,0.45)]"
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <span className="font-mono text-[0.62rem] uppercase tracking-[0.1em] text-muted">
+            Dhukuti
+          </span>
+          <button
+            type="button"
+            aria-label="Close navigation"
+            className="flex h-10 w-10 items-center justify-center rounded-md text-muted transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={onClose}
+          >
+            <PanelLeftClose className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
+        <nav aria-label="Mobile navigation" className="grid gap-1">
+          {appNavItems.map((item) => {
+            const Icon = navIcons[item.label];
+            const active = isActiveNavItem(pathname, item);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "flex min-h-11 items-center gap-3 rounded-md px-3 font-mono text-[0.68rem] uppercase tracking-[0.08em] text-muted transition-colors hover:bg-white/[0.055] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  active && "bg-accent/10 text-accent",
+                )}
+                onClick={onClose}
+              >
+                <Icon className="h-4 w-4" aria-hidden="true" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
+    </div>
+  );
+}
+
+function SidebarReputation({
+  error,
+  isConnected,
+  isLoading,
+  profile,
+}: {
+  error: Error | null;
+  isConnected: boolean;
+  isLoading: boolean;
+  profile: ProfileData | undefined;
+}) {
+  const score = Number.parseInt(profile?.stats.memberReputation ?? "0", 10) || 0;
+  const tier = Number.parseInt(profile?.stats.discountTier ?? "0", 10) || 0;
+  const tierProgress = getTierProgress(score);
+
+  return (
+    <div className="mx-10 mb-8 rounded-lg border border-[rgba(240,236,230,0.08)] bg-[rgba(20,22,22,0.74)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
+      <div className="mb-4 flex items-center justify-between">
+        <span className="font-mono text-[0.6rem] uppercase tracking-[0.08em] text-[#8d877f]">
+          Your Reputation
+        </span>
+        <span className="font-mono text-[0.7rem] text-accent">
+          {isConnected ? `Tier ${tier}` : "Wallet required"}
+        </span>
+      </div>
+      {isLoading ? (
+        <div className="space-y-3" role="status">
+          <span className="sr-only">Loading reputation</span>
+          <div className="h-1 animate-pulse rounded-full bg-white/[0.08]" />
+          <div className="h-3 w-32 animate-pulse rounded bg-white/[0.06]" />
+        </div>
+      ) : error ? (
+        <p className="font-mono text-[0.56rem] leading-5 text-warning">
+          Unable to load indexed reputation.
+        </p>
+      ) : !isConnected ? (
+        <p className="font-mono text-[0.56rem] leading-5 text-[#7a756e]">
+          Connect a wallet to load your on-chain standing.
+        </p>
+      ) : (
+        <>
+          <div className="mb-2 h-1 overflow-hidden rounded-full bg-[rgba(245,242,237,0.06)]">
+            <div
+              className="h-full rounded-full bg-accent transition-[width] duration-150 ease-out"
+              style={{ width: `${tierProgress.percent}%` }}
+            />
+          </div>
+          <p className="font-mono text-[0.56rem] text-[#7a756e]">
+            {tierProgress.next
+              ? `${score} points · next tier at ${tierProgress.next}`
+              : `${score} points · top tier`}
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
+function getTierProgress(score: number) {
+  if (score >= 10_000) return { next: null, percent: 100 };
+  if (score >= 5_000) return { next: 10_000, percent: Math.round(((score - 5_000) / 5_000) * 100) };
+  if (score >= 1_000) return { next: 5_000, percent: Math.round(((score - 1_000) / 4_000) * 100) };
+  return { next: 1_000, percent: Math.round((score / 1_000) * 100) };
 }
 
 function WalletRequiredPanel() {
@@ -469,13 +670,18 @@ export function AppPageHeader({
   );
 }
 
-export function Panel({ children, className }: { children: ReactNode; className?: string }) {
+export function Panel({
+  children,
+  className,
+  ...props
+}: { children: ReactNode; className?: string } & HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn(
         "rounded-lg border border-[var(--ink-faint)] bg-[rgba(245,245,245,0.02)]",
         className,
       )}
+      {...props}
     >
       {children}
     </div>

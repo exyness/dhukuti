@@ -1,4 +1,10 @@
-import type { CircleDetail, CircleSummary, MarketListing, ProfileData } from "@/lib/data/types";
+import type {
+  ActivityLogEntry,
+  CircleDetail,
+  CircleSummary,
+  MarketListing,
+  ProfileData,
+} from "@/lib/data/types";
 
 export async function fetchCircles() {
   const response = await fetchJson<{ circles: CircleSummary[] }>("/api/circles");
@@ -22,6 +28,15 @@ export async function fetchProfile(wallet: string | null | undefined) {
   if (wallet) searchParams.set("wallet", wallet);
   const response = await fetchJson<{ profile: ProfileData }>(`/api/profile?${searchParams}`);
   return response.profile;
+}
+
+export async function fetchActivity(wallet: string | null | undefined) {
+  const searchParams = new URLSearchParams();
+  if (wallet) searchParams.set("wallet", wallet);
+  const response = await fetchJson<{ activity: ActivityLogEntry[] }>(
+    `/api/activity?${searchParams}`,
+  );
+  return response.activity;
 }
 
 async function fetchJson<T>(url: string) {

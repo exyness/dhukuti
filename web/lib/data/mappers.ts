@@ -14,6 +14,8 @@ import type {
   CircleMode,
   CircleStatus,
   CircleSummary,
+  CircleVouch,
+  DefaultProposal,
   MarketListing,
   PayoutScheduleRow,
   ProfileData,
@@ -21,10 +23,12 @@ import type {
 import type {
   DhukutiCircleRow,
   DhukutiContributionRow,
+  DhukutiDefaultProposalRow,
   DhukutiListingRow,
   DhukutiMembershipRow,
   DhukutiReputationRow,
   DhukutiRoundRow,
+  DhukutiVouchRow,
 } from "@/lib/supabase/types";
 
 const ZERO_BIGINT = BigInt(0);
@@ -32,9 +36,12 @@ const BPS_DENOMINATOR = BigInt(10_000);
 
 type CircleMapInput = {
   contributions?: DhukutiContributionRow[];
+  defaultProposals?: DhukutiDefaultProposalRow[];
   memberships?: DhukutiMembershipRow[];
+  reputations?: DhukutiReputationRow[];
   row: DhukutiCircleRow;
   rounds?: DhukutiRoundRow[];
+  vouches?: DhukutiVouchRow[];
 };
 
 export function mapCircleSummary({
@@ -56,11 +63,13 @@ export function mapCircleSummary({
 
   return {
     address: row.circle,
+    circleId: toBigIntString(row.circle_id),
     collateral: formatCollateral(contributionAmount, row.collateral_bps),
     collateralBps: row.collateral_bps,
     contribution: formatSolValue(contributionAmount),
     contributionLamports: contributionAmount,
     creator: row.creator,
+    currentRoundIndex: currentRound?.round_index ?? 0,
     cycle: formatCycle(toInteger(row.cycle_duration_seconds)),
     cycleDurationSeconds: toInteger(row.cycle_duration_seconds),
     deadline: formatDeadline(currentRound?.deadline_ts),
@@ -88,34 +97,54 @@ export function mapCircleSummary({
 
 export function mapCircleDetail(input: CircleMapInput): CircleDetail {
   const circle = mapCircleSummary(input);
+  const reputationByWallet = new Map(
+    (input.reputations ?? []).map((reputation) => [reputation.wallet, reputation]),
+  );
+  const currentRoundContributors = new Set(
+    (input.contributions ?? [])
+      .filter((contribution) => contribution.round_index === circle.currentRoundIndex)
+      .map((contribution) => contribution.member),
+  );
+  const vouches = mapCircleVouches(input.vouches ?? []);
   const members = [...(input.memberships ?? [])]
     .sort((a, b) => a.join_order - b.join_order)
     .map((membership): CircleMember => {
       const member = membership.member;
+      const memberVouches = vouches.filter((vouch) => vouch.candidate === member && vouch.active);
       const state = membership.defaulted
         ? "Default risk"
         : membership.active
-          ? "Joined"
+          ? currentRoundContributors.has(member)
+            ? "Paid"
+            : "Pending"
           : "Inactive";
 
       return {
+        active: membership.active,
         collateral: formatSolValue(membership.collateral_deposited),
+        defaulted: membership.defaulted,
         handle: shortAddress(member),
+        joinOrder: membership.join_order,
         member,
         nextPayout: `Round ${String(membership.join_order + 1).padStart(2, "0")}`,
-        reputation: 0,
+        positionNftMint: membership.position_nft_mint,
+        reputation: toInteger(reputationByWallet.get(member)?.score),
         role: membership.join_order === 0 ? "Host" : "Member",
         state,
         summary: membership.defaulted
           ? "Indexed default state from program events."
           : "Membership indexed from the program event stream.",
-        vouch: "Indexed separately",
+        vouch:
+          memberVouches.length > 0
+            ? `${memberVouches.length} active ${memberVouches.length === 1 ? "vouch" : "vouches"}`
+            : "No active vouch",
       };
     });
 
   const payoutSchedule = buildPayoutSchedule(circle, input.rounds ?? [], members);
+  const defaultProposal = mapDefaultProposal(input.defaultProposals ?? [], members, circle);
 
-  return { circle, members, payoutSchedule };
+  return { circle, defaultProposal, members, payoutSchedule, vouches };
 }
 
 export function mapMarketListing({
@@ -138,8 +167,10 @@ export function mapMarketListing({
       : 0;
 
   return {
+    active: listing.active,
     ask: formatSolValue(askLamports),
     askLamports,
+    cancelled: listing.cancelled,
     circle: circle?.name ?? shortAddress(listing.circle),
     circleAddress: listing.circle,
     discount: `${Math.max(discountBps / 100, 0).toFixed(1)}%`,
@@ -151,6 +182,8 @@ export function mapMarketListing({
         : `Round ${String(listing.join_order + 1).padStart(2, "0")}`,
     seller: listing.seller,
     sellerRep: toInteger(reputation?.score),
+    sold: listing.sold,
+    positionNftMint: listing.position_nft_mint,
     value: formatSolValue(payoutValue),
   };
 }
@@ -158,19 +191,69 @@ export function mapMarketListing({
 export function emptyProfile(wallet: string | null): ProfileData {
   return {
     activeCircles: [],
+    circleHistory: [],
     contributionHistory: [],
     listings: [],
+    positions: [],
     stats: {
       activeCircles: "0",
       collateralLocked: "0 SOL",
       completedCircles: "0",
       contributionVolume: "0 SOL",
+      defaultedCircles: "0",
+      discountTier: "0",
       hostCompletions: "0",
       memberReputation: "0",
+      vouchesMade: "0",
       vouchedStake: "0 SOL",
     },
     wallet,
   };
+}
+
+function mapDefaultProposal(
+  proposals: DhukutiDefaultProposalRow[],
+  members: CircleMember[],
+  circle: CircleSummary,
+): DefaultProposal | null {
+  const proposal = proposals.find(
+    (item) => !item.resolved && item.round_index === circle.currentRoundIndex,
+  );
+  if (!proposal) return null;
+
+  return {
+    approvals: bitCount(toBigIntString(proposal.approvals_bitmap)),
+    candidate: proposal.member,
+    candidateHandle:
+      members.find((member) => member.member === proposal.member)?.handle ??
+      shortAddress(proposal.member),
+    graceDeadline: proposal.grace_deadline_ts,
+    proposal: proposal.proposal,
+    rejections: bitCount(toBigIntString(proposal.rejections_bitmap)),
+    roundIndex: proposal.round_index,
+  };
+}
+
+function mapCircleVouches(rows: DhukutiVouchRow[]): CircleVouch[] {
+  return rows.map((row) => ({
+    active: row.active,
+    candidate: row.candidate,
+    released: row.released,
+    slashed: row.slashed,
+    stake: formatSolValue(row.stake_lamports),
+    vouch: row.vouch,
+    voucher: row.voucher,
+  }));
+}
+
+function bitCount(value: string) {
+  let bits = BigInt(value);
+  let count = 0;
+  while (bits > 0n) {
+    bits &= bits - 1n;
+    count += 1;
+  }
+  return count;
 }
 
 function buildPayoutSchedule(

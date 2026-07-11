@@ -30,7 +30,7 @@ export function CircleMemberAvatar({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ left: 0, top: 0 });
-  const isYou = member.role === "You";
+  const isYou = member.role.startsWith("You");
   const isDefault = member.state === "Default risk";
   const isOpen = member.role === "Open";
   const isPaid = member.state === "Paid";

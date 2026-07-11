@@ -1,10 +1,10 @@
 "use client";
 
-import { ChevronDown, MoreHorizontal, Plus } from "lucide-react";
+import { ArrowRight, History, Plus } from "lucide-react";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { AppShell, Panel } from "@/components/app/app-shell";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { useProfileQuery } from "@/lib/data/queries";
 import type { CircleSummary, MarketListing, ProfileData } from "@/lib/data/types";
 import { useWalletIdentity } from "@/lib/use-wallet-identity";
@@ -14,15 +14,20 @@ type ListingData = MarketListing;
 
 const emptyProfile: ProfileData = {
   activeCircles: [],
+  circleHistory: [],
   contributionHistory: [],
   listings: [],
+  positions: [],
   stats: {
     activeCircles: "0",
     collateralLocked: "0 SOL",
     completedCircles: "0",
     contributionVolume: "0 SOL",
+    defaultedCircles: "0",
+    discountTier: "0",
     hostCompletions: "0",
     memberReputation: "0",
+    vouchesMade: "0",
     vouchedStake: "0 SOL",
   },
   wallet: null,
@@ -35,7 +40,7 @@ export default function ProfilePage() {
   const profile = data ?? emptyProfile;
   const profileStats = profile.stats;
   const reputationScore = Number.parseInt(profileStats.memberReputation, 10) || 0;
-  const reputationProgress = Math.min(Math.round((reputationScore / 1000) * 100), 100);
+  const reputationProgress = getReputationProgress(reputationScore);
 
   return (
     <AppShell title="Profile & Assets">
@@ -67,12 +72,12 @@ export default function ProfilePage() {
               <div className="w-full max-w-sm">
                 <div className="mb-2 flex justify-between font-mono text-[0.65rem] text-muted">
                   <span>Indexed from ReputationUpdatedEvent</span>
-                  <span>{reputationProgress}%</span>
+                  <span>{reputationProgress.percent}%</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
                   <div
                     className="h-full rounded-full bg-accent"
-                    style={{ width: `${reputationProgress}%` }}
+                    style={{ width: `${reputationProgress.percent}%` }}
                   />
                 </div>
               </div>
@@ -83,9 +88,10 @@ export default function ProfilePage() {
                 Performance metrics
               </span>
               <div className="space-y-3">
-                <ProfileMetric label="On-time rate" value="100%" />
+                <ProfileMetric label="Discount tier" value={`Tier ${profileStats.discountTier}`} />
                 <ProfileMetric label="Circles Completed" value={profileStats.completedCircles} />
-                <ProfileMetric label="Total Volume" value={profileStats.contributionVolume} />
+                <ProfileMetric label="Defaults" value={profileStats.defaultedCircles} />
+                <ProfileMetric label="Vouches made" value={profileStats.vouchesMade} />
               </div>
             </div>
           </Panel>
@@ -94,17 +100,22 @@ export default function ProfilePage() {
             <span className="mb-4 font-mono text-[0.6rem] uppercase tracking-widest text-muted">
               Insurance Coverage
             </span>
-            <div className="mb-2 text-3xl font-medium">{profileStats.collateralLocked}</div>
+            <div className="mb-2 font-mono text-3xl font-medium tabular-nums">
+              {profileStats.collateralLocked}
+            </div>
             <p className="text-[0.75rem] leading-relaxed text-muted">
               Your locked SOL collateral and vouches back active circle obligations.
             </p>
-            <Button variant="secondary" className="mt-6 w-full">
-              Manage Stake
-            </Button>
+            <Link
+              href="/circles"
+              className="mt-6 inline-flex min-h-11 items-center justify-center rounded-md border border-white/10 bg-white/[0.04] px-4 font-mono text-[0.68rem] uppercase tracking-[0.08em] text-foreground transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              View active obligations
+            </Link>
           </Panel>
         </section>
 
-        <section>
+        <section id="circles" className="scroll-mt-24">
           <div className="mb-8 flex items-baseline justify-between">
             <h2 className="text-xl font-semibold">My Active Circles</h2>
             <Link
@@ -130,6 +141,15 @@ export default function ProfilePage() {
                 Join New Circle
               </span>
             </Link>
+            {profile.activeCircles.length === 0 ? (
+              <Panel className="flex min-h-[13rem] flex-col justify-center p-6 md:col-span-2">
+                <h3 className="font-medium">No active circles yet</h3>
+                <p className="mt-2 text-sm leading-6 text-muted">
+                  Join a forming circle to reserve a payout position and see your round obligations
+                  here.
+                </p>
+              </Panel>
+            ) : null}
           </div>
         </section>
 
@@ -137,13 +157,9 @@ export default function ProfilePage() {
           <div className="space-y-6 xl:col-span-2">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Contribution History</h2>
-              <button
-                type="button"
-                className="inline-flex min-h-9 items-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 font-mono text-[0.65rem] transition-colors hover:bg-white/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                All Status
-                <ChevronDown className="h-3 w-3" aria-hidden="true" />
-              </button>
+              <span className="font-mono text-[0.62rem] uppercase tracking-[0.08em] text-muted">
+                Indexed payments
+              </span>
             </div>
 
             <Panel className="overflow-hidden">
@@ -162,7 +178,9 @@ export default function ProfilePage() {
                       <tr key={row.signature} className="border-b border-border last:border-b-0">
                         <td className="px-6 py-4 font-mono text-[0.7rem]">{row.date}</td>
                         <td className="px-6 py-4 text-sm font-medium">{row.circle}</td>
-                        <td className="px-6 py-4 font-mono text-[0.75rem]">{row.amount}</td>
+                        <td className="px-6 py-4 font-mono text-[0.75rem] tabular-nums">
+                          {row.amount}
+                        </td>
                         <td className="px-6 py-4 text-right">
                           <StatusBadge>
                             {row.status === "Paid" ? "Success" : row.status}
@@ -197,6 +215,35 @@ export default function ProfilePage() {
             </div>
           </div>
         </section>
+
+        <section id="history" className="scroll-mt-24">
+          <div className="mb-6 flex items-baseline justify-between gap-4">
+            <div>
+              <span className="font-mono text-[0.62rem] uppercase tracking-[0.1em] text-accent">
+                Circle history
+              </span>
+              <h2 className="mt-2 text-xl font-semibold">Past positions and settlement claims</h2>
+            </div>
+            <span className="font-mono text-[0.68rem] tabular-nums text-muted">
+              {profile.circleHistory.length} completed
+            </span>
+          </div>
+          {profile.circleHistory.length === 0 ? (
+            <Panel className="flex min-h-40 items-center gap-4 p-6">
+              <History className="h-5 w-5 text-muted" aria-hidden="true" />
+              <p className="text-sm leading-6 text-muted">
+                Completed or defaulted positions will appear here. Open a circle to claim any
+                available reputation settlement.
+              </p>
+            </Panel>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {profile.circleHistory.map((circle) => (
+                <CircleHistoryCard key={circle.id} circle={circle} />
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </AppShell>
   );
@@ -207,13 +254,12 @@ function ActiveCircleCard({ circle }: { circle: CircleCardData }) {
     <Panel className="p-5">
       <div className="mb-4 flex items-start justify-between">
         <h3 className="text-[0.95rem] font-medium">{circle.name}</h3>
-        <button
-          type="button"
-          aria-label={`Open ${circle.name} actions`}
-          className="flex h-10 w-10 items-center justify-center rounded-md text-muted transition-colors hover:bg-white/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        <Link
+          href={`/circles/${circle.address}`}
+          className="inline-flex min-h-10 items-center font-mono text-[0.62rem] uppercase tracking-[0.08em] text-accent transition-colors hover:text-accent-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
-        </button>
+          Open
+        </Link>
       </div>
       <div className="space-y-4">
         <MiniMetric label="Next Payout" value={circle.pot} />
@@ -241,12 +287,12 @@ function ProfileListing({ listing }: { listing: ListingData }) {
           </span>
           <span className="text-sm font-medium">{listing.circle}</span>
         </div>
-        <button
-          type="button"
-          className="min-h-8 px-2 font-mono text-[0.6rem] text-accent transition-colors hover:text-accent-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        <Link
+          href="/market"
+          className="inline-flex min-h-8 items-center px-2 font-mono text-[0.6rem] uppercase tracking-[0.08em] text-accent transition-colors hover:text-accent-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          Cancel
-        </button>
+          Manage
+        </Link>
       </div>
       <div className="flex items-end justify-between">
         <div>
@@ -256,6 +302,36 @@ function ProfileListing({ listing }: { listing: ListingData }) {
           <span className="font-mono text-[0.85rem]">{listing.ask}</span>
         </div>
         <span className="font-mono text-[0.6rem] text-white/20">ID: {listing.id}</span>
+      </div>
+    </Panel>
+  );
+}
+
+function CircleHistoryCard({ circle }: { circle: CircleCardData }) {
+  return (
+    <Panel className="p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="font-medium">{circle.name}</h3>
+          <p className="mt-1 font-mono text-[0.62rem] text-muted">{circle.pot} settled</p>
+        </div>
+        <Badge
+          tone={circle.status === "Completed" ? "success" : "warning"}
+          shape="square"
+          size="xs"
+        >
+          {circle.status}
+        </Badge>
+      </div>
+      <div className="mt-5 flex items-center justify-between border-t border-border pt-4">
+        <span className="font-mono text-[0.62rem] text-muted">{circle.mode}</span>
+        <Link
+          href={`/circles/${circle.address}`}
+          className="inline-flex min-h-9 items-center gap-2 font-mono text-[0.62rem] uppercase tracking-[0.08em] text-accent transition-colors hover:text-accent-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Review position
+          <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+        </Link>
       </div>
     </Panel>
   );
@@ -283,12 +359,12 @@ function ProfileMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-8 text-sm">
       <span className="text-muted">{label}</span>
-      <span className="font-mono">{value}</span>
+      <span className="font-mono tabular-nums">{value}</span>
     </div>
   );
 }
 
-function StatusBadge({ children }: { children: React.ReactNode }) {
+function StatusBadge({ children }: { children: ReactNode }) {
   return (
     <span className="inline-flex min-h-6 items-center rounded-full border border-success/25 bg-success/12 px-2 font-mono text-[0.58rem] uppercase tracking-[0.08em] text-success">
       {children}
@@ -301,7 +377,7 @@ function TableHead({
   children,
 }: {
   align?: "left" | "right";
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <th
@@ -314,4 +390,11 @@ function TableHead({
       {children}
     </th>
   );
+}
+
+function getReputationProgress(score: number) {
+  if (score >= 10_000) return { percent: 100 };
+  if (score >= 5_000) return { percent: Math.round(((score - 5_000) / 5_000) * 100) };
+  if (score >= 1_000) return { percent: Math.round(((score - 1_000) / 4_000) * 100) };
+  return { percent: Math.round((score / 1_000) * 100) };
 }

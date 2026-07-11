@@ -29,6 +29,7 @@ import {
   payoutCurveLabel,
   solToLamports,
 } from "@/lib/program";
+import { decodeProgramError } from "@/lib/use-program-transaction";
 import { OPEN_WALLET_EVENT, truncateAddress } from "@/lib/wallet";
 
 type CreateStatus = "confirmed" | "confirming" | "idle" | "ready" | "signing" | "simulating";
@@ -60,14 +61,11 @@ const ZERO_BIGINT = BigInt(0);
 export default function NewCirclePage() {
   const { connection } = useConnection();
   const { connected, publicKey, sendTransaction } = useWallet();
-  const [circleName, setCircleName] = useState("Dev guild savings");
   const [cycleDays, setCycleDays] = useState("30");
   const [contribution, setContribution] = useState("5.00");
   const [maxMembers, setMaxMembers] = useState("12");
   const [payoutCurve, setPayoutCurve] = useState<PayoutCurveValue>("fixed");
   const [minReputation, setMinReputation] = useState("450");
-  const [privacy, setPrivacy] = useState("public");
-  const [identityCheck, setIdentityCheck] = useState(true);
   const [status, setStatus] = useState<CreateStatus>("idle");
   const [review, setReview] = useState<CreateCircleReview | null>(null);
   const [error, setError] = useState("");
@@ -181,10 +179,6 @@ export default function NewCirclePage() {
     const minRep = BigInt(Number.parseInt(minReputation, 10));
     const cycleDurationSeconds = BigInt(Number.parseInt(cycleDays, 10) * 24 * 60 * 60);
 
-    if (!circleName.trim()) {
-      throw new Error("Circle name is required for the local draft metadata.");
-    }
-
     if (!Number.isInteger(memberCap) || memberCap < 2 || memberCap > 64) {
       throw new Error("Max participants must be between 2 and 64.");
     }
@@ -286,22 +280,6 @@ export default function NewCirclePage() {
                 Define the core parameters members will review before they join.
               </p>
               <div className="grid gap-[1.125rem] md:grid-cols-2">
-                <Field label="Circle name" htmlFor="circle-name">
-                  <input
-                    id="circle-name"
-                    name="circle-name"
-                    type="text"
-                    placeholder="Dev guild savings"
-                    autoComplete="off"
-                    spellCheck={false}
-                    value={circleName}
-                    className="input-control"
-                    onChange={(event) => {
-                      setCircleName(event.target.value);
-                      resetReview();
-                    }}
-                  />
-                </Field>
                 <Field label="Cycle duration" htmlFor="cycle-duration">
                   <SelectShell>
                     <select
@@ -359,7 +337,7 @@ export default function NewCirclePage() {
               <p className="mt-1 mb-[1.375rem] max-w-2xl text-sm leading-6 text-muted">
                 Choose how each cycle&apos;s recipient is selected.
               </p>
-              <div className="grid gap-3 md:grid-cols-3">
+              <div className="grid gap-3 md:grid-cols-2">
                 <StrategyCard
                   checked={payoutCurve === "fixed"}
                   description="Recipient order is locked before the circle opens."
@@ -367,18 +345,6 @@ export default function NewCirclePage() {
                   label="Sequential"
                   name="strategy"
                   value="fixed"
-                  onChange={(value) => {
-                    setPayoutCurve(value);
-                    resetReview();
-                  }}
-                />
-                <StrategyCard
-                  checked={payoutCurve === "lottery"}
-                  description="A verifiable draw selects the recipient each cycle."
-                  kicker="Random"
-                  label="Lottery Pot"
-                  name="strategy"
-                  value="lottery"
                   onChange={(value) => {
                     setPayoutCurve(value);
                     resetReview();
@@ -435,53 +401,6 @@ export default function NewCirclePage() {
                     Recommended for public circles with 10 or more participants.
                   </p>
                 </div>
-
-                <div className="flex min-w-0 flex-col gap-2">
-                  <span className="font-mono text-[0.66rem] uppercase tracking-[0.12em] text-muted">
-                    Privacy
-                  </span>
-                  <div className="grid grid-cols-2 gap-2">
-                    <ChoiceCard
-                      checked={privacy === "public"}
-                      label="Public"
-                      name="privacy"
-                      value="public"
-                      onChange={(value) => {
-                        setPrivacy(value);
-                        resetReview();
-                      }}
-                    />
-                    <ChoiceCard
-                      checked={privacy === "invite"}
-                      label="Invite Only"
-                      name="privacy"
-                      value="invite"
-                      onChange={(value) => {
-                        setPrivacy(value);
-                        resetReview();
-                      }}
-                    />
-                  </div>
-                  <p className="m-0 text-[0.76rem] leading-5 text-muted">
-                    Invite-only circles require an approval list.
-                  </p>
-                </div>
-
-                <label className="flex min-h-14 cursor-pointer items-center gap-3 rounded-lg border border-border bg-white/[0.024] px-4 text-sm leading-5 text-foreground transition-colors hover:border-white/15 hover:bg-white/[0.035] focus-within:ring-2 focus-within:ring-ring md:col-span-2">
-                  <input
-                    type="checkbox"
-                    name="identity-check"
-                    checked={identityCheck}
-                    className="h-4 w-4 shrink-0 cursor-pointer accent-[var(--accent)]"
-                    onChange={(event) => {
-                      setIdentityCheck(event.target.checked);
-                      resetReview();
-                    }}
-                  />
-                  <span>
-                    Require identity verification before a member can reserve a payout slot.
-                  </span>
-                </label>
 
                 <Field
                   hint="Held in escrow until the circle completes."
@@ -786,34 +705,6 @@ function StrategyCard({
   );
 }
 
-function ChoiceCard({
-  checked,
-  label,
-  name,
-  onChange,
-  value,
-}: {
-  checked?: boolean;
-  label: string;
-  name: string;
-  onChange: (value: string) => void;
-  value: string;
-}) {
-  return (
-    <label className="relative flex min-h-11 cursor-pointer items-center justify-center rounded-md border border-border bg-white/[0.024] px-3 font-mono text-[0.68rem] uppercase tracking-[0.08em] text-muted transition-colors hover:border-white/15 hover:text-foreground has-checked:border-accent/35 has-checked:bg-accent/8 has-checked:text-accent focus-within:ring-2 focus-within:ring-ring">
-      <input
-        type="radio"
-        name={name}
-        value={value}
-        checked={checked}
-        className="absolute inset-0 cursor-pointer opacity-0"
-        onChange={() => onChange(value)}
-      />
-      {label}
-    </label>
-  );
-}
-
 function PreviewStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md border border-border bg-white/[0.025] p-3">
@@ -854,14 +745,7 @@ function safeSolToLamports(value: string) {
 }
 
 function normalizeCreateError(error: unknown) {
-  if (error instanceof Error) {
-    if (/reject|cancel/i.test(error.message)) return "Transaction rejected in wallet.";
-    if (/insufficient/i.test(error.message))
-      return "Insufficient SOL for rent, fees, or collateral.";
-    return error.message;
-  }
-
-  return "Unable to build create_circle transaction.";
+  return decodeProgramError(error).message;
 }
 
 function formatLogs(logs: string[] | null | undefined) {

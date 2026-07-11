@@ -1,26 +1,20 @@
 "use client";
 
-import {
-  AlertCircle,
-  CircleDollarSign,
-  Clock3,
-  ExternalLink,
-  ShieldAlert,
-  ShieldCheck,
-  Vote,
-} from "lucide-react";
+import { Clock3 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { AppShell, Panel } from "@/components/app/app-shell";
 import { CircleMemberAvatar } from "@/components/app/circle-member-avatar";
+import { CircleActionDesk } from "@/components/program/circle-action-desk";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { useCircleDetailQuery } from "@/lib/data/queries";
+import { useWalletIdentity } from "@/lib/use-wallet-identity";
 
 export default function CircleDetailsPage() {
   const params = useParams<{ circleId: string }>();
   const circleId = decodeURIComponent(params.circleId);
   const { data, error, isLoading } = useCircleDetailQuery(circleId);
+  const { address } = useWalletIdentity();
   const currentCircle = data?.circle;
   const circleMembers = data?.members ?? [];
   const payoutSchedule = data?.payoutSchedule ?? [];
@@ -29,9 +23,13 @@ export default function CircleDetailsPage() {
     const slotNumber = circleMembers.length + index + 1;
 
     return {
+      active: false,
       collateral: "Not locked",
+      defaulted: false,
       handle: `Slot ${slotNumber}`,
+      joinOrder: slotNumber - 1,
       nextPayout: "Unassigned",
+      positionNftMint: "",
       reputation: 0,
       role: "Open",
       state: "Open",
@@ -49,7 +47,7 @@ export default function CircleDetailsPage() {
     );
   }
 
-  if (error || !currentCircle) {
+  if (error || !data || !currentCircle) {
     return (
       <AppShell title="Circle" contentClassName="!max-w-7xl !px-6 !py-10 md:!px-10">
         <StatePanel
@@ -86,10 +84,9 @@ export default function CircleDetailsPage() {
                 </div>
               )}
             </div>
-            <Button variant="primary" className="w-full">
-              Contribute {currentCircle.contribution}
-              <CircleDollarSign className="h-3.5 w-3.5" aria-hidden="true" />
-            </Button>
+            <Badge tone={currentCircle.status === "Completed" ? "success" : "accent"}>
+              {currentCircle.nextAction}
+            </Badge>
           </Panel>
 
           <Panel className="p-6 lg:col-span-2">
@@ -108,7 +105,11 @@ export default function CircleDetailsPage() {
                 <CircleMemberAvatar
                   key={member.handle}
                   fallbackCollateral={currentCircle.collateral}
-                  member={member}
+                  member={
+                    member.member === address
+                      ? { ...member, role: member.role === "Host" ? "You · Host" : "You" }
+                      : member
+                  }
                   minReputation={currentCircle.minReputation}
                 />
               ))}
@@ -123,6 +124,8 @@ export default function CircleDetailsPage() {
             </div>
           </Panel>
         </section>
+
+        <CircleActionDesk detail={data} />
 
         <section className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
@@ -167,7 +170,7 @@ export default function CircleDetailsPage() {
                             <span className="text-muted">{row.recipient}</span>
                           </div>
                         </td>
-                        <td className="p-4 font-medium">{row.amount}</td>
+                        <td className="p-4 font-mono font-medium tabular-nums">{row.amount}</td>
                         <td className="p-4">
                           <PayoutStatus status={row.status} />
                         </td>
@@ -209,70 +212,6 @@ export default function CircleDetailsPage() {
               <div className="grid grid-cols-2 gap-4 border-t border-border pt-6">
                 <HealthMetric label="Collateral" value={currentCircle.collateral} />
                 <HealthMetric label="Min rep" value={String(currentCircle.minReputation)} />
-              </div>
-
-              <div className="border-t border-border pt-6">
-                <div className="mb-3 flex items-center gap-2 text-accent">
-                  <AlertCircle className="h-4 w-4" aria-hidden="true" />
-                  <span className="font-mono text-[0.65rem] font-semibold uppercase">
-                    Indexed State
-                  </span>
-                </div>
-                <p className="text-[0.75rem] leading-relaxed text-muted">
-                  Actions below must be wired to transaction builders before they can submit signed
-                  instructions.
-                </p>
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <Button variant="primary" size="sm">
-                    Vote
-                    <Vote className="h-3.5 w-3.5" aria-hidden="true" />
-                  </Button>
-                  <Button variant="secondary" size="sm">
-                    Reject
-                  </Button>
-                </div>
-                <Button variant="ghost" size="sm" className="mt-3 w-full">
-                  View member proof
-                  <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-                </Button>
-              </div>
-            </Panel>
-
-            <Panel className="space-y-5 p-6">
-              <div className="flex items-center gap-2">
-                <ShieldAlert className="h-4 w-4 text-accent" aria-hidden="true" />
-                <span className="font-mono text-[0.62rem] uppercase tracking-[0.12em] text-muted">
-                  Vouch Controls
-                </span>
-              </div>
-              <p className="text-sm leading-6 text-muted">
-                Stake social trust behind a member. Clean completion releases the vouch; default can
-                slash it into insurance.
-              </p>
-              <div className="grid gap-3">
-                <Button variant="secondary" className="w-full">
-                  Vouch 0.25 SOL
-                </Button>
-                <Button variant="secondary" className="w-full">
-                  Release Vouch
-                </Button>
-              </div>
-            </Panel>
-
-            <Panel className="space-y-5 p-6">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-success" aria-hidden="true" />
-                <span className="font-mono text-[0.62rem] uppercase tracking-[0.12em] text-muted">
-                  Host Lifecycle
-                </span>
-              </div>
-              <div className="grid gap-3">
-                <Button variant="secondary" className="w-full">
-                  Resolve Round
-                </Button>
-                <Button variant="secondary" className="w-full">
-                  Complete Circle
-                </Button>
               </div>
             </Panel>
           </div>

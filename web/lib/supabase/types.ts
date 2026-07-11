@@ -79,6 +79,42 @@ export type DhukutiListingRow = {
   updated_at: string;
 };
 
+export type DhukutiDefaultProposalRow = {
+  approvals_bitmap: NumericValue;
+  circle: string;
+  grace_deadline_ts: string | null;
+  member: string;
+  proposal: string;
+  rejections_bitmap: NumericValue;
+  resolved: boolean;
+  round: string;
+  round_index: number;
+};
+
+export type DhukutiVouchRow = {
+  active: boolean;
+  candidate: string;
+  circle: string;
+  released: boolean;
+  slashed: boolean;
+  stake_lamports: NumericValue;
+  vouch: string;
+  voucher: string;
+};
+
+export type DhukutiEventLogRow = {
+  block_time: string | null;
+  circle: string | null;
+  event_index: number;
+  event_name: string;
+  id: string;
+  inserted_at: string;
+  payload: Json;
+  signature: string;
+  slot: NumericValue;
+  wallet: string | null;
+};
+
 export type DhukutiReputationRow = {
   circles_completed: number;
   circles_defaulted: number;

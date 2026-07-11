@@ -1,21 +1,30 @@
 import "server-only";
 
-import { formatDate, formatSolValue, toBigIntString } from "@/lib/data/format";
+import { formatDate, formatSolValue, shortAddress, toBigIntString } from "@/lib/data/format";
 import {
   emptyProfile,
   mapCircleDetail,
   mapCircleSummary,
   mapMarketListing,
 } from "@/lib/data/mappers";
-import type { CircleDetail, CircleSummary, MarketListing, ProfileData } from "@/lib/data/types";
+import type {
+  ActivityLogEntry,
+  CircleDetail,
+  CircleSummary,
+  MarketListing,
+  ProfileData,
+} from "@/lib/data/types";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import type {
   DhukutiCircleRow,
   DhukutiContributionRow,
+  DhukutiDefaultProposalRow,
+  DhukutiEventLogRow,
   DhukutiListingRow,
   DhukutiMembershipRow,
   DhukutiReputationRow,
   DhukutiRoundRow,
+  DhukutiVouchRow,
 } from "@/lib/supabase/types";
 
 const ZERO_BIGINT = BigInt(0);
@@ -62,17 +71,26 @@ export async function getCircleDetail(circleAddress: string): Promise<CircleDeta
   if (error) throw error;
   if (!circle) return null;
 
-  const [memberships, rounds, contributions] = await Promise.all([
+  const [memberships, rounds, contributions, defaultProposals, vouches] = await Promise.all([
     selectByCircles<DhukutiMembershipRow>("dhukuti_memberships", [circleAddress]),
     selectByCircles<DhukutiRoundRow>("dhukuti_rounds", [circleAddress]),
     selectByCircles<DhukutiContributionRow>("dhukuti_contributions", [circleAddress]),
+    selectByCircles<DhukutiDefaultProposalRow>("dhukuti_default_proposals", [circleAddress]),
+    selectByCircles<DhukutiVouchRow>("dhukuti_vouches", [circleAddress]),
   ]);
+  const reputations = await selectByWallets<DhukutiReputationRow>(
+    "dhukuti_reputations",
+    memberships.map((membership) => membership.member),
+  );
 
   return mapCircleDetail({
     contributions,
+    defaultProposals,
     memberships,
+    reputations,
     row: circle as DhukutiCircleRow,
     rounds,
+    vouches,
   });
 }
 
@@ -115,13 +133,19 @@ export async function getProfileData(wallet: string | null): Promise<ProfileData
   if (!wallet || !isSupabaseConfigured()) return emptyProfile(wallet);
 
   const supabase = createSupabaseServerClient();
-  const [{ data: reputation, error: reputationError }, memberships, contributions, listings] =
-    await Promise.all([
-      supabase.from("dhukuti_reputations").select("*").eq("wallet", wallet).maybeSingle(),
-      selectByMember<DhukutiMembershipRow>("dhukuti_memberships", wallet),
-      selectByMember<DhukutiContributionRow>("dhukuti_contributions", wallet),
-      selectBySeller<DhukutiListingRow>("dhukuti_listings", wallet),
-    ]);
+  const [
+    { data: reputation, error: reputationError },
+    memberships,
+    contributions,
+    listings,
+    vouches,
+  ] = await Promise.all([
+    supabase.from("dhukuti_reputations").select("*").eq("wallet", wallet).maybeSingle(),
+    selectByMember<DhukutiMembershipRow>("dhukuti_memberships", wallet),
+    selectByMember<DhukutiContributionRow>("dhukuti_contributions", wallet),
+    selectBySeller<DhukutiListingRow>("dhukuti_listings", wallet),
+    selectByVoucher<DhukutiVouchRow>("dhukuti_vouches", wallet),
+  ]);
 
   if (reputationError) throw reputationError;
 
@@ -134,7 +158,18 @@ export async function getProfileData(wallet: string | null): Promise<ProfileData
   );
   const allCircles = await getCircleSummaries();
   const circles = allCircles.filter((circle) => circleAddresses.includes(circle.address));
-  const activeCircles = circles.filter((circle) => circle.status !== "Completed");
+  const activeMembershipCircles = new Set(
+    memberships.filter((membership) => membership.active).map((membership) => membership.circle),
+  );
+  const inactiveMembershipCircles = new Set(
+    memberships.filter((membership) => !membership.active).map((membership) => membership.circle),
+  );
+  const activeCircles = circles.filter(
+    (circle) => circle.status !== "Completed" && activeMembershipCircles.has(circle.address),
+  );
+  const circleHistory = circles.filter(
+    (circle) => circle.status === "Completed" || inactiveMembershipCircles.has(circle.address),
+  );
   const contributionVolume = contributions.reduce(
     (total, contribution) => total + BigInt(toBigIntString(contribution.contribution_amount)),
     ZERO_BIGINT,
@@ -145,6 +180,9 @@ export async function getProfileData(wallet: string | null): Promise<ProfileData
       (total, membership) => total + BigInt(toBigIntString(membership.collateral_deposited)),
       ZERO_BIGINT,
     );
+  const vouchedStake = vouches
+    .filter((vouch) => vouch.active)
+    .reduce((total, vouch) => total + BigInt(toBigIntString(vouch.stake_lamports)), ZERO_BIGINT);
   const marketListings = listings.map((listing) =>
     mapMarketListing({
       circle: circles.find((circle) => circle.address === listing.circle),
@@ -155,6 +193,7 @@ export async function getProfileData(wallet: string | null): Promise<ProfileData
 
   return {
     activeCircles,
+    circleHistory,
     contributionHistory: contributions.map((row) => ({
       amount: formatSolValue(row.contribution_amount),
       circle: circles.find((circle) => circle.address === row.circle)?.name ?? row.circle,
@@ -163,19 +202,56 @@ export async function getProfileData(wallet: string | null): Promise<ProfileData
       status: "Paid",
     })),
     listings: marketListings,
+    positions: memberships.map((membership) => ({
+      active: membership.active,
+      circle: membership.circle,
+      defaulted: membership.defaulted,
+      joinOrder: membership.join_order,
+      positionNftMint: membership.position_nft_mint,
+    })),
     stats: {
       activeCircles: String(activeCircles.length),
       collateralLocked: formatSolValue(collateralLocked.toString()),
       completedCircles: String((reputation as DhukutiReputationRow | null)?.circles_completed ?? 0),
       contributionVolume: formatSolValue(contributionVolume.toString()),
+      defaultedCircles: String((reputation as DhukutiReputationRow | null)?.circles_defaulted ?? 0),
+      discountTier: String((reputation as DhukutiReputationRow | null)?.discount_tier ?? 0),
       hostCompletions: String((reputation as DhukutiReputationRow | null)?.circles_hosted ?? 0),
       memberReputation: String((reputation as DhukutiReputationRow | null)?.score ?? 0),
-      vouchedStake: formatSolValue(
-        toBigIntString((reputation as DhukutiReputationRow | null)?.vouch_stake_slashed),
-      ),
+      vouchesMade: String((reputation as DhukutiReputationRow | null)?.vouches_made ?? 0),
+      vouchedStake: formatSolValue(vouchedStake.toString()),
     },
     wallet,
   };
+}
+
+export async function getActivityLog(wallet: string | null): Promise<ActivityLogEntry[]> {
+  if (!wallet || !isSupabaseConfigured()) return [];
+
+  const supabase = createSupabaseServerClient();
+  const [{ data: walletEvents, error: walletEventsError }, memberships, circles] =
+    await Promise.all([
+      supabase
+        .from("dhukuti_event_log")
+        .select("*")
+        .eq("wallet", wallet)
+        .order("slot", { ascending: false })
+        .limit(100),
+      selectByMember<DhukutiMembershipRow>("dhukuti_memberships", wallet),
+      getCircleSummaries(),
+    ]);
+
+  if (walletEventsError) throw walletEventsError;
+
+  const circleAddresses = Array.from(new Set(memberships.map((membership) => membership.circle)));
+  const circleEvents = await selectEventsByCircles(circleAddresses);
+  const circleNames = new Map(circles.map((circle) => [circle.address, circle.name]));
+  const eventRows = [...((walletEvents ?? []) as DhukutiEventLogRow[]), ...circleEvents]
+    .filter((event, index, all) => all.findIndex((item) => item.id === event.id) === index)
+    .sort((a, b) => Number(b.slot) - Number(a.slot))
+    .slice(0, 100);
+
+  return eventRows.map((event) => mapActivityLogEntry(event, circleNames));
 }
 
 async function selectByCircles<T>(table: string, circles: string[]): Promise<T[]> {
@@ -206,4 +282,138 @@ async function selectBySeller<T>(table: string, seller: string): Promise<T[]> {
   const { data, error } = await supabase.from(table).select("*").eq("seller", seller);
   if (error) throw error;
   return (data ?? []) as T[];
+}
+
+async function selectByVoucher<T>(table: string, voucher: string): Promise<T[]> {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase.from(table).select("*").eq("voucher", voucher);
+  if (error) throw error;
+  return (data ?? []) as T[];
+}
+
+async function selectEventsByCircles(circles: string[]): Promise<DhukutiEventLogRow[]> {
+  if (circles.length === 0) return [];
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("dhukuti_event_log")
+    .select("*")
+    .in("circle", circles)
+    .order("slot", { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return (data ?? []) as DhukutiEventLogRow[];
+}
+
+function mapActivityLogEntry(
+  event: DhukutiEventLogRow,
+  circleNames: Map<string, string>,
+): ActivityLogEntry {
+  const payload = asRecord(event.payload);
+  const circle = event.circle;
+
+  return {
+    action: activityAction(event.event_name),
+    circle,
+    circleLabel: circle ? (circleNames.get(circle) ?? shortAddress(circle)) : null,
+    detail: activityDetail(event.event_name, payload),
+    eventName: event.event_name,
+    id: event.id,
+    occurredAt: event.block_time ?? event.inserted_at,
+    signature: event.signature,
+    slot: toBigIntString(event.slot),
+  };
+}
+
+function activityAction(eventName: string) {
+  const actions: Record<string, string> = {
+    CircleCompletedEvent: "Circle completed",
+    CircleCreatedEvent: "Circle created",
+    CircleStartedEvent: "Circle started",
+    ContributionMadeEvent: "Contribution recorded",
+    DefaultHandledEvent: "Default handled",
+    DefaultProposalOpenedEvent: "Default proposed",
+    DefaultVoteCastEvent: "Default vote cast",
+    DutchBidAcceptedEvent: "Dutch bid accepted",
+    ListingCancelledEvent: "Listing cancelled",
+    MemberJoinedEvent: "Member joined",
+    PositionBoughtEvent: "Position purchased",
+    PositionListedEvent: "Position listed",
+    ReputationUpdatedEvent: "Reputation updated",
+    RoundResolvedEvent: "Payout resolved",
+    VouchCreatedEvent: "Vouch created",
+    VouchReleasedEvent: "Vouch released",
+    VouchSlashedEvent: "Vouch slashed",
+  };
+
+  return actions[eventName] ?? eventName;
+}
+
+function activityDetail(eventName: string, payload: Record<string, unknown>) {
+  const member = getPayloadAddress(payload, "member", "buyer", "seller", "bidder", "voucher");
+  const amount = getPayloadAmount(
+    payload,
+    "contribution_amount",
+    "payout",
+    "ask_price",
+    "stake_lamports",
+    "collateral_slashed",
+  );
+
+  if (eventName === "CircleCreatedEvent") {
+    return `${getPayloadNumber(payload, "max_members")} members · ${amount ?? "Terms indexed"}`;
+  }
+  if (eventName === "ContributionMadeEvent") {
+    return `${member ?? "Member"} contributed ${amount ?? "SOL"}.`;
+  }
+  if (eventName === "RoundResolvedEvent") {
+    return `${member ?? "Recipient"} received ${amount ?? "the round payout"}.`;
+  }
+  if (eventName === "MemberJoinedEvent") {
+    return `${member ?? "Member"} reserved a payout position.`;
+  }
+  if (eventName === "PositionListedEvent" || eventName === "PositionBoughtEvent") {
+    return `${member ?? "Position"}${amount ? ` · ${amount}` : ""}`;
+  }
+  if (eventName === "ReputationUpdatedEvent") {
+    return `Score ${getPayloadNumber(payload, "score") ?? "updated"} · tier ${getPayloadNumber(payload, "discount_tier") ?? 0}`;
+  }
+  if (eventName === "DefaultVoteCastEvent") {
+    return payload.approve === true
+      ? "Approved the default proposal."
+      : "Rejected the default proposal.";
+  }
+  if (eventName === "DutchBidAcceptedEvent") {
+    return `${member ?? "Member"} accepted a ${getPayloadNumber(payload, "discount_bps") ?? 0} bps discount.`;
+  }
+
+  return member ? `${member} · indexed on devnet.` : "Indexed on devnet.";
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function getPayloadAddress(payload: Record<string, unknown>, ...keys: string[]) {
+  const value = keys
+    .map((key) => payload[key])
+    .find((candidate): candidate is string => typeof candidate === "string");
+  return value ? shortAddress(value) : null;
+}
+
+function getPayloadAmount(payload: Record<string, unknown>, ...keys: string[]) {
+  const value = keys
+    .map((key) => payload[key])
+    .find(
+      (candidate): candidate is string | number =>
+        typeof candidate === "string" || typeof candidate === "number",
+    );
+  return value === undefined ? null : formatSolValue(value);
+}
+
+function getPayloadNumber(payload: Record<string, unknown>, key: string) {
+  const value = payload[key];
+  if (typeof value === "number" || typeof value === "string") return String(value);
+  return null;
 }

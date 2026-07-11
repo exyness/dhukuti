@@ -2,18 +2,38 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useWalletIdentity } from "@/lib/use-wallet-identity";
-import { fetchCircleDetail, fetchCircles, fetchMarketListings, fetchProfile } from "./api";
+import {
+  fetchActivity,
+  fetchCircleDetail,
+  fetchCircles,
+  fetchMarketListings,
+  fetchProfile,
+} from "./api";
 
 type WalletQueryOptions = {
   enabled?: boolean;
 };
 
 export const queryKeys = {
+  activity: (wallet: string | null | undefined) => ["activity", wallet ?? "guest"] as const,
   circle: (circleId: string) => ["circle", circleId] as const,
   circles: ["circles"] as const,
   market: ["market"] as const,
   profile: (wallet: string | null | undefined) => ["profile", wallet ?? "guest"] as const,
 };
+
+export function useActivityQuery(
+  wallet: string | null | undefined,
+  options: WalletQueryOptions = {},
+) {
+  const { isConnected } = useWalletIdentity();
+
+  return useQuery({
+    enabled: isConnected && Boolean(wallet) && (options.enabled ?? true),
+    queryFn: () => fetchActivity(wallet),
+    queryKey: queryKeys.activity(wallet),
+  });
+}
 
 export function useCirclesQuery(options: WalletQueryOptions = {}) {
   const { isConnected } = useWalletIdentity();

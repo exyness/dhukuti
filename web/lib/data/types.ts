@@ -3,11 +3,13 @@ export type CircleStatus = "Active" | "Completed" | "Default vote" | "Forming";
 
 export type CircleSummary = {
   address: string;
+  circleId: string;
   collateral: string;
   collateralBps: number;
   contribution: string;
   contributionLamports: string;
   creator: string;
+  currentRoundIndex: number;
   cycle: string;
   cycleDurationSeconds: number;
   deadline: string;
@@ -31,10 +33,14 @@ export type CircleSummary = {
 };
 
 export type CircleMember = {
+  active: boolean;
   collateral: string;
+  defaulted: boolean;
   handle: string;
+  joinOrder: number;
   member: string;
   nextPayout: string;
+  positionNftMint: string;
   reputation: number;
   role: string;
   state: string;
@@ -51,13 +57,37 @@ export type PayoutScheduleRow = {
 
 export type CircleDetail = {
   circle: CircleSummary;
+  defaultProposal: DefaultProposal | null;
   members: CircleMember[];
   payoutSchedule: PayoutScheduleRow[];
+  vouches: CircleVouch[];
+};
+
+export type DefaultProposal = {
+  approvals: number;
+  candidate: string;
+  candidateHandle: string;
+  graceDeadline: string | null;
+  proposal: string;
+  rejections: number;
+  roundIndex: number;
+};
+
+export type CircleVouch = {
+  active: boolean;
+  candidate: string;
+  released: boolean;
+  slashed: boolean;
+  stake: string;
+  vouch: string;
+  voucher: string;
 };
 
 export type MarketListing = {
+  active: boolean;
   ask: string;
   askLamports: string;
+  cancelled: boolean;
   circle: string;
   circleAddress: string;
   discount: string;
@@ -66,6 +96,8 @@ export type MarketListing = {
   round: string;
   seller: string;
   sellerRep: number;
+  sold: boolean;
+  positionNftMint: string;
   value: string;
 };
 
@@ -82,15 +114,40 @@ export type ProfileStats = {
   collateralLocked: string;
   completedCircles: string;
   contributionVolume: string;
+  discountTier: string;
+  defaultedCircles: string;
   hostCompletions: string;
   memberReputation: string;
+  vouchesMade: string;
   vouchedStake: string;
 };
 
 export type ProfileData = {
   activeCircles: CircleSummary[];
+  circleHistory: CircleSummary[];
   contributionHistory: ContributionHistoryRow[];
   listings: MarketListing[];
+  positions: ProfilePosition[];
   stats: ProfileStats;
   wallet: string | null;
+};
+
+export type ProfilePosition = {
+  active: boolean;
+  circle: string;
+  defaulted: boolean;
+  joinOrder: number;
+  positionNftMint: string;
+};
+
+export type ActivityLogEntry = {
+  action: string;
+  circle: string | null;
+  circleLabel: string | null;
+  detail: string;
+  eventName: string;
+  id: string;
+  occurredAt: string | null;
+  signature: string;
+  slot: string;
 };
