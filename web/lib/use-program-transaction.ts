@@ -229,20 +229,59 @@ export function decodeProgramError(error: unknown): ProgramTransactionFailure {
     .map((line) => line.match(/Error Message: (.+)$/)?.[1])
     .find((message): message is string => Boolean(message));
   if (anchorMessage) {
+    if (/Fallback functions are not supported/i.test(anchorMessage)) {
+      return {
+        logs,
+        message:
+          "The devnet program is older than this client. Deploy the latest Dhukuti program and try again.",
+      };
+    }
+
     return { logs, message: anchorMessage };
   }
 
   const combinedError = `${rawMessage}\n${logs.join("\n")}`;
+  if (/InstructionFallbackNotFound|Fallback functions are not supported/i.test(combinedError)) {
+    return {
+      logs,
+      message:
+        "The devnet program is older than this client. Deploy the latest Dhukuti program and try again.",
+    };
+  }
+
+  if (/AccountDataTooSmall|account data too small/i.test(combinedError)) {
+    return {
+      logs,
+      message:
+        "The devnet program account layout does not match this client. Deploy the latest Dhukuti program and try again.",
+    };
+  }
+
   const customError = combinedError.match(/custom program error: 0x([\da-f]+)/i);
   if (customError) {
     const code = Number.parseInt(customError[1], 16);
+    if (code === 101) {
+      return {
+        logs,
+        message:
+          "The devnet program is older than this client. Deploy the latest Dhukuti program and try again.",
+      };
+    }
     const knownMessage = DHUKUTI_ERROR_MESSAGES[code - 6000];
     if (knownMessage) return { logs, message: knownMessage };
   }
 
   const numericCustomError = combinedError.match(/"Custom"\s*:\s*(\d+)/);
   if (numericCustomError) {
-    const knownMessage = DHUKUTI_ERROR_MESSAGES[Number.parseInt(numericCustomError[1], 10) - 6000];
+    const code = Number.parseInt(numericCustomError[1], 10);
+    if (code === 101) {
+      return {
+        logs,
+        message:
+          "The devnet program is older than this client. Deploy the latest Dhukuti program and try again.",
+      };
+    }
+    const knownMessage = DHUKUTI_ERROR_MESSAGES[code - 6000];
     if (knownMessage) return { logs, message: knownMessage };
   }
 

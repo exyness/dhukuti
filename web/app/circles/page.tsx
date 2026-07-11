@@ -91,39 +91,48 @@ export default function CirclesPage() {
           <h2 className="text-3xl font-semibold tracking-tight">Open Saving Circles</h2>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="relative block">
-            <span className="sr-only">Search circles</span>
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/20"
-              aria-hidden="true"
+        <div className="flex flex-col gap-3 md:items-end">
+          <Link
+            href="/circles/new"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-accent px-4 font-mono text-[0.68rem] font-medium uppercase tracking-[0.08em] text-background transition-colors hover:bg-accent-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+            Create circle
+          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="relative block">
+              <span className="sr-only">Search circles</span>
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/20"
+                aria-hidden="true"
+              />
+              <input
+                type="search"
+                placeholder="Search circles..."
+                className="search-input"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            </label>
+            <DropdownSelect
+              label="Payout mode"
+              options={modeOptions}
+              value={modeFilter}
+              onChange={setModeFilter}
             />
-            <input
-              type="search"
-              placeholder="Search circles..."
-              className="search-input"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
+            <DropdownSelect
+              label="Contribution range"
+              options={contributionOptions}
+              value={contributionFilter}
+              onChange={setContributionFilter}
             />
-          </label>
-          <DropdownSelect
-            label="Payout mode"
-            options={modeOptions}
-            value={modeFilter}
-            onChange={setModeFilter}
-          />
-          <DropdownSelect
-            label="Contribution range"
-            options={contributionOptions}
-            value={contributionFilter}
-            onChange={setContributionFilter}
-          />
-          <DropdownSelect
-            label="Sort listings"
-            options={sortOptions}
-            value={sortMode}
-            onChange={setSortMode}
-          />
+            <DropdownSelect
+              label="Sort listings"
+              options={sortOptions}
+              value={sortMode}
+              onChange={setSortMode}
+            />
+          </div>
         </div>
       </header>
 

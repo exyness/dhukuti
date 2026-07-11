@@ -227,6 +227,7 @@ export default function NewCirclePage() {
 
       setIndexStatus("synced");
       await queryClient.invalidateQueries({ queryKey: queryKeys.circles });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.activity(publicKey?.toBase58()) });
       await queryClient.invalidateQueries({ queryKey: queryKeys.profile(publicKey?.toBase58()) });
     } catch (syncError) {
       setIndexStatus("failed");

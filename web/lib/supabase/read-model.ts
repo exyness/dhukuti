@@ -246,6 +246,7 @@ export async function getActivityLog(wallet: string | null): Promise<ActivityLog
   const circleEvents = await selectEventsByCircles(circleAddresses);
   const circleNames = new Map(circles.map((circle) => [circle.address, circle.name]));
   const eventRows = [...((walletEvents ?? []) as DhukutiEventLogRow[]), ...circleEvents]
+    .filter((event) => event.event_name !== "CircleNamedEvent")
     .filter((event, index, all) => all.findIndex((item) => item.id === event.id) === index)
     .sort((a, b) => Number(b.slot) - Number(a.slot))
     .slice(0, 100);
@@ -309,12 +310,13 @@ function mapActivityLogEntry(
 ): ActivityLogEntry {
   const payload = asRecord(event.payload);
   const circle = event.circle;
+  const circleLabel = circle ? (circleNames.get(circle) ?? shortAddress(circle)) : null;
 
   return {
     action: activityAction(event.event_name),
     circle,
-    circleLabel: circle ? (circleNames.get(circle) ?? shortAddress(circle)) : null,
-    detail: activityDetail(event.event_name, payload),
+    circleLabel,
+    detail: activityDetail(event.event_name, payload, circleLabel),
     eventName: event.event_name,
     id: event.id,
     occurredAt: event.block_time ?? event.inserted_at,
@@ -327,7 +329,6 @@ function activityAction(eventName: string) {
   const actions: Record<string, string> = {
     CircleCompletedEvent: "Circle completed",
     CircleCreatedEvent: "Circle created",
-    CircleNamedEvent: "Circle named",
     CircleStartedEvent: "Circle started",
     ContributionMadeEvent: "Contribution recorded",
     DefaultHandledEvent: "Default handled",
@@ -348,7 +349,11 @@ function activityAction(eventName: string) {
   return actions[eventName] ?? eventName;
 }
 
-function activityDetail(eventName: string, payload: Record<string, unknown>) {
+function activityDetail(
+  eventName: string,
+  payload: Record<string, unknown>,
+  circleLabel: string | null,
+) {
   const member = getPayloadAddress(payload, "member", "buyer", "seller", "bidder", "voucher");
   const amount = getPayloadAmount(
     payload,
@@ -360,11 +365,8 @@ function activityDetail(eventName: string, payload: Record<string, unknown>) {
   );
 
   if (eventName === "CircleCreatedEvent") {
-    const name = getPayloadString(payload, "name");
+    const name = getPayloadString(payload, "name") ?? circleLabel;
     return `${name ? `${name} · ` : ""}${getPayloadNumber(payload, "max_members")} members · ${amount ?? "Terms indexed"}`;
-  }
-  if (eventName === "CircleNamedEvent") {
-    return `${getPayloadString(payload, "name") ?? "Circle name"} stored in the read model.`;
   }
   if (eventName === "ContributionMadeEvent") {
     return `${member ?? "Member"} contributed ${amount ?? "SOL"}.`;

@@ -36,7 +36,7 @@ import { truncateAddress } from "@/lib/wallet";
 
 const navIcons = {
   "Explore Marketplace": LayoutGrid,
-  "My Circles": Users,
+  Circles: Users,
   "Activity Log": ScrollText,
   Profile: Award,
 };
@@ -465,7 +465,7 @@ function isActiveNavItem(pathname: string, item: (typeof appNavItems)[number]) {
     return pathname === "/market";
   }
 
-  if (item.label === "My Circles") {
+  if (item.label === "Circles") {
     return pathname === "/circles" || pathname.startsWith("/circles/");
   }
 

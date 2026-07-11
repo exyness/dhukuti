@@ -9,6 +9,8 @@ import {
 } from "./helius";
 import { storeAndProjectEvents } from "./projector";
 
+const CONFIRMED_TRANSACTION_RETRY_DELAYS_MS = [500, 1_000, 1_500, 2_500];
+
 export async function ingestHeliusWebhookPayload(payload: unknown) {
   const signatures = extractHeliusWebhookSignatures(payload);
   return ingestSignatures(signatures);
@@ -42,7 +44,7 @@ export async function ingestSignatures(signatures: string[]) {
   let transactionCount = 0;
 
   for (const signature of uniqueSignatures) {
-    const transaction = await fetchSolanaTransaction(signature);
+    const transaction = await fetchConfirmedTransactionWithRetry(signature);
     if (!transaction?.meta || transaction.meta.err) {
       continue;
     }
@@ -59,6 +61,18 @@ export async function ingestSignatures(signatures: string[]) {
   };
 }
 
+async function fetchConfirmedTransactionWithRetry(signature: string) {
+  let transaction = await fetchSolanaTransaction(signature);
+
+  for (const delayMs of CONFIRMED_TRANSACTION_RETRY_DELAYS_MS) {
+    if (transaction?.meta) return transaction;
+    await sleep(delayMs);
+    transaction = await fetchSolanaTransaction(signature);
+  }
+
+  return transaction;
+}
+
 async function ingestTransaction(transaction: SolanaRpcTransaction) {
   const signature = transaction.transaction.signatures[0];
   const events = decodeDhukutiEventsFromLogs(transaction.meta?.logMessages);
@@ -69,4 +83,8 @@ async function ingestTransaction(transaction: SolanaRpcTransaction) {
     signature,
     slot: transaction.slot,
   });
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
