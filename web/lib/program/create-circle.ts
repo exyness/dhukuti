@@ -4,6 +4,7 @@ import { DHUKUTI_PROGRAM_ID, deriveCreateCirclePdas, NATIVE_SOL_DENOM_MINT } fro
 import type { CreateCircleInstructionInput, PayoutCurveValue } from "./types";
 
 const CREATE_CIRCLE_DISCRIMINATOR = Uint8Array.from([186, 99, 49, 131, 31, 51, 13, 198]);
+export const MAX_CIRCLE_NAME_BYTES = 64;
 
 export function buildCreateCircleInstruction(input: CreateCircleInstructionInput) {
   const pdas = deriveCreateCirclePdas(input.creator, input.circleId);
@@ -39,13 +40,22 @@ export function payoutCurveLabel(value: PayoutCurveValue) {
 }
 
 function encodeCreateCircleData(input: CreateCircleInstructionInput) {
-  const data = Buffer.alloc(48);
+  const nameBytes = Buffer.from(input.name.trim(), "utf8");
+  if (nameBytes.length === 0 || nameBytes.length > MAX_CIRCLE_NAME_BYTES) {
+    throw new Error("Circle name must be 1-64 UTF-8 bytes.");
+  }
+
+  const data = Buffer.alloc(52 + nameBytes.length);
   let offset = 0;
 
   data.set(CREATE_CIRCLE_DISCRIMINATOR, offset);
   offset += CREATE_CIRCLE_DISCRIMINATOR.length;
   data.writeBigUInt64LE(input.circleId, offset);
   offset += 8;
+  data.writeUInt32LE(nameBytes.length, offset);
+  offset += 4;
+  nameBytes.copy(data, offset);
+  offset += nameBytes.length;
   data.writeBigUInt64LE(input.contributionLamports, offset);
   offset += 8;
   data.writeBigInt64LE(input.cycleDurationSeconds, offset);

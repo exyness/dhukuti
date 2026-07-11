@@ -5,7 +5,7 @@ import type { CreateCirclePdas } from "@/lib/program/types";
 
 export const DHUKUTI_PROGRAM_ID = new PublicKey(DHUKUTI_PROGRAM.programId);
 export const SPL_TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
-export const CIRCLE_ACCOUNT_SPACE = 209;
+export const CIRCLE_ACCOUNT_SPACE = 277;
 export const INSURANCE_POOL_ACCOUNT_SPACE = 59;
 export const NATIVE_SOL_DENOM_MINT = SystemProgram.programId;
 

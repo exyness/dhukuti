@@ -15,6 +15,7 @@ export type DhukutiCircleRow = {
   last_slot: number;
   max_members: number;
   min_reputation: NumericValue;
+  name: string;
   payout_curve: string;
   reserve_ratio_bps: number;
   started_at: string | null;

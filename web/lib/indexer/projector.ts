@@ -84,9 +84,19 @@ async function projectEvent(context: ProjectionContext, event: DecodedDhukutiEve
         last_slot: context.slot,
         max_members: getRequiredNumber(data.max_members),
         min_reputation: getRequiredNumeric(data.min_reputation),
+        name: getCircleName(data),
         payout_curve: normalizePayoutCurve(data.payout_curve),
         reserve_ratio_bps: getRequiredNumber(data.reserve_ratio_bps),
         status: "Open",
+        updated_at: nowIso(),
+      });
+      break;
+
+    case "CircleNamedEvent":
+      await updateByPrimary(context, "dhukuti_circles", "circle", getRequiredString(data.circle), {
+        last_signature: context.signature,
+        last_slot: context.slot,
+        name: getRequiredString(data.name),
         updated_at: nowIso(),
       });
       break;
@@ -491,6 +501,12 @@ function getRequiredNumeric(value: unknown) {
   if (typeof value === "number") return String(value);
   if (typeof value === "string") return value;
   throw new Error("Missing required numeric event field.");
+}
+
+function getCircleName(data: Record<string, unknown>) {
+  const explicitName = getString(data.name);
+  if (explicitName) return explicitName;
+  return `Dhukuti #${getRequiredNumeric(data.circle_id)}`;
 }
 
 function getPrimaryWallet(data: Record<string, unknown>) {

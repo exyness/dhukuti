@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
 
+use crate::constants::MAX_CIRCLE_NAME_BYTES;
+
 // ── Enums ────────────────────────────────────────────────────────────────────
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
@@ -34,6 +36,8 @@ pub struct Circle {
     pub creator: Pubkey,
     /// Monotonically-increasing ID assigned at creation; scopes the PDA per creator.
     pub circle_id: u64,
+    /// Human-readable display name chosen by the creator.
+    pub name: String,
     /// Lamports each member must contribute every round.
     pub contribution_amount: u64,
     /// Seconds between round opens.
@@ -85,6 +89,7 @@ impl Circle {
     pub const LEN: usize = 8   // discriminator
         + 32   // creator
         + 8    // circle_id
+        + 4 + MAX_CIRCLE_NAME_BYTES // name
         + 8    // contribution_amount
         + 8    // cycle_duration
         + 1    // max_members

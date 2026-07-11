@@ -1,6 +1,6 @@
 use crate::constants::*;
 use crate::error::DhukutiError;
-use crate::events::CircleCreatedEvent;
+use crate::events::{CircleCreatedEvent, CircleNamedEvent};
 use crate::state::*;
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
@@ -11,7 +11,13 @@ use anchor_lang::system_program;
 /// payout curve, collateral and insurance fee rates, and the minimum reputation
 /// score required for members to join.
 pub fn handler(ctx: Context<CreateCircle>, params: CreateCircleParams) -> Result<()> {
+    let circle_name = params.name.trim();
+
     // ── Parameter validation ─────────────────────────────────────────────────
+    require!(
+        !circle_name.is_empty() && circle_name.as_bytes().len() <= MAX_CIRCLE_NAME_BYTES,
+        DhukutiError::InvalidCircleName
+    );
     require!(
         params.max_members >= 2 && params.max_members <= MAX_MEMBERS,
         DhukutiError::InvalidMaxMembers
@@ -47,6 +53,7 @@ pub fn handler(ctx: Context<CreateCircle>, params: CreateCircleParams) -> Result
     let circle = &mut ctx.accounts.circle;
     circle.creator = ctx.accounts.creator.key();
     circle.circle_id = params.circle_id;
+    circle.name = circle_name.to_string();
     circle.contribution_amount = params.contribution_amount;
     circle.cycle_duration = params.cycle_duration;
     circle.max_members = params.max_members;
@@ -98,12 +105,19 @@ pub fn handler(ctx: Context<CreateCircle>, params: CreateCircleParams) -> Result
         min_reputation: circle.min_reputation,
     });
 
+    emit!(CircleNamedEvent {
+        circle: circle.key(),
+        creator: circle.creator,
+        name: circle.name.clone(),
+    });
+
     Ok(())
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct CreateCircleParams {
     pub circle_id: u64,
+    pub name: String,
     pub contribution_amount: u64,
     pub cycle_duration: i64,
     pub max_members: u8,

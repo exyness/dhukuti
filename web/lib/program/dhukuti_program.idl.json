@@ -2812,6 +2812,19 @@
       ]
     },
     {
+      "name": "CircleNamedEvent",
+      "discriminator": [
+        188,
+        32,
+        117,
+        164,
+        7,
+        231,
+        35,
+        74
+      ]
+    },
+    {
       "name": "CircleStartedEvent",
       "discriminator": [
         29,
@@ -3247,6 +3260,11 @@
       "code": 6047,
       "name": "Underflow",
       "msg": "Arithmetic underflow"
+    },
+    {
+      "code": 6048,
+      "name": "InvalidCircleName",
+      "msg": "Circle name must be 1-64 UTF-8 bytes after trimming"
     }
   ],
   "types": [
@@ -3272,6 +3290,13 @@
               "Monotonically-increasing ID assigned at creation; scopes the PDA per creator."
             ],
             "type": "u64"
+          },
+          {
+            "name": "name",
+            "docs": [
+              "Human-readable display name chosen by the creator."
+            ],
+            "type": "string"
           },
           {
             "name": "contribution_amount",
@@ -3521,6 +3546,26 @@
       }
     },
     {
+      "name": "CircleNamedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
       "name": "CircleStartedEvent",
       "type": {
         "kind": "struct",
@@ -3609,6 +3654,10 @@
           {
             "name": "circle_id",
             "type": "u64"
+          },
+          {
+            "name": "name",
+            "type": "string"
           },
           {
             "name": "contribution_amount",

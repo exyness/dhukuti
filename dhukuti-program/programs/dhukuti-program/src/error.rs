@@ -114,4 +114,8 @@ pub enum DhukutiError {
     Overflow,
     #[msg("Arithmetic underflow")]
     Underflow,
+
+    // ── Circle metadata ──────────────────────────────────────────────────────
+    #[msg("Circle name must be 1-64 UTF-8 bytes after trimming")]
+    InvalidCircleName,
 }

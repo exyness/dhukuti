@@ -25,6 +25,13 @@ pub struct CircleCreatedEvent {
 }
 
 #[event]
+pub struct CircleNamedEvent {
+    pub circle: Pubkey,
+    pub creator: Pubkey,
+    pub name: String,
+}
+
+#[event]
 pub struct MemberJoinedEvent {
     pub circle: Pubkey,
     pub member: Pubkey,

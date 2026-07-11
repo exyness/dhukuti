@@ -327,6 +327,7 @@ function activityAction(eventName: string) {
   const actions: Record<string, string> = {
     CircleCompletedEvent: "Circle completed",
     CircleCreatedEvent: "Circle created",
+    CircleNamedEvent: "Circle named",
     CircleStartedEvent: "Circle started",
     ContributionMadeEvent: "Contribution recorded",
     DefaultHandledEvent: "Default handled",
@@ -359,7 +360,11 @@ function activityDetail(eventName: string, payload: Record<string, unknown>) {
   );
 
   if (eventName === "CircleCreatedEvent") {
-    return `${getPayloadNumber(payload, "max_members")} members · ${amount ?? "Terms indexed"}`;
+    const name = getPayloadString(payload, "name");
+    return `${name ? `${name} · ` : ""}${getPayloadNumber(payload, "max_members")} members · ${amount ?? "Terms indexed"}`;
+  }
+  if (eventName === "CircleNamedEvent") {
+    return `${getPayloadString(payload, "name") ?? "Circle name"} stored in the read model.`;
   }
   if (eventName === "ContributionMadeEvent") {
     return `${member ?? "Member"} contributed ${amount ?? "SOL"}.`;
@@ -415,4 +420,9 @@ function getPayloadNumber(payload: Record<string, unknown>, key: string) {
   const value = payload[key];
   if (typeof value === "number" || typeof value === "string") return String(value);
   return null;
+}
+
+function getPayloadString(payload: Record<string, unknown>, key: string) {
+  const value = payload[key];
+  return typeof value === "string" ? value : null;
 }

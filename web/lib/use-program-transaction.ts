@@ -324,4 +324,5 @@ const DHUKUTI_ERROR_MESSAGES = [
   "The supplied position mint does not match this membership.",
   "The transaction exceeded a protocol arithmetic limit.",
   "The transaction would underflow a protocol balance.",
+  "Circle name must be 1-64 UTF-8 bytes.",
 ] as const;

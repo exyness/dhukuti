@@ -194,6 +194,7 @@ impl Env {
 fn default_params(circle_id: u64, max_members: u8) -> CreateCircleParams {
     CreateCircleParams {
         circle_id,
+        name: format!("Circle {circle_id}"),
         contribution_amount: sol(1.0),
         cycle_duration: 7 * 24 * 3600,
         max_members,
@@ -759,6 +760,18 @@ fn test_happy_path_full_lifecycle() {
 
     let circle: Circle = env.get(&circle_pda(&creator.pubkey(), circle_id));
     assert_eq!(circle.status, CircleStatus::Complete);
+    assert_eq!(circle.name, "Circle 1");
+}
+
+#[test]
+fn test_empty_circle_name_rejected() {
+    let mut env = Env::new();
+    let creator = env.funded(sol(100.0));
+    let mut params = default_params(22, 2);
+    params.name = "   ".to_string();
+
+    let result = env.send(&[ix_create_circle(&creator.pubkey(), params)], &[&creator]);
+    assert!(result.is_err(), "empty circle name must fail");
 }
 
 #[test]

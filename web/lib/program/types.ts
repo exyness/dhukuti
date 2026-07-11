@@ -11,6 +11,7 @@ export type CreateCircleInstructionInput = {
   insuranceFeeBps: number;
   maxMembers: number;
   minReputation: bigint;
+  name: string;
   payoutCurve: PayoutCurveValue;
   reserveRatioBps: number;
 };

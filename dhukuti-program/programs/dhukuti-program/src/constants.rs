@@ -16,6 +16,9 @@ pub const MAX_MEMBERS: u8 = 64;
 /// Maximum rounds equals max members (each member receives exactly once).
 pub const MAX_ROUNDS: u16 = 64;
 
+/// Maximum UTF-8 byte length for the human-readable circle name.
+pub const MAX_CIRCLE_NAME_BYTES: usize = 64;
+
 /// Minimum collateral a member must deposit, expressed in basis points of contribution_amount.
 /// 1000 bps = 10%.
 pub const MIN_COLLATERAL_BPS: u16 = 500;

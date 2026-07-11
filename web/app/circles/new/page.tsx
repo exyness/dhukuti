@@ -29,6 +29,7 @@ import {
   generateCircleId,
   INSURANCE_POOL_ACCOUNT_SPACE,
   lamportsToSol,
+  MAX_CIRCLE_NAME_BYTES,
   type PayoutCurveValue,
   payoutCurveLabel,
   solToLamports,
@@ -51,6 +52,7 @@ type CreateCircleReview = {
   insurancePoolPda: string;
   maxMembers: number;
   minReputation: bigint;
+  name: string;
   payoutCurve: PayoutCurveValue;
   reserveRatioBps: number;
   simulationUnits?: number;
@@ -67,6 +69,7 @@ export default function NewCirclePage() {
   const { connection } = useConnection();
   const { connected, publicKey, sendTransaction } = useWallet();
   const queryClient = useQueryClient();
+  const [circleName, setCircleName] = useState("Community Circle");
   const [cycleDays, setCycleDays] = useState("30");
   const [contribution, setContribution] = useState("5.00");
   const [maxMembers, setMaxMembers] = useState("12");
@@ -237,11 +240,16 @@ export default function NewCirclePage() {
     }
 
     const contributionLamportsValue = solToLamports(contribution);
+    const normalizedName = circleName.trim();
     const securityBondLamportsValue =
       (contributionLamportsValue * BigInt(SECURITY_BOND_RATIO_BPS)) / BPS_DENOMINATOR;
     const memberCap = Number.parseInt(maxMembers, 10);
     const minRep = BigInt(Number.parseInt(minReputation, 10));
     const cycleDurationSeconds = BigInt(Number.parseInt(cycleDays, 10) * 24 * 60 * 60);
+
+    if (!normalizedName || utf8ByteLength(normalizedName) > MAX_CIRCLE_NAME_BYTES) {
+      throw new Error("Circle name must be 1-64 UTF-8 bytes.");
+    }
 
     if (!Number.isInteger(memberCap) || memberCap < 2 || memberCap > 64) {
       throw new Error("Max participants must be between 2 and 64.");
@@ -273,6 +281,7 @@ export default function NewCirclePage() {
       insuranceFeeBps: INSURANCE_FEE_BPS,
       maxMembers: memberCap,
       minReputation: minRep,
+      name: normalizedName,
       payoutCurve,
       reserveRatioBps: RESERVE_RATIO_BPS,
     };
@@ -318,6 +327,7 @@ export default function NewCirclePage() {
       insurancePoolPda: pdas.insurancePool.toBase58(),
       maxMembers: params.maxMembers,
       minReputation: params.minReputation,
+      name: params.name,
       payoutCurve: params.payoutCurve,
       reserveRatioBps: params.reserveRatioBps,
       simulationUnits: simulation.value.unitsConsumed ?? undefined,
@@ -344,6 +354,21 @@ export default function NewCirclePage() {
                 Define the core parameters members will review before they join.
               </p>
               <div className="grid gap-[1.125rem] md:grid-cols-2">
+                <Field label="Circle name" htmlFor="circle-name">
+                  <input
+                    id="circle-name"
+                    name="circle-name"
+                    type="text"
+                    autoComplete="off"
+                    maxLength={MAX_CIRCLE_NAME_BYTES}
+                    value={circleName}
+                    className="input-control"
+                    onChange={(event) => {
+                      setCircleName(event.target.value);
+                      resetReview();
+                    }}
+                  />
+                </Field>
                 <Field label="Cycle duration" htmlFor="cycle-duration">
                   <SelectShell>
                     <select
@@ -508,6 +533,7 @@ export default function NewCirclePage() {
                 </Badge>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
+                <ReviewMetric label="Circle name" value={review.name} />
                 <ReviewMetric label="Circle address" value={truncateAddress(review.circlePda, 5)} />
                 <ReviewMetric
                   label="Shared balance address"
@@ -530,6 +556,7 @@ export default function NewCirclePage() {
                   indexStatus={indexStatus}
                   review={review}
                   onCreateAnother={() => {
+                    setCircleName("Community Circle");
                     setCycleDays("30");
                     setContribution("5.00");
                     setMaxMembers("12");
@@ -979,7 +1006,7 @@ function toOptimisticCircleSummary(review: CreateCircleReview, creator: string):
     members: 0,
     minReputation: Number(review.minReputation),
     mode: circleModeFromPayoutCurve(review.payoutCurve),
-    name: `Dhukuti #${review.circleId}`,
+    name: review.name,
     nextAction: "Join Circle",
     nextPayout: "Start circle",
     pot,
@@ -1018,6 +1045,10 @@ function circleModeFromPayoutCurve(value: PayoutCurveValue): CircleSummary["mode
   if (value === "auction") return "Dutch bid";
   if (value === "lottery") return "VRF lottery";
   return "Fixed order";
+}
+
+function utf8ByteLength(value: string) {
+  return new TextEncoder().encode(value).length;
 }
 
 function buildPreviewRows(cycleDays: number, projectedPotLamports: bigint) {
