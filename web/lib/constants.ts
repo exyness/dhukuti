@@ -3,8 +3,8 @@ export const DHUKUTI_PROGRAM = {
   programId: "GMhsYxEmeCpKaxqKPzSTmuoEuid6YnbfFJRYBur7ZcmL",
   programData: "vyW7FuSSXARQXAhuLEohpfas8rzVWJAjxwM9tz816hM",
   deploySignature:
-    "466kbS1h4ifXXsK4erb7DUzt1xokEyx5msDYgwUxBxoQZsGkw1LKKnqhgm2bQdDSFANw3E53e8hXr68Qrajrvwce",
-  deployedSlot: "475226100",
+    "2jeydVCQo2p9vZktrf7xsYzDoKgujixvikEWghXx6fMJjjzbPNaL8szVG6uFEvqpfmxHGJ7EP2iq86KcSsPfr2YW",
+  deployedSlot: "475409129",
 } as const;
 
 export function explorerAddressUrl(address: string) {

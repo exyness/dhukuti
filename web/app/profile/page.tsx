@@ -1,17 +1,56 @@
+"use client";
+
+import { useWallet } from "@solana/wallet-adapter-react";
 import { ChevronDown, MoreHorizontal, Plus } from "lucide-react";
 import Link from "next/link";
 import { AppShell, Panel } from "@/components/app/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { circles, contributionHistory, marketListings, profileStats } from "@/lib/app-data";
+import { useProfileQuery } from "@/lib/data/queries";
+import type { CircleSummary, MarketListing, ProfileData } from "@/lib/data/types";
 
-type CircleCardData = (typeof circles)[number];
-type ListingData = (typeof marketListings)[number];
+type CircleCardData = CircleSummary;
+type ListingData = MarketListing;
+
+const emptyProfile: ProfileData = {
+  activeCircles: [],
+  contributionHistory: [],
+  listings: [],
+  stats: {
+    activeCircles: "0",
+    collateralLocked: "0 SOL",
+    completedCircles: "0",
+    contributionVolume: "0 SOL",
+    hostCompletions: "0",
+    memberReputation: "0",
+    vouchedStake: "0 SOL",
+  },
+  wallet: null,
+};
 
 export default function ProfilePage() {
+  const { publicKey } = useWallet();
+  const wallet = publicKey?.toBase58() ?? null;
+  const { data, error, isLoading } = useProfileQuery(wallet);
+  const profile = data ?? emptyProfile;
+  const profileStats = profile.stats;
+  const reputationScore = Number.parseInt(profileStats.memberReputation, 10) || 0;
+  const reputationProgress = Math.min(Math.round((reputationScore / 1000) * 100), 100);
+
   return (
     <AppShell title="Profile & Assets">
       <div className="space-y-12">
+        {!wallet ? (
+          <StatePanel
+            message="Connect a wallet to load indexed memberships, contribution history, and reputation."
+            title="Wallet required"
+          />
+        ) : null}
+        {error ? <StatePanel message={error.message} title="Unable to load profile" /> : null}
+        {isLoading ? (
+          <StatePanel message="Fetching Supabase read models." title="Loading profile" />
+        ) : null}
+
         <section id="reputation" className="scroll-mt-24 grid grid-cols-1 gap-8 md:grid-cols-3">
           <Panel className="flex flex-col justify-between gap-8 p-8 md:col-span-2 lg:flex-row lg:items-center">
             <div className="space-y-4">
@@ -19,19 +58,22 @@ export default function ProfilePage() {
                 <span className="font-mono text-[0.65rem] uppercase tracking-widest text-accent">
                   Member Standing
                 </span>
-                <Badge tone="accent">Silver Tier</Badge>
+                <Badge tone="accent">Indexed</Badge>
               </div>
               <div className="flex items-baseline gap-3">
                 <h2 className="text-5xl font-semibold">{profileStats.memberReputation}</h2>
-                <span className="font-mono text-[0.9rem] text-muted">/ 1000 Rep</span>
+                <span className="font-mono text-[0.9rem] text-muted">Rep</span>
               </div>
               <div className="w-full max-w-sm">
                 <div className="mb-2 flex justify-between font-mono text-[0.65rem] text-muted">
-                  <span>Next Tier: Gold</span>
-                  <span>358 pts needed</span>
+                  <span>Indexed from ReputationUpdatedEvent</span>
+                  <span>{reputationProgress}%</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
-                  <div className="h-full w-[64%] rounded-full bg-accent" />
+                  <div
+                    className="h-full rounded-full bg-accent"
+                    style={{ width: `${reputationProgress}%` }}
+                  />
                 </div>
               </div>
             </div>
@@ -74,7 +116,7 @@ export default function ProfilePage() {
           </div>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {circles.slice(0, 2).map((circle) => (
+            {profile.activeCircles.slice(0, 2).map((circle) => (
               <ActiveCircleCard key={circle.id} circle={circle} />
             ))}
             <Link
@@ -116,11 +158,8 @@ export default function ProfilePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {contributionHistory.map((row) => (
-                      <tr
-                        key={`${row.date}-${row.circle}`}
-                        className="border-b border-border last:border-b-0"
-                      >
+                    {profile.contributionHistory.map((row) => (
+                      <tr key={row.signature} className="border-b border-border last:border-b-0">
                         <td className="px-6 py-4 font-mono text-[0.7rem]">{row.date}</td>
                         <td className="px-6 py-4 text-sm font-medium">{row.circle}</td>
                         <td className="px-6 py-4 font-mono text-[0.75rem]">{row.amount}</td>
@@ -131,6 +170,13 @@ export default function ProfilePage() {
                         </td>
                       </tr>
                     ))}
+                    {profile.contributionHistory.length === 0 ? (
+                      <tr>
+                        <td className="px-6 py-6 text-sm text-muted" colSpan={4}>
+                          No indexed contributions for this wallet.
+                        </td>
+                      </tr>
+                    ) : null}
                   </tbody>
                 </table>
               </div>
@@ -140,9 +186,14 @@ export default function ProfilePage() {
           <div className="space-y-6">
             <h2 className="text-xl font-semibold">Market Listings</h2>
             <div className="space-y-4">
-              {marketListings.slice(0, 2).map((listing) => (
-                <ProfileListing key={listing.id} listing={listing} />
+              {profile.listings.slice(0, 2).map((listing) => (
+                <ProfileListing key={listing.listing} listing={listing} />
               ))}
+              {profile.listings.length === 0 ? (
+                <Panel className="p-4 text-sm text-muted">
+                  No indexed listings for this wallet.
+                </Panel>
+              ) : null}
             </div>
           </div>
         </section>
@@ -206,6 +257,15 @@ function ProfileListing({ listing }: { listing: ListingData }) {
         </div>
         <span className="font-mono text-[0.6rem] text-white/20">ID: {listing.id}</span>
       </div>
+    </Panel>
+  );
+}
+
+function StatePanel({ message, title }: { message: string; title: string }) {
+  return (
+    <Panel className="p-6">
+      <h2 className="font-medium text-foreground">{title}</h2>
+      <p className="mt-2 text-sm leading-6 text-muted">{message}</p>
     </Panel>
   );
 }

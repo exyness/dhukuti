@@ -1,0 +1,4674 @@
+{
+  "address": "GMhsYxEmeCpKaxqKPzSTmuoEuid6YnbfFJRYBur7ZcmL",
+  "metadata": {
+    "name": "dhukuti_program",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Dhukuti Protocol — on-chain ROSCA on Solana"
+  },
+  "instructions": [
+    {
+      "name": "buy_position",
+      "discriminator": [
+        210,
+        108,
+        108,
+        28,
+        10,
+        46,
+        226,
+        137
+      ],
+      "accounts": [
+        {
+          "name": "buyer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "seller",
+          "writable": true
+        },
+        {
+          "name": "circle",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "Circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circle_id",
+                "account": "Circle"
+              }
+            ]
+          },
+          "relations": [
+            "listing"
+          ]
+        },
+        {
+          "name": "seller_membership",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114,
+                  115,
+                  104,
+                  105,
+                  112
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "seller"
+              }
+            ]
+          }
+        },
+        {
+          "name": "listing",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  105,
+                  115,
+                  116,
+                  105,
+                  110,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "seller_membership"
+              }
+            ]
+          }
+        },
+        {
+          "name": "buyer_membership",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114,
+                  115,
+                  104,
+                  105,
+                  112
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "buyer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position_nft_mint"
+        },
+        {
+          "name": "escrow_token_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  105,
+                  115,
+                  116,
+                  105,
+                  110,
+                  103,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "listing"
+              }
+            ]
+          }
+        },
+        {
+          "name": "buyer_position_token_account",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancel_listing",
+      "discriminator": [
+        41,
+        183,
+        50,
+        232,
+        230,
+        233,
+        157,
+        70
+      ],
+      "accounts": [
+        {
+          "name": "seller",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "listing"
+          ]
+        },
+        {
+          "name": "circle",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "Circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circle_id",
+                "account": "Circle"
+              }
+            ]
+          },
+          "relations": [
+            "listing"
+          ]
+        },
+        {
+          "name": "membership",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114,
+                  115,
+                  104,
+                  105,
+                  112
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "seller"
+              }
+            ]
+          },
+          "relations": [
+            "listing"
+          ]
+        },
+        {
+          "name": "listing",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  105,
+                  115,
+                  116,
+                  105,
+                  110,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "membership"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position_nft_mint"
+        },
+        {
+          "name": "escrow_token_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  105,
+                  115,
+                  116,
+                  105,
+                  110,
+                  103,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "listing"
+              }
+            ]
+          }
+        },
+        {
+          "name": "seller_position_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claim_host_reputation",
+      "discriminator": [
+        93,
+        232,
+        52,
+        115,
+        167,
+        129,
+        122,
+        119
+      ],
+      "accounts": [
+        {
+          "name": "cranker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "host"
+        },
+        {
+          "name": "reputation",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  112,
+                  117,
+                  116,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "host"
+              }
+            ]
+          }
+        },
+        {
+          "name": "circle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "Circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circle_id",
+                "account": "Circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "complete_circle",
+      "discriminator": [
+        82,
+        136,
+        81,
+        159,
+        34,
+        189,
+        223,
+        166
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "circle"
+          ]
+        },
+        {
+          "name": "circle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circle_id",
+                "account": "Circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "contribute",
+      "discriminator": [
+        82,
+        33,
+        68,
+        131,
+        32,
+        0,
+        205,
+        95
+      ],
+      "accounts": [
+        {
+          "name": "member",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "Circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circle_id",
+                "account": "Circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "insurance_pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  110,
+                  115,
+                  117,
+                  114,
+                  97,
+                  110,
+                  99,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "membership",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114,
+                  115,
+                  104,
+                  105,
+                  112
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "member"
+              }
+            ]
+          }
+        },
+        {
+          "name": "round",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.current_round",
+                "account": "Circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_circle",
+      "discriminator": [
+        186,
+        99,
+        49,
+        131,
+        31,
+        51,
+        13,
+        198
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              },
+              {
+                "kind": "arg",
+                "path": "params.circle_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "docs": [
+            "Initialised with zero data; lamports flow in via system_program transfer CPI",
+            "and out via direct lamport manipulation from program-signed instructions."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "insurance_pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  110,
+                  115,
+                  117,
+                  114,
+                  97,
+                  110,
+                  99,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "denom_mint",
+          "docs": [
+            "SPL mint used for contributions. Native SOL is the only supported V1",
+            "settlement asset, represented by system_program as an explicit sentinel."
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "CreateCircleParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "handle_default",
+      "discriminator": [
+        223,
+        155,
+        20,
+        90,
+        40,
+        238,
+        53,
+        209
+      ],
+      "accounts": [
+        {
+          "name": "cranker",
+          "docs": [
+            "Anyone can crank a default after the deadline passes."
+          ],
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "Circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circle_id",
+                "account": "Circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "insurance_pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  110,
+                  115,
+                  117,
+                  114,
+                  97,
+                  110,
+                  99,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "round",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.current_round",
+                "account": "Circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "membership",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114,
+                  115,
+                  104,
+                  105,
+                  112
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "defaulting_member"
+              }
+            ]
+          }
+        },
+        {
+          "name": "defaulting_member"
+        },
+        {
+          "name": "default_proposal",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  102,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  112,
+                  114,
+                  111,
+                  112,
+                  111,
+                  115,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "round"
+              },
+              {
+                "kind": "account",
+                "path": "defaulting_member"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "join_circle",
+      "discriminator": [
+        231,
+        168,
+        235,
+        18,
+        99,
+        12,
+        22,
+        7
+      ],
+      "accounts": [
+        {
+          "name": "member",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "Circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circle_id",
+                "account": "Circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "membership",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114,
+                  115,
+                  104,
+                  105,
+                  112
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "member"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position_nft_mint",
+          "docs": [
+            "1-of-1 NFT mint PDA. Deterministically derived per (circle, member);",
+            "the circle PDA is the mint authority."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  110,
+                  102,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "member"
+              }
+            ]
+          }
+        },
+        {
+          "name": "member_token_account",
+          "docs": [
+            "Member's token account that will hold the 1 Position NFT token."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
+        },
+        {
+          "name": "reputation",
+          "docs": [
+            "Optional reputation PDA for the joining member.",
+            "Must be provided when circle.min_reputation > 0; can be omitted otherwise."
+          ],
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  112,
+                  117,
+                  116,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "member"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "list_position",
+      "discriminator": [
+        252,
+        73,
+        186,
+        182,
+        15,
+        2,
+        202,
+        83
+      ],
+      "accounts": [
+        {
+          "name": "seller",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "Circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circle_id",
+                "account": "Circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "membership",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114,
+                  115,
+                  104,
+                  105,
+                  112
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "seller"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position_nft_mint"
+        },
+        {
+          "name": "seller_position_token_account",
+          "writable": true
+        },
+        {
+          "name": "listing",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  105,
+                  115,
+                  116,
+                  105,
+                  110,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "membership"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow_token_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  105,
+                  115,
+                  116,
+                  105,
+                  110,
+                  103,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "listing"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "ask_price",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "open_default_proposal",
+      "discriminator": [
+        215,
+        122,
+        193,
+        134,
+        117,
+        193,
+        67,
+        36
+      ],
+      "accounts": [
+        {
+          "name": "proposer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "Circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circle_id",
+                "account": "Circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "round",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.current_round",
+                "account": "Circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "defaulting_member"
+        },
+        {
+          "name": "membership",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114,
+                  115,
+                  104,
+                  105,
+                  112
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "defaulting_member"
+              }
+            ]
+          }
+        },
+        {
+          "name": "proposer_membership",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114,
+                  115,
+                  104,
+                  105,
+                  112
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "proposer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "default_proposal",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  102,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  112,
+                  114,
+                  111,
+                  112,
+                  111,
+                  115,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "round"
+              },
+              {
+                "kind": "account",
+                "path": "defaulting_member"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "place_dutch_bid",
+      "discriminator": [
+        57,
+        21,
+        7,
+        166,
+        136,
+        75,
+        120,
+        189
+      ],
+      "accounts": [
+        {
+          "name": "bidder",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "Circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circle_id",
+                "account": "Circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "membership",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114,
+                  115,
+                  104,
+                  105,
+                  112
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "bidder"
+              }
+            ]
+          }
+        },
+        {
+          "name": "round",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.current_round",
+                "account": "Circle"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "release_vouch",
+      "discriminator": [
+        74,
+        81,
+        28,
+        53,
+        135,
+        202,
+        191,
+        207
+      ],
+      "accounts": [
+        {
+          "name": "voucher",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "candidate"
+        },
+        {
+          "name": "circle",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "Circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circle_id",
+                "account": "Circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "candidate_membership",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114,
+                  115,
+                  104,
+                  105,
+                  112
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "candidate"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vouch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  111,
+                  117,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "voucher"
+              },
+              {
+                "kind": "account",
+                "path": "candidate"
+              }
+            ]
+          }
+        },
+        {
+          "name": "reputation",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  112,
+                  117,
+                  116,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "voucher"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "resolve_round",
+      "discriminator": [
+        165,
+        114,
+        237,
+        158,
+        1,
+        36,
+        70,
+        254
+      ],
+      "accounts": [
+        {
+          "name": "cranker",
+          "docs": [
+            "Anyone can crank round resolution once all contributions are in."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "Circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circle_id",
+                "account": "Circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "insurance_pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  110,
+                  115,
+                  117,
+                  114,
+                  97,
+                  110,
+                  99,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "round",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.current_round",
+                "account": "Circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "recipient",
+          "docs": [
+            "The member scheduled to receive the payout this round."
+          ],
+          "writable": true
+        },
+        {
+          "name": "recipient_membership",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114,
+                  115,
+                  104,
+                  105,
+                  112
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "recipient"
+              }
+            ]
+          }
+        },
+        {
+          "name": "next_round",
+          "docs": [
+            "Next round PDA — always initialised so the instruction remains atomic.",
+            "On the final round this PDA is created but unused; the cranker's",
+            "rent is reclaimed indirectly when the circle is closed."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "arg",
+                "path": "next_round_index"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "next_round_index",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "slash_vouch",
+      "discriminator": [
+        159,
+        249,
+        34,
+        159,
+        187,
+        224,
+        155,
+        117
+      ],
+      "accounts": [
+        {
+          "name": "cranker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "Circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circle_id",
+                "account": "Circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "insurance_pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  110,
+                  115,
+                  117,
+                  114,
+                  97,
+                  110,
+                  99,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "candidate_membership",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114,
+                  115,
+                  104,
+                  105,
+                  112
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "vouch.candidate",
+                "account": "Vouch"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vouch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  111,
+                  117,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "vouch.voucher",
+                "account": "Vouch"
+              },
+              {
+                "kind": "account",
+                "path": "vouch.candidate",
+                "account": "Vouch"
+              }
+            ]
+          }
+        },
+        {
+          "name": "reputation",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  112,
+                  117,
+                  116,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vouch.voucher",
+                "account": "Vouch"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "start_circle",
+      "discriminator": [
+        53,
+        52,
+        187,
+        212,
+        217,
+        132,
+        253,
+        102
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "circle"
+          ]
+        },
+        {
+          "name": "circle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circle_id",
+                "account": "Circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "first_round",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  0,
+                  0
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "update_reputation",
+      "discriminator": [
+        194,
+        220,
+        43,
+        201,
+        54,
+        209,
+        49,
+        178
+      ],
+      "accounts": [
+        {
+          "name": "cranker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "wallet"
+        },
+        {
+          "name": "reputation",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  112,
+                  117,
+                  116,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "wallet"
+              }
+            ]
+          }
+        },
+        {
+          "name": "circle",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "Circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circle_id",
+                "account": "Circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "membership",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114,
+                  115,
+                  104,
+                  105,
+                  112
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "wallet"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "event",
+          "type": {
+            "defined": {
+              "name": "ReputationEvent"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "vote_default",
+      "discriminator": [
+        232,
+        213,
+        129,
+        143,
+        58,
+        192,
+        127,
+        127
+      ],
+      "accounts": [
+        {
+          "name": "voter",
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "Circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circle_id",
+                "account": "Circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "voter_membership",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114,
+                  115,
+                  104,
+                  105,
+                  112
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "voter"
+              }
+            ]
+          }
+        },
+        {
+          "name": "default_proposal",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  102,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  112,
+                  114,
+                  111,
+                  112,
+                  111,
+                  115,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "default_proposal.round",
+                "account": "DefaultProposal"
+              },
+              {
+                "kind": "account",
+                "path": "default_proposal.member",
+                "account": "DefaultProposal"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "approve",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "vouch_member",
+      "discriminator": [
+        161,
+        162,
+        41,
+        64,
+        199,
+        208,
+        130,
+        20
+      ],
+      "accounts": [
+        {
+          "name": "voucher",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "candidate"
+        },
+        {
+          "name": "circle",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "Circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circle_id",
+                "account": "Circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "voucher_membership",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114,
+                  115,
+                  104,
+                  105,
+                  112
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "voucher"
+              }
+            ]
+          }
+        },
+        {
+          "name": "candidate_membership",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114,
+                  115,
+                  104,
+                  105,
+                  112
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "candidate"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vouch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  111,
+                  117,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "voucher"
+              },
+              {
+                "kind": "account",
+                "path": "candidate"
+              }
+            ]
+          }
+        },
+        {
+          "name": "reputation",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  112,
+                  117,
+                  116,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "voucher"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "stake_lamports",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Circle",
+      "discriminator": [
+        27,
+        59,
+        8,
+        117,
+        62,
+        199,
+        222,
+        252
+      ]
+    },
+    {
+      "name": "DefaultProposal",
+      "discriminator": [
+        181,
+        28,
+        137,
+        148,
+        178,
+        50,
+        3,
+        112
+      ]
+    },
+    {
+      "name": "InsurancePool",
+      "discriminator": [
+        239,
+        152,
+        145,
+        201,
+        228,
+        155,
+        139,
+        140
+      ]
+    },
+    {
+      "name": "Listing",
+      "discriminator": [
+        218,
+        32,
+        50,
+        73,
+        43,
+        134,
+        26,
+        58
+      ]
+    },
+    {
+      "name": "Membership",
+      "discriminator": [
+        231,
+        141,
+        180,
+        98,
+        109,
+        168,
+        175,
+        166
+      ]
+    },
+    {
+      "name": "Reputation",
+      "discriminator": [
+        55,
+        148,
+        90,
+        71,
+        68,
+        183,
+        193,
+        28
+      ]
+    },
+    {
+      "name": "Round",
+      "discriminator": [
+        87,
+        127,
+        165,
+        51,
+        73,
+        78,
+        116,
+        174
+      ]
+    },
+    {
+      "name": "Vouch",
+      "discriminator": [
+        151,
+        175,
+        234,
+        54,
+        134,
+        101,
+        175,
+        210
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "CircleCompletedEvent",
+      "discriminator": [
+        52,
+        125,
+        137,
+        1,
+        222,
+        190,
+        112,
+        169
+      ]
+    },
+    {
+      "name": "CircleCreatedEvent",
+      "discriminator": [
+        62,
+        178,
+        177,
+        56,
+        123,
+        175,
+        129,
+        31
+      ]
+    },
+    {
+      "name": "CircleStartedEvent",
+      "discriminator": [
+        29,
+        169,
+        249,
+        52,
+        147,
+        21,
+        92,
+        212
+      ]
+    },
+    {
+      "name": "ContributionMadeEvent",
+      "discriminator": [
+        3,
+        118,
+        240,
+        79,
+        205,
+        32,
+        105,
+        96
+      ]
+    },
+    {
+      "name": "DefaultHandledEvent",
+      "discriminator": [
+        79,
+        116,
+        249,
+        187,
+        174,
+        162,
+        197,
+        120
+      ]
+    },
+    {
+      "name": "DefaultProposalOpenedEvent",
+      "discriminator": [
+        139,
+        89,
+        138,
+        151,
+        7,
+        104,
+        40,
+        224
+      ]
+    },
+    {
+      "name": "DefaultVoteCastEvent",
+      "discriminator": [
+        186,
+        88,
+        170,
+        135,
+        140,
+        209,
+        184,
+        220
+      ]
+    },
+    {
+      "name": "DutchBidAcceptedEvent",
+      "discriminator": [
+        117,
+        100,
+        155,
+        24,
+        111,
+        142,
+        113,
+        43
+      ]
+    },
+    {
+      "name": "ListingCancelledEvent",
+      "discriminator": [
+        203,
+        204,
+        24,
+        205,
+        33,
+        24,
+        151,
+        195
+      ]
+    },
+    {
+      "name": "MemberJoinedEvent",
+      "discriminator": [
+        57,
+        137,
+        71,
+        207,
+        212,
+        122,
+        46,
+        154
+      ]
+    },
+    {
+      "name": "PositionBoughtEvent",
+      "discriminator": [
+        186,
+        140,
+        2,
+        218,
+        171,
+        41,
+        235,
+        189
+      ]
+    },
+    {
+      "name": "PositionListedEvent",
+      "discriminator": [
+        143,
+        38,
+        4,
+        13,
+        11,
+        37,
+        233,
+        186
+      ]
+    },
+    {
+      "name": "ReputationUpdatedEvent",
+      "discriminator": [
+        27,
+        90,
+        44,
+        140,
+        118,
+        143,
+        175,
+        185
+      ]
+    },
+    {
+      "name": "RoundResolvedEvent",
+      "discriminator": [
+        226,
+        189,
+        82,
+        104,
+        92,
+        96,
+        231,
+        204
+      ]
+    },
+    {
+      "name": "VouchCreatedEvent",
+      "discriminator": [
+        166,
+        100,
+        127,
+        134,
+        108,
+        165,
+        26,
+        82
+      ]
+    },
+    {
+      "name": "VouchReleasedEvent",
+      "discriminator": [
+        8,
+        8,
+        146,
+        139,
+        14,
+        36,
+        32,
+        87
+      ]
+    },
+    {
+      "name": "VouchSlashedEvent",
+      "discriminator": [
+        8,
+        104,
+        45,
+        101,
+        15,
+        237,
+        162,
+        212
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidMaxMembers",
+      "msg": "Max members must be between 2 and 64"
+    },
+    {
+      "code": 6001,
+      "name": "ZeroContributionAmount",
+      "msg": "Contribution amount must be greater than zero"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidCycleDuration",
+      "msg": "Cycle duration out of allowed range (1 hour – 365 days)"
+    },
+    {
+      "code": 6003,
+      "name": "CollateralTooLow",
+      "msg": "Collateral basis points below minimum (500 bps = 5%)"
+    },
+    {
+      "code": 6004,
+      "name": "InsuranceFeeTooHigh",
+      "msg": "Insurance fee exceeds maximum (500 bps = 5%)"
+    },
+    {
+      "code": 6005,
+      "name": "InvalidReserveRatio",
+      "msg": "Reserve ratio cannot exceed 10,000 basis points"
+    },
+    {
+      "code": 6006,
+      "name": "UnsupportedDenomMint",
+      "msg": "Only native SOL contribution circles are supported in this program version"
+    },
+    {
+      "code": 6007,
+      "name": "CircleNotOpen",
+      "msg": "Circle is not open for new members"
+    },
+    {
+      "code": 6008,
+      "name": "CircleFull",
+      "msg": "Circle is already at maximum member capacity"
+    },
+    {
+      "code": 6009,
+      "name": "ReputationTooLow",
+      "msg": "Member's reputation score is below the circle's minimum requirement"
+    },
+    {
+      "code": 6010,
+      "name": "InsufficientCollateral",
+      "msg": "Insufficient collateral provided"
+    },
+    {
+      "code": 6011,
+      "name": "BuyerAlreadyMember",
+      "msg": "Member already has a membership in this circle"
+    },
+    {
+      "code": 6012,
+      "name": "UnauthorizedStart",
+      "msg": "Only the circle creator can start the circle"
+    },
+    {
+      "code": 6013,
+      "name": "NotEnoughMembers",
+      "msg": "Circle needs at least 2 members before it can start"
+    },
+    {
+      "code": 6014,
+      "name": "InvalidCircleStatus",
+      "msg": "Circle is not in the correct status to perform this action"
+    },
+    {
+      "code": 6015,
+      "name": "CircleNotActive",
+      "msg": "Circle is not active"
+    },
+    {
+      "code": 6016,
+      "name": "AlreadyContributed",
+      "msg": "Member has already contributed to this round"
+    },
+    {
+      "code": 6017,
+      "name": "MembershipCircleMismatch",
+      "msg": "This membership does not belong to the specified circle"
+    },
+    {
+      "code": 6018,
+      "name": "MemberInactive",
+      "msg": "Member is not active in this circle"
+    },
+    {
+      "code": 6019,
+      "name": "RoundNotFullyFunded",
+      "msg": "Not all members have contributed to this round yet"
+    },
+    {
+      "code": 6020,
+      "name": "RoundAlreadyResolved",
+      "msg": "This round has already been resolved"
+    },
+    {
+      "code": 6021,
+      "name": "RoundIndexMismatch",
+      "msg": "Round index does not match the circle's current round"
+    },
+    {
+      "code": 6022,
+      "name": "RecipientNotFound",
+      "msg": "Could not determine a payout recipient for this round"
+    },
+    {
+      "code": 6023,
+      "name": "DeadlineNotReached",
+      "msg": "Round deadline has not been reached yet"
+    },
+    {
+      "code": 6024,
+      "name": "UnsupportedPayoutCurve",
+      "msg": "This payout curve is not supported by the requested instruction"
+    },
+    {
+      "code": 6025,
+      "name": "AuctionAlreadyAccepted",
+      "msg": "A Dutch auction bid has already been accepted for this round"
+    },
+    {
+      "code": 6026,
+      "name": "NoDutchAuctionBid",
+      "msg": "No Dutch auction bid has been accepted for this round"
+    },
+    {
+      "code": 6027,
+      "name": "InvalidRemainingAccounts",
+      "msg": "Dutch auction discount distribution accounts are invalid"
+    },
+    {
+      "code": 6028,
+      "name": "InvalidRemainingMember",
+      "msg": "Dutch auction remaining-member account is invalid"
+    },
+    {
+      "code": 6029,
+      "name": "CircleHasActiveRounds",
+      "msg": "Circle still has unresolved rounds; cannot be marked complete"
+    },
+    {
+      "code": 6030,
+      "name": "ReputationAlreadyClaimed",
+      "msg": "Reputation has already been claimed for this membership event"
+    },
+    {
+      "code": 6031,
+      "name": "InvalidCircleHost",
+      "msg": "Only the circle host can claim host reputation"
+    },
+    {
+      "code": 6032,
+      "name": "HostReputationAlreadyClaimed",
+      "msg": "Host reputation has already been claimed for this circle"
+    },
+    {
+      "code": 6033,
+      "name": "InvalidVouchStake",
+      "msg": "Vouch stake must be greater than zero"
+    },
+    {
+      "code": 6034,
+      "name": "CannotVouchSelf",
+      "msg": "A member cannot vouch for their own wallet"
+    },
+    {
+      "code": 6035,
+      "name": "VouchInactive",
+      "msg": "Vouch is not active"
+    },
+    {
+      "code": 6036,
+      "name": "VouchAlreadyResolved",
+      "msg": "Vouch has already been released or slashed"
+    },
+    {
+      "code": 6037,
+      "name": "CandidateNotDefaulted",
+      "msg": "Vouched member has not defaulted"
+    },
+    {
+      "code": 6038,
+      "name": "DefaultProposalAlreadyResolved",
+      "msg": "Default proposal has already been resolved"
+    },
+    {
+      "code": 6039,
+      "name": "DefaultProposalNotReady",
+      "msg": "Default proposal is not approved and grace period has not expired"
+    },
+    {
+      "code": 6040,
+      "name": "CannotVoteOnOwnDefault",
+      "msg": "Member cannot vote on their own default proposal"
+    },
+    {
+      "code": 6041,
+      "name": "InvalidAskPrice",
+      "msg": "Listing ask price must be greater than zero"
+    },
+    {
+      "code": 6042,
+      "name": "InvalidPositionOwner",
+      "msg": "Position NFT token account does not hold the listed position"
+    },
+    {
+      "code": 6043,
+      "name": "ListingInactive",
+      "msg": "Listing is not active"
+    },
+    {
+      "code": 6044,
+      "name": "CannotBuyOwnListing",
+      "msg": "Buyer cannot buy their own listing"
+    },
+    {
+      "code": 6045,
+      "name": "InvalidPositionMint",
+      "msg": "Position NFT mint does not match this membership"
+    },
+    {
+      "code": 6046,
+      "name": "Overflow",
+      "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6047,
+      "name": "Underflow",
+      "msg": "Arithmetic underflow"
+    }
+  ],
+  "types": [
+    {
+      "name": "Circle",
+      "docs": [
+        "Central state account for a dhukuti savings circle.",
+        "PDA seeds: [\"circle\", creator, circle_id_le_bytes]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "creator",
+            "docs": [
+              "Wallet that created the circle and has admin rights (start, emergency)."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "circle_id",
+            "docs": [
+              "Monotonically-increasing ID assigned at creation; scopes the PDA per creator."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "contribution_amount",
+            "docs": [
+              "Lamports each member must contribute every round."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "cycle_duration",
+            "docs": [
+              "Seconds between round opens."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "max_members",
+            "docs": [
+              "Hard cap on members; limited to MAX_MEMBERS (64) for the contribution bitfield."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "current_members",
+            "docs": [
+              "Number of members that have joined so far."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "denom_mint",
+            "docs": [
+              "SPL mint for contributions. Pubkey::default() signals native SOL."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "payout_curve",
+            "docs": [
+              "Payout ordering strategy."
+            ],
+            "type": {
+              "defined": {
+                "name": "PayoutCurve"
+              }
+            }
+          },
+          {
+            "name": "current_round",
+            "docs": [
+              "Round currently in progress (0-indexed)."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "vault",
+            "docs": [
+              "Vault PDA that holds member contributions and collateral."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "insurance_pool",
+            "docs": [
+              "Insurance pool PDA receiving contribution fees and covering defaults."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "status",
+            "docs": [
+              "Current lifecycle status."
+            ],
+            "type": {
+              "defined": {
+                "name": "CircleStatus"
+              }
+            }
+          },
+          {
+            "name": "min_reputation",
+            "docs": [
+              "Minimum reputation score required to join; 0 means no gate."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "collateral_bps",
+            "docs": [
+              "Collateral each member locks at join time, in basis points of contribution_amount."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "insurance_fee_bps",
+            "docs": [
+              "Protocol fee routed to the insurance pool per contribution, in basis points."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "created_at",
+            "docs": [
+              "Unix timestamp when the circle was created."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "started_at",
+            "docs": [
+              "Unix timestamp when start_circle was called; None until then."
+            ],
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "active_members_bitmap",
+            "docs": [
+              "Bitfield tracking which member slots (by join_order) are still active.",
+              "Set when a member joins; cleared by handle_default when a member is ejected.",
+              "resolve_round uses this mask instead of current_members to allow rounds to",
+              "resolve cleanly after ejections."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "defaults_handled",
+            "docs": [
+              "Number of member defaults handled in this circle."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "host_reputation_claimed",
+            "docs": [
+              "Prevents replaying the host reputation claim after completion."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "Bump for this account's PDA."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "vault_bump",
+            "docs": [
+              "Bump for the vault PDA."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "insurance_bump",
+            "docs": [
+              "Bump for the insurance pool PDA."
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CircleCompletedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "residual_lamports",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CircleCreatedEvent",
+      "docs": [
+        "Indexer contract for off-chain read models.",
+        "",
+        "Every event below is intentionally append-only data that can be decoded from",
+        "Anchor program logs and projected into Supabase or another analytics store.",
+        "Keep field names stable; add new fields through new events when a breaking",
+        "frontend/indexer migration would be required."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "circle_id",
+            "type": "u64"
+          },
+          {
+            "name": "contribution_amount",
+            "type": "u64"
+          },
+          {
+            "name": "cycle_duration",
+            "type": "i64"
+          },
+          {
+            "name": "max_members",
+            "type": "u8"
+          },
+          {
+            "name": "payout_curve",
+            "type": {
+              "defined": {
+                "name": "PayoutCurve"
+              }
+            }
+          },
+          {
+            "name": "collateral_bps",
+            "type": "u16"
+          },
+          {
+            "name": "insurance_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "reserve_ratio_bps",
+            "type": "u16"
+          },
+          {
+            "name": "min_reputation",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CircleStartedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "member_count",
+            "type": "u8"
+          },
+          {
+            "name": "first_round",
+            "type": "pubkey"
+          },
+          {
+            "name": "deadline_ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CircleStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Open"
+          },
+          {
+            "name": "Active"
+          },
+          {
+            "name": "Complete"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ContributionMadeEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "round",
+            "type": "pubkey"
+          },
+          {
+            "name": "member",
+            "type": "pubkey"
+          },
+          {
+            "name": "round_index",
+            "type": "u16"
+          },
+          {
+            "name": "contribution_amount",
+            "type": "u64"
+          },
+          {
+            "name": "insurance_fee",
+            "type": "u64"
+          },
+          {
+            "name": "net_to_pot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreateCircleParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle_id",
+            "type": "u64"
+          },
+          {
+            "name": "contribution_amount",
+            "type": "u64"
+          },
+          {
+            "name": "cycle_duration",
+            "type": "i64"
+          },
+          {
+            "name": "max_members",
+            "type": "u8"
+          },
+          {
+            "name": "payout_curve",
+            "type": {
+              "defined": {
+                "name": "PayoutCurve"
+              }
+            }
+          },
+          {
+            "name": "min_reputation",
+            "type": "u64"
+          },
+          {
+            "name": "collateral_bps",
+            "type": "u16"
+          },
+          {
+            "name": "insurance_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "reserve_ratio_bps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DefaultHandledEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "round",
+            "type": "pubkey"
+          },
+          {
+            "name": "member",
+            "type": "pubkey"
+          },
+          {
+            "name": "round_index",
+            "type": "u16"
+          },
+          {
+            "name": "collateral_slashed",
+            "type": "u64"
+          },
+          {
+            "name": "insurance_backstop",
+            "type": "u64"
+          },
+          {
+            "name": "haircut",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DefaultProposal",
+      "docs": [
+        "Member-governed default proposal opened after a round deadline is missed.",
+        "PDA seeds: [\"default_proposal\", circle, round, member]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "docs": [
+              "Circle this proposal belongs to."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "round",
+            "docs": [
+              "Round where the contribution was missed."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "member",
+            "docs": [
+              "Wallet proposed for default handling."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "round_index",
+            "docs": [
+              "Zero-indexed round number."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "proposed_at",
+            "docs": [
+              "Unix timestamp when the proposal was opened."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "grace_deadline_ts",
+            "docs": [
+              "Unix timestamp when grace expires and the proposal can execute without votes."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "approvals_bitmap",
+            "docs": [
+              "Approval votes by member join_order bit."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "rejections_bitmap",
+            "docs": [
+              "Rejection votes by member join_order bit."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "resolved",
+            "docs": [
+              "True once handle_default consumes the proposal."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump."
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DefaultProposalOpenedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "round",
+            "type": "pubkey"
+          },
+          {
+            "name": "proposal",
+            "type": "pubkey"
+          },
+          {
+            "name": "proposer",
+            "type": "pubkey"
+          },
+          {
+            "name": "member",
+            "type": "pubkey"
+          },
+          {
+            "name": "round_index",
+            "type": "u16"
+          },
+          {
+            "name": "grace_deadline_ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DefaultVoteCastEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "round",
+            "type": "pubkey"
+          },
+          {
+            "name": "proposal",
+            "type": "pubkey"
+          },
+          {
+            "name": "voter",
+            "type": "pubkey"
+          },
+          {
+            "name": "member",
+            "type": "pubkey"
+          },
+          {
+            "name": "round_index",
+            "type": "u16"
+          },
+          {
+            "name": "approve",
+            "type": "bool"
+          },
+          {
+            "name": "approvals_bitmap",
+            "type": "u64"
+          },
+          {
+            "name": "rejections_bitmap",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DutchBidAcceptedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "round",
+            "type": "pubkey"
+          },
+          {
+            "name": "bidder",
+            "type": "pubkey"
+          },
+          {
+            "name": "round_index",
+            "type": "u16"
+          },
+          {
+            "name": "discount_bps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "InsurancePool",
+      "docs": [
+        "Protocol-level backstop for member defaults.",
+        "Funded by contribution fees and collateral slashing for each circle.",
+        "PDA seeds: [\"insurance\", circle]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "docs": [
+              "The circle this pool is attached to."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "balance",
+            "docs": [
+              "Lamports reserved for default coverage (mirrors the account's lamport balance",
+              "minus rent-exemption; maintained as a convenience field)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "total_claims_paid",
+            "docs": [
+              "Cumulative claims paid out (informational)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "reserve_ratio_bps",
+            "docs": [
+              "Minimum reserve ratio in basis points set by the circle creator."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump."
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Listing",
+      "docs": [
+        "Escrowed sale offer for a payout Position NFT.",
+        "PDA seeds: [\"listing\", circle, membership]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "docs": [
+              "Circle whose position is being sold."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "seller",
+            "docs": [
+              "Current owner that listed the position."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "membership",
+            "docs": [
+              "Membership whose payout right and remaining obligations are being sold."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "position_nft_mint",
+            "docs": [
+              "The 1-of-1 Position NFT mint locked in escrow."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "escrow_token_account",
+            "docs": [
+              "PDA-owned token account holding the listed Position NFT."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "ask_price",
+            "docs": [
+              "SOL price paid by the buyer to the seller."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "active",
+            "docs": [
+              "False only after cancellation or purchase."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump for this listing."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "escrow_bump",
+            "docs": [
+              "PDA bump for the escrow token account."
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ListingCancelledEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "listing",
+            "type": "pubkey"
+          },
+          {
+            "name": "seller",
+            "type": "pubkey"
+          },
+          {
+            "name": "position_nft_mint",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MemberJoinedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "member",
+            "type": "pubkey"
+          },
+          {
+            "name": "join_order",
+            "type": "u8"
+          },
+          {
+            "name": "collateral_deposited",
+            "type": "u64"
+          },
+          {
+            "name": "position_nft_mint",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Membership",
+      "docs": [
+        "Per-member state within a circle.",
+        "PDA seeds: [\"membership\", circle, member]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "docs": [
+              "The circle this membership belongs to."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "member",
+            "docs": [
+              "The member's wallet."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "join_order",
+            "docs": [
+              "Zero-indexed join order; determines payout slot in FixedOrder mode."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "collateral_deposited",
+            "docs": [
+              "Lamports deposited as collateral and slashable on default."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "contributions_bitmap",
+            "docs": [
+              "Bitfield: bit i is set when the member contributed in round i."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "rounds_missed",
+            "docs": [
+              "Count of rounds this member missed, incremented by default handling."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "position_nft_mint",
+            "docs": [
+              "Mint of the 1-of-1 SPL Position NFT issued to this member at join time.",
+              "The NFT represents \"right to receive payout in round <join_order> of this circle.\""
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "active",
+            "docs": [
+              "False after the member defaults and is ejected."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "completion_reputation_claimed",
+            "docs": [
+              "Prevents replaying the completion reputation crank for this membership."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "default_reputation_claimed",
+            "docs": [
+              "Prevents replaying the default reputation crank for this membership."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump."
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PayoutCurve",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "FixedOrder"
+          },
+          {
+            "name": "DutchAuction"
+          },
+          {
+            "name": "VrfLottery"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PositionBoughtEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "listing",
+            "type": "pubkey"
+          },
+          {
+            "name": "seller",
+            "type": "pubkey"
+          },
+          {
+            "name": "buyer",
+            "type": "pubkey"
+          },
+          {
+            "name": "position_nft_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "ask_price",
+            "type": "u64"
+          },
+          {
+            "name": "join_order",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PositionListedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "listing",
+            "type": "pubkey"
+          },
+          {
+            "name": "seller",
+            "type": "pubkey"
+          },
+          {
+            "name": "position_nft_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "ask_price",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Reputation",
+      "docs": [
+        "Protocol-wide credit score for a wallet, accumulated across all circles.",
+        "Designed to be composable — future protocols can read this PDA via CPI.",
+        "PDA seeds: [\"reputation\", wallet]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "wallet",
+            "docs": [
+              "The wallet this reputation belongs to."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "score",
+            "docs": [
+              "Cumulative reputation score (floor 0; increases on completion, decreases on default)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "circles_completed",
+            "docs": [
+              "Total circles successfully completed."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "circles_defaulted",
+            "docs": [
+              "Total circles where this wallet defaulted."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "circles_hosted",
+            "docs": [
+              "Total circles this wallet successfully hosted through completion."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "hosted_default_events",
+            "docs": [
+              "Total member defaults handled across circles this wallet hosted."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "vouches_made",
+            "docs": [
+              "Number of community vouches created by this wallet."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "vouches_honored",
+            "docs": [
+              "Number of vouches that completed without the vouched member defaulting."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "vouches_slashed",
+            "docs": [
+              "Number of this wallet's vouches that were slashed after member default."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "vouch_stake_slashed",
+            "docs": [
+              "Total vouched stake slashed from this wallet."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "discount_tier",
+            "docs": [
+              "Collateral discount tier derived from score (0–3).",
+              "tier 0: 0%  (score < 1 000)",
+              "tier 1: 5%  (score < 5 000)",
+              "tier 2: 10% (score < 10 000)",
+              "tier 3: 15% (score >= 10 000)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump."
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReputationEvent",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "CircleCompleted"
+          },
+          {
+            "name": "CircleDefaulted"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReputationUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "score",
+            "type": "u64"
+          },
+          {
+            "name": "discount_tier",
+            "type": "u8"
+          },
+          {
+            "name": "circles_completed",
+            "type": "u32"
+          },
+          {
+            "name": "circles_defaulted",
+            "type": "u32"
+          },
+          {
+            "name": "circles_hosted",
+            "type": "u32"
+          },
+          {
+            "name": "hosted_default_events",
+            "type": "u32"
+          },
+          {
+            "name": "vouches_made",
+            "type": "u32"
+          },
+          {
+            "name": "vouches_honored",
+            "type": "u32"
+          },
+          {
+            "name": "vouches_slashed",
+            "type": "u32"
+          },
+          {
+            "name": "vouch_stake_slashed",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Round",
+      "docs": [
+        "State for a single round within a circle.",
+        "PDA seeds: [\"round\", circle, round_index_le_bytes]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "docs": [
+              "The parent circle."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "index",
+            "docs": [
+              "Zero-indexed round number."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "contributions_bitmap",
+            "docs": [
+              "Bitfield tracking which members (by join_order) have contributed this round."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "pot_total",
+            "docs": [
+              "Total lamports currently in the pot for this round."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "recipient",
+            "docs": [
+              "Set when the round is resolved; holds the recipient's wallet pubkey."
+            ],
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "deadline_ts",
+            "docs": [
+              "Unix timestamp after which missing contributions become default-eligible."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "auction_winner",
+            "docs": [
+              "Dutch auction winner, if a member accepted the current descending discount."
+            ],
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "auction_discount_bps",
+            "docs": [
+              "Accepted discount in basis points of pot_total for DutchAuction rounds."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "resolved",
+            "docs": [
+              "True once resolve_round has executed successfully."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump."
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RoundResolvedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "round",
+            "type": "pubkey"
+          },
+          {
+            "name": "round_index",
+            "type": "u16"
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "payout",
+            "type": "u64"
+          },
+          {
+            "name": "insurance_share",
+            "type": "u64"
+          },
+          {
+            "name": "member_discount_share",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Vouch",
+      "docs": [
+        "Community trust stake from an existing member behind another member.",
+        "PDA seeds: [\"vouch\", circle, voucher, candidate]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "docs": [
+              "Circle this vouch belongs to."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "voucher",
+            "docs": [
+              "Existing member who staked social collateral."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "candidate",
+            "docs": [
+              "Member whose reliability is being vouched for."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "stake_lamports",
+            "docs": [
+              "Lamports locked above this account's rent-exempt reserve."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "active",
+            "docs": [
+              "True while the stake can still be released or slashed."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "slashed",
+            "docs": [
+              "True when the vouch was slashed after candidate default."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "released",
+            "docs": [
+              "True when the vouch completed successfully and stake was returned."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "created_at",
+            "docs": [
+              "Unix timestamp when the vouch was created."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump."
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VouchCreatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "vouch",
+            "type": "pubkey"
+          },
+          {
+            "name": "voucher",
+            "type": "pubkey"
+          },
+          {
+            "name": "candidate",
+            "type": "pubkey"
+          },
+          {
+            "name": "stake_lamports",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VouchReleasedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "vouch",
+            "type": "pubkey"
+          },
+          {
+            "name": "voucher",
+            "type": "pubkey"
+          },
+          {
+            "name": "candidate",
+            "type": "pubkey"
+          },
+          {
+            "name": "stake_lamports",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VouchSlashedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "vouch",
+            "type": "pubkey"
+          },
+          {
+            "name": "voucher",
+            "type": "pubkey"
+          },
+          {
+            "name": "candidate",
+            "type": "pubkey"
+          },
+          {
+            "name": "stake_lamports",
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ]
+}

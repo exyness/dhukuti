@@ -1,3 +1,5 @@
+"use client";
+
 import {
   AlertCircle,
   CircleDollarSign,
@@ -7,15 +9,22 @@ import {
   ShieldCheck,
   Vote,
 } from "lucide-react";
+import { useParams } from "next/navigation";
 import { AppShell, Panel } from "@/components/app/app-shell";
 import { CircleMemberAvatar } from "@/components/app/circle-member-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { circleMembers, currentCircle, payoutSchedule } from "@/lib/app-data";
 import { cn } from "@/lib/cn";
+import { useCircleDetailQuery } from "@/lib/data/queries";
 
 export default function CircleDetailsPage() {
-  const openSlots = Math.max(currentCircle.memberCap - circleMembers.length, 0);
+  const params = useParams<{ circleId: string }>();
+  const circleId = decodeURIComponent(params.circleId);
+  const { data, error, isLoading } = useCircleDetailQuery(circleId);
+  const currentCircle = data?.circle;
+  const circleMembers = data?.members ?? [];
+  const payoutSchedule = data?.payoutSchedule ?? [];
+  const openSlots = currentCircle ? Math.max(currentCircle.memberCap - circleMembers.length, 0) : 0;
   const openSlotMembers = Array.from({ length: openSlots }, (_, index) => {
     const slotNumber = circleMembers.length + index + 1;
 
@@ -26,10 +35,30 @@ export default function CircleDetailsPage() {
       reputation: 0,
       role: "Open",
       state: "Open",
-      summary: `Open slot gated by ${currentCircle.minReputation}+ reputation and ${currentCircle.collateral} collateral.`,
+      summary: `Open slot gated by ${currentCircle?.minReputation ?? 0}+ reputation and ${currentCircle?.collateral ?? "indexed"} collateral.`,
       vouch: "Available",
     };
   });
+  const countdown = currentCircle ? getCountdownUnits(currentCircle.deadlineAt) : null;
+
+  if (isLoading) {
+    return (
+      <AppShell title="Circle" contentClassName="!max-w-7xl !px-6 !py-10 md:!px-10">
+        <StatePanel message="Fetching indexed circle state." title="Loading circle" />
+      </AppShell>
+    );
+  }
+
+  if (error || !currentCircle) {
+    return (
+      <AppShell title="Circle" contentClassName="!max-w-7xl !px-6 !py-10 md:!px-10">
+        <StatePanel
+          message={error?.message ?? "This circle is not present in the Supabase read model."}
+          title="Circle not indexed"
+        />
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell title={currentCircle.name} contentClassName="!max-w-7xl !px-6 !py-10 md:!px-10">
@@ -40,16 +69,22 @@ export default function CircleDetailsPage() {
               <div className="mb-5 flex items-center justify-center gap-2">
                 <Clock3 className="h-4 w-4 text-accent" aria-hidden="true" />
                 <span className="font-mono text-[0.65rem] uppercase tracking-widest text-muted">
-                  Round {currentCircle.round} closes in
+                  Round {currentCircle.round} deadline
                 </span>
               </div>
-              <div className="flex items-start justify-center gap-3">
-                <CountdownUnit value="02" label="Days" />
-                <span className="mt-1 font-mono text-3xl text-white/20">:</span>
-                <CountdownUnit value="14" label="Hrs" />
-                <span className="mt-1 font-mono text-3xl text-white/20">:</span>
-                <CountdownUnit value="38" label="Mins" />
-              </div>
+              {countdown ? (
+                <div className="flex items-start justify-center gap-3">
+                  <CountdownUnit value={countdown.days} label="Days" />
+                  <span className="mt-1 font-mono text-3xl text-white/20">:</span>
+                  <CountdownUnit value={countdown.hours} label="Hrs" />
+                  <span className="mt-1 font-mono text-3xl text-white/20">:</span>
+                  <CountdownUnit value={countdown.minutes} label="Mins" />
+                </div>
+              ) : (
+                <div className="flex min-h-[4.4rem] items-center justify-center">
+                  <span className="font-mono text-xl text-muted">{currentCircle.deadline}</span>
+                </div>
+              )}
             </div>
             <Button variant="primary" className="w-full">
               Contribute {currentCircle.contribution}
@@ -158,10 +193,16 @@ export default function CircleDetailsPage() {
                   <span className="font-mono text-sm font-medium">{currentCircle.insurance}</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
-                  <div className="h-full w-[68%] rounded-full bg-accent" />
+                  <div
+                    className="h-full rounded-full bg-accent"
+                    style={{
+                      width: `${Math.min(Math.max(currentCircle.reserveRatioBps / 100, 2), 100)}%`,
+                    }}
+                  />
                 </div>
                 <p className="mt-3 font-mono text-[0.6rem] leading-relaxed text-muted">
-                  SOL reserve covers defaults through program insurance and slashed vouches.
+                  Reserve target: {(currentCircle.reserveRatioBps / 100).toFixed(2)}% of indexed
+                  obligations.
                 </p>
               </div>
 
@@ -174,12 +215,12 @@ export default function CircleDetailsPage() {
                 <div className="mb-3 flex items-center gap-2 text-accent">
                   <AlertCircle className="h-4 w-4" aria-hidden="true" />
                   <span className="font-mono text-[0.65rem] font-semibold uppercase">
-                    Action Required
+                    Indexed State
                   </span>
                 </div>
                 <p className="text-[0.75rem] leading-relaxed text-muted">
-                  One member is past deadline. Non-defaulting members can vote before handle_default
-                  resolves the round.
+                  Actions below must be wired to transaction builders before they can submit signed
+                  instructions.
                 </p>
                 <div className="mt-4 grid grid-cols-2 gap-3">
                   <Button variant="primary" size="sm">
@@ -302,6 +343,33 @@ function PayoutStatus({ status }: { status: string }) {
       {status}
     </Badge>
   );
+}
+
+function StatePanel({ message, title }: { message: string; title: string }) {
+  return (
+    <Panel className="p-6">
+      <h2 className="font-medium text-foreground">{title}</h2>
+      <p className="mt-2 text-sm leading-6 text-muted">{message}</p>
+    </Panel>
+  );
+}
+
+function getCountdownUnits(deadlineAt: string | null) {
+  if (!deadlineAt) return null;
+
+  const diffMs = new Date(deadlineAt).getTime() - Date.now();
+  if (diffMs <= 0) return null;
+
+  const totalMinutes = Math.ceil(diffMs / 60_000);
+  const days = Math.floor(totalMinutes / (24 * 60));
+  const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+  const minutes = totalMinutes % 60;
+
+  return {
+    days: String(days).padStart(2, "0"),
+    hours: String(hours).padStart(2, "0"),
+    minutes: String(minutes).padStart(2, "0"),
+  };
 }
 
 function legendDotClassName(tone: "paid" | "pending" | "default") {

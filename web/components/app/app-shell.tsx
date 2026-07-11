@@ -20,9 +20,9 @@ import { usePathname } from "next/navigation";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { NoiseCanvas } from "@/components/layout/noise-canvas";
 import { Tooltip } from "@/components/ui/Tooltip";
-import { appNavItems } from "@/lib/app-data";
 import { cn } from "@/lib/cn";
 import { explorerAddressUrl } from "@/lib/constants";
+import { appNavItems } from "@/lib/navigation";
 import { truncateAddress } from "@/lib/wallet";
 
 const navIcons = {

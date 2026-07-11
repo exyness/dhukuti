@@ -6,7 +6,8 @@ import { useMemo, useState } from "react";
 import { AppShell, Panel, StatTile, TokenScopeNotice } from "@/components/app/app-shell";
 import { Badge, BadgeButton } from "@/components/ui/badge";
 import { DropdownSelect } from "@/components/ui/dropdown-select";
-import { circles } from "@/lib/app-data";
+import { useCirclesQuery } from "@/lib/data/queries";
+import type { CircleSummary } from "@/lib/data/types";
 
 type ContributionFilter = "all" | "gt-5" | "lt-1" | "one-five";
 type ModeFilter = "all" | "dutch" | "fixed";
@@ -38,6 +39,8 @@ export default function CirclesPage() {
   const [query, setQuery] = useState("");
   const [solOnly, setSolOnly] = useState(true);
   const [sortMode, setSortMode] = useState<SortMode>("newest");
+  const { data, error, isLoading } = useCirclesQuery();
+  const circles = useMemo(() => data ?? [], [data]);
 
   const openCircles = circles.filter((circle) => circle.status === "Forming").length;
   const activeCircles = circles.filter((circle) => circle.status === "Active").length;
@@ -50,7 +53,7 @@ export default function CirclesPage() {
         const matchesQuery =
           !normalizedQuery ||
           circle.name.toLowerCase().includes(normalizedQuery) ||
-          circle.host.toLowerCase().includes(normalizedQuery) ||
+          circle.creator.toLowerCase().includes(normalizedQuery) ||
           circle.mode.toLowerCase().includes(normalizedQuery);
         const matchesMode =
           modeFilter === "all" ||
@@ -76,7 +79,7 @@ export default function CirclesPage() {
 
         return 0;
       });
-  }, [contributionFilter, memberRangeOnly, modeFilter, query, sortMode]);
+  }, [circles, contributionFilter, memberRangeOnly, modeFilter, query, sortMode]);
 
   return (
     <AppShell title="Browse Circles" contentClassName="max-w-none px-6 py-10 md:px-12">
@@ -172,64 +175,21 @@ export default function CirclesPage() {
         </BadgeButton>
       </div>
 
+      {error ? <StatePanel message={error.message} title="Unable to load indexed circles" /> : null}
+      {isLoading ? (
+        <StatePanel message="Fetching Supabase read models." title="Loading circles" />
+      ) : null}
+      {!isLoading && !error && filteredCircles.length === 0 ? (
+        <StatePanel
+          message="No circle events have been indexed yet. Create a circle or run the Helius backfill."
+          title="No indexed circles"
+        />
+      ) : null}
+
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
         {filteredCircles.map((circle) => (
-          <Panel
-            key={circle.id}
-            className="p-6 transition-[border-color,background,transform] duration-150 ease-out hover:-translate-y-0.5 hover:border-accent/30 hover:bg-white/[0.04]"
-          >
-            <div className="mb-6 flex items-start justify-between gap-4">
-              <div>
-                <h3 className="text-lg font-semibold tracking-tight">{circle.name}</h3>
-                <p className="mt-1 font-mono text-[0.65rem] text-muted">Host: {circle.host}</p>
-              </div>
-              <Badge
-                tone={circle.mode === "Fixed order" ? "fixed" : "accent"}
-                shape="square"
-                size="xs"
-              >
-                {circle.mode === "Fixed order" ? "Fixed" : "Dutch"}
-              </Badge>
-            </div>
-
-            <div className="mb-6 flex flex-wrap gap-2">
-              <Badge tone="rep" shape="square" size="xs">
-                Min Rep: {circle.minReputation}
-              </Badge>
-              <Badge tone="muted" shape="square" size="xs">
-                {circle.members}/{circle.memberCap} Slots
-              </Badge>
-            </div>
-
-            <div className="mb-6">
-              <div className="mb-2 flex justify-between font-mono text-[0.62rem] uppercase tracking-[0.08em] text-muted">
-                <span>Capacity</span>
-                <span>{circle.progress}% filled</span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
-                <div
-                  className="h-full rounded-full bg-accent"
-                  style={{ width: `${circle.progress}%` }}
-                />
-              </div>
-            </div>
-
-            <div className="mt-6 grid grid-cols-2 gap-4 border-t border-border pt-5">
-              <CircleCardStat label={`${circle.cycle} Contribution`} value={circle.contribution} />
-              <CircleCardStat label="Total Pot Value" value={circle.pot} />
-              <CircleCardStat label="Cycle Length" value={circle.round} />
-              <CircleCardStat label="Next Payout" value={circle.deadline} />
-            </div>
-
-            <Link
-              href={`/circles/${circle.id}`}
-              className="mt-8 inline-flex min-h-11 w-full items-center justify-center rounded-md border border-white/5 bg-white/5 px-4 font-mono text-[0.7rem] font-medium uppercase tracking-wider text-foreground transition-colors hover:border-white/10 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {circle.nextAction}
-            </Link>
-          </Panel>
+          <CircleCard key={circle.id} circle={circle} />
         ))}
-
         <Link
           href="/circles/new"
           className="flex min-h-[21rem] flex-col items-center justify-center rounded-lg border border-dashed border-border bg-white/[0.02] p-6 text-left no-underline transition-[border-color,background,transform] duration-150 ease-out hover:-translate-y-0.5 hover:border-accent/30 hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -266,6 +226,64 @@ export default function CirclesPage() {
 
 function parseSol(value: string) {
   return Number.parseFloat(value.replace(/[^\d.]/g, "")) || 0;
+}
+
+function CircleCard({ circle }: { circle: CircleSummary }) {
+  return (
+    <Panel className="p-6 transition-[border-color,background,transform] duration-150 ease-out hover:-translate-y-0.5 hover:border-accent/30 hover:bg-white/[0.04]">
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-semibold tracking-tight">{circle.name}</h3>
+          <p className="mt-1 font-mono text-[0.65rem] text-muted">Host: {circle.creator}</p>
+        </div>
+        <Badge tone={circle.mode === "Fixed order" ? "fixed" : "accent"} shape="square" size="xs">
+          {circle.mode === "Fixed order" ? "Fixed" : "Dutch"}
+        </Badge>
+      </div>
+
+      <div className="mb-6 flex flex-wrap gap-2">
+        <Badge tone="rep" shape="square" size="xs">
+          Min Rep: {circle.minReputation}
+        </Badge>
+        <Badge tone="muted" shape="square" size="xs">
+          {circle.members}/{circle.memberCap} Slots
+        </Badge>
+      </div>
+
+      <div className="mb-6">
+        <div className="mb-2 flex justify-between font-mono text-[0.62rem] uppercase tracking-[0.08em] text-muted">
+          <span>Capacity</span>
+          <span>{circle.progress}% filled</span>
+        </div>
+        <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
+          <div className="h-full rounded-full bg-accent" style={{ width: `${circle.progress}%` }} />
+        </div>
+      </div>
+
+      <div className="mt-6 grid grid-cols-2 gap-4 border-t border-border pt-5">
+        <CircleCardStat label={`${circle.cycle} Contribution`} value={circle.contribution} />
+        <CircleCardStat label="Projected Pot" value={circle.pot} />
+        <CircleCardStat label="Round" value={circle.round} />
+        <CircleCardStat label="Deadline" value={circle.deadline} />
+      </div>
+
+      <Link
+        href={`/circles/${circle.id}`}
+        className="mt-8 inline-flex min-h-11 w-full items-center justify-center rounded-md border border-white/5 bg-white/5 px-4 font-mono text-[0.7rem] font-medium uppercase tracking-wider text-foreground transition-colors hover:border-white/10 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        {circle.nextAction}
+      </Link>
+    </Panel>
+  );
+}
+
+function StatePanel({ message, title }: { message: string; title: string }) {
+  return (
+    <Panel className="mb-6 p-6">
+      <h3 className="font-medium text-foreground">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-muted">{message}</p>
+    </Panel>
+  );
 }
 
 function CircleCardStat({ label, value }: { label: string; value: string }) {

@@ -1,3 +1,5 @@
+"use client";
+
 import {
   ChevronLeft,
   ChevronRight,
@@ -9,11 +11,13 @@ import {
 } from "lucide-react";
 import { AppShell, Panel } from "@/components/app/app-shell";
 import { Button } from "@/components/ui/button";
-import { marketListings } from "@/lib/app-data";
-
-type MarketListing = (typeof marketListings)[number];
+import { useMarketListingsQuery } from "@/lib/data/queries";
+import type { MarketListing } from "@/lib/data/types";
 
 export default function MarketPage() {
+  const { data, error, isLoading } = useMarketListingsQuery();
+  const marketListings = data ?? [];
+
   return (
     <AppShell title="Secondary Market">
       <div className="space-y-10">
@@ -66,6 +70,19 @@ export default function MarketPage() {
               </tbody>
             </table>
           </div>
+
+          {error ? (
+            <StatePanel message={error.message} title="Unable to load indexed listings" />
+          ) : null}
+          {isLoading ? (
+            <StatePanel message="Fetching Supabase read models." title="Loading listings" />
+          ) : null}
+          {!isLoading && !error && marketListings.length === 0 ? (
+            <StatePanel
+              message="No active position listings have been indexed yet."
+              title="No indexed listings"
+            />
+          ) : null}
 
           <div className="mt-10 flex flex-col gap-4 border-t border-border pt-10 md:flex-row md:items-center md:justify-between">
             <p className="font-mono text-[0.62rem] uppercase tracking-widest text-muted">
@@ -135,6 +152,15 @@ function RepPill({ value }: { value: number }) {
       />
       <span>{value}</span>
     </div>
+  );
+}
+
+function StatePanel({ message, title }: { message: string; title: string }) {
+  return (
+    <Panel className="mt-6 p-6">
+      <h3 className="font-medium text-foreground">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-muted">{message}</p>
+    </Panel>
   );
 }
 

@@ -268,7 +268,7 @@ function LiveCirclesSection() {
           Circle Flow Preview
         </span>
         <Link
-          href="/circles/early-payout-auction"
+          href="/circles"
           className="cursor-pointer border-b border-[var(--ink-faint)] pb-px font-mono text-[0.65rem] tracking-wide text-[var(--ink-dim)] transition-colors duration-100 ease-out hover:border-[var(--ink)] hover:text-[var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(255,210,196,0.85)]"
         >
           View Program Surface →
