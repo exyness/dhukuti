@@ -5,7 +5,7 @@ The on-chain program emits Anchor events for every user-visible state transition
 1. Every decoded event into `dhukuti_event_log`.
 2. Upserted read models into the projection tables in `migrations/20260710000000_dhukuti_events.sql`.
 
-Use the Supabase service role key only in the trusted indexer environment. Client apps should read these tables through the public `SELECT` policies and must not write directly.
+Use the Supabase secret key only in the trusted indexer environment. Client apps should read these tables through the public `SELECT` policies and must not write directly.
 
 ## Required Event Metadata
 

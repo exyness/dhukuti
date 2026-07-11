@@ -89,9 +89,12 @@ pub fn handler(ctx: Context<CreateCircle>, params: CreateCircleParams) -> Result
         creator: circle.creator,
         circle_id: circle.circle_id,
         contribution_amount: circle.contribution_amount,
+        cycle_duration: circle.cycle_duration,
         max_members: circle.max_members,
         payout_curve: circle.payout_curve.clone(),
+        collateral_bps: circle.collateral_bps,
         insurance_fee_bps: circle.insurance_fee_bps,
+        reserve_ratio_bps: insurance.reserve_ratio_bps,
         min_reputation: circle.min_reputation,
     });
 

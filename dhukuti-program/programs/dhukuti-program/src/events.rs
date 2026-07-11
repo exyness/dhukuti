@@ -15,9 +15,12 @@ pub struct CircleCreatedEvent {
     pub creator: Pubkey,
     pub circle_id: u64,
     pub contribution_amount: u64,
+    pub cycle_duration: i64,
     pub max_members: u8,
     pub payout_curve: PayoutCurve,
+    pub collateral_bps: u16,
     pub insurance_fee_bps: u16,
+    pub reserve_ratio_bps: u16,
     pub min_reputation: u64,
 }
 

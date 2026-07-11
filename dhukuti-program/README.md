@@ -64,13 +64,14 @@ Current local coverage includes LiteSVM tests for lifecycle, duplicate contribut
 - Program ID: `GMhsYxEmeCpKaxqKPzSTmuoEuid6YnbfFJRYBur7ZcmL`
 - ProgramData: `vyW7FuSSXARQXAhuLEohpfas8rzVWJAjxwM9tz816hM`
 - Upgrade authority: `6rqcaPUEdcyAp8u3bw8xeMKtSRYB7jxXt1xb51YWbYmP`
-- Deploy signature: `466kbS1h4ifXXsK4erb7DUzt1xokEyx5msDYgwUxBxoQZsGkw1LKKnqhgm2bQdDSFANw3E53e8hXr68Qrajrvwce`
-- Last deployed slot: `475226100`
-- Deployed artifact SHA-256: `0d088f09fa2371ca0365a8dbf93bafa066d10dce0ffaef4074979105ad7bc9a3`
+- Deploy signature: `2jeydVCQo2p9vZktrf7xsYzDoKgujixvikEWghXx6fMJjjzbPNaL8szVG6uFEvqpfmxHGJ7EP2iq86KcSsPfr2YW`
+- Last deployed slot: `475409129`
+- ProgramData allocation: `796064` bytes
+- Deployed artifact SHA-256: `e277e3c3d78554fbfe08a95958256486c91e127de038ed77147298a801b49da6`
 
 ## Supabase Indexing
 
-The program emits Anchor events for all user-facing transitions. Apply `../supabase/migrations/20260710000000_dhukuti_events.sql` to create the event log and read-model tables, then run a trusted server-side indexer that decodes program logs and writes with the Supabase service role key.
+The program emits Anchor events for all user-facing transitions. Apply `../supabase/migrations/20260710000000_dhukuti_events.sql` to create the event log and read-model tables, then run a trusted server-side indexer that decodes program logs and writes with the Supabase secret key.
 
 ## Mainnet Gate
 

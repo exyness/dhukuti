@@ -8,6 +8,9 @@ skip-lint = false
 [programs.localnet]
 dhukuti_program = "GMhsYxEmeCpKaxqKPzSTmuoEuid6YnbfFJRYBur7ZcmL"
 
+[programs.devnet]
+dhukuti_program = "GMhsYxEmeCpKaxqKPzSTmuoEuid6YnbfFJRYBur7ZcmL"
+
 [provider]
 cluster = "localnet"
 wallet = "~/.config/solana/id.json"
