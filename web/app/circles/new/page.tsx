@@ -337,7 +337,7 @@ export default function NewCirclePage() {
   }
 
   return (
-    <AppShell title="Create Circle" contentClassName="max-w-none px-6 py-10 md:px-12">
+    <AppShell title="Create Circle" contentClassName="!max-w-none px-6 py-10 md:px-12">
       <AppPageHeader
         eyebrow="Circle Builder"
         title="Configure a savings circle."

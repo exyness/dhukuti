@@ -44,7 +44,7 @@ export default function ProfilePage() {
   const reputationProgress = getReputationProgress(reputationScore);
 
   return (
-    <AppShell title="Profile & Assets" contentClassName="max-w-none px-6 py-10 md:px-12">
+    <AppShell title="Profile & Assets" contentClassName="!max-w-none px-6 py-10 md:px-12">
       <div className="space-y-12">
         {!wallet ? (
           <StatePanel

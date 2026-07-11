@@ -82,7 +82,10 @@ export function mapCircleSummary({
     minReputation: toInteger(row.min_reputation),
     mode: mapPayoutCurve(row.payout_curve),
     name: row.name || `Dhukuti #${row.circle_id}`,
-    nextAction: nextActionForStatus(status, row.payout_curve),
+    nextAction:
+      status === "Forming" && memberCount >= maxMembers
+        ? "Start circle"
+        : nextActionForStatus(status, row.payout_curve),
     nextPayout: currentRound
       ? `Round ${String(currentRound.round_index + 1).padStart(2, "0")}`
       : "Start circle",

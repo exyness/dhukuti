@@ -50,7 +50,7 @@ export async function storeAndProjectEvents({
     program_id: DHUKUTI_PROGRAM.programId,
     signature,
     slot,
-    wallet: getPrimaryWallet(event.data),
+    wallet: getPrimaryWallet(event.name, event.data),
   }));
 
   const { error } = await supabase
@@ -332,19 +332,26 @@ async function projectEvent(context: ProjectionContext, event: DecodedDhukutiEve
       break;
 
     case "PositionListedEvent":
-      await upsert(context, "dhukuti_listings", {
-        active: true,
-        ask_price: getRequiredNumeric(data.ask_price),
-        cancelled: false,
-        circle: getRequiredString(data.circle),
-        last_signature: context.signature,
-        last_slot: context.slot,
-        listing: getRequiredString(data.listing),
-        position_nft_mint: getRequiredString(data.position_nft_mint),
-        seller: getRequiredString(data.seller),
-        sold: false,
-        updated_at: nowIso(),
-      });
+      {
+        const circle = getRequiredString(data.circle);
+        const seller = getRequiredString(data.seller);
+        const joinOrder = await getMembershipJoinOrder(context, circle, seller);
+
+        await upsert(context, "dhukuti_listings", {
+          active: true,
+          ask_price: getRequiredNumeric(data.ask_price),
+          cancelled: false,
+          circle,
+          join_order: joinOrder,
+          last_signature: context.signature,
+          last_slot: context.slot,
+          listing: getRequiredString(data.listing),
+          position_nft_mint: getRequiredString(data.position_nft_mint),
+          seller,
+          sold: false,
+          updated_at: nowIso(),
+        });
+      }
       break;
 
     case "ListingCancelledEvent":
@@ -364,21 +371,52 @@ async function projectEvent(context: ProjectionContext, event: DecodedDhukutiEve
       break;
 
     case "PositionBoughtEvent":
-      await updateByPrimary(
-        context,
-        "dhukuti_listings",
-        "listing",
-        getRequiredString(data.listing),
-        {
+      {
+        const circle = getRequiredString(data.circle);
+        const seller = getRequiredString(data.seller);
+        const buyer = getRequiredString(data.buyer);
+        const sellerMembership = await getMembershipSnapshot(context, circle, seller);
+
+        await upsert(
+          context,
+          "dhukuti_memberships",
+          {
+            active: true,
+            circle,
+            collateral_deposited: sellerMembership?.collateral_deposited ?? "0",
+            defaulted: sellerMembership?.defaulted ?? false,
+            join_order: getRequiredNumber(data.join_order),
+            last_signature: context.signature,
+            last_slot: context.slot,
+            member: buyer,
+            position_nft_mint: getRequiredString(data.position_nft_mint),
+            updated_at: nowIso(),
+          },
+          "circle,member",
+        );
+        await updateMembership(context, circle, seller, {
           active: false,
-          buyer: getRequiredString(data.buyer),
-          join_order: getRequiredNumber(data.join_order),
+          collateral_deposited: "0",
           last_signature: context.signature,
           last_slot: context.slot,
-          sold: true,
           updated_at: nowIso(),
-        },
-      );
+        });
+        await updateByPrimary(
+          context,
+          "dhukuti_listings",
+          "listing",
+          getRequiredString(data.listing),
+          {
+            active: false,
+            buyer,
+            join_order: getRequiredNumber(data.join_order),
+            last_signature: context.signature,
+            last_slot: context.slot,
+            sold: true,
+            updated_at: nowIso(),
+          },
+        );
+      }
       break;
   }
 }
@@ -434,6 +472,29 @@ async function updateMembership(
 
   const { error } = await query;
   if (error) throw error;
+}
+
+async function getMembershipJoinOrder(context: ProjectionContext, circle: string, member: string) {
+  const membership = await getMembershipSnapshot(context, circle, member);
+  return membership?.join_order === undefined ? null : getRequiredNumber(membership.join_order);
+}
+
+async function getMembershipSnapshot(context: ProjectionContext, circle: string, member: string) {
+  const { data, error } = await context.supabase
+    .from("dhukuti_memberships")
+    .select("collateral_deposited,defaulted,join_order,position_nft_mint")
+    .eq("circle", circle)
+    .eq("member", member)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  return data as {
+    collateral_deposited?: number | string;
+    defaulted?: boolean;
+    join_order?: number | string;
+    position_nft_mint?: string;
+  } | null;
 }
 
 async function isStaleProjection(
@@ -509,19 +570,35 @@ function getCircleName(data: Record<string, unknown>) {
   return `Dhukuti #${getRequiredNumeric(data.circle_id)}`;
 }
 
-function getPrimaryWallet(data: Record<string, unknown>) {
-  return (
-    getString(data.wallet) ??
-    getString(data.member) ??
-    getString(data.creator) ??
-    getString(data.seller) ??
-    getString(data.buyer) ??
-    getString(data.bidder) ??
-    getString(data.voucher) ??
-    getString(data.candidate) ??
-    getString(data.proposer) ??
-    getString(data.voter)
-  );
+function getPrimaryWallet(eventName: string, data: Record<string, unknown>) {
+  switch (eventName) {
+    case "CircleCompletedEvent":
+    case "CircleCreatedEvent":
+    case "CircleNamedEvent":
+    case "CircleStartedEvent":
+      return getString(data.creator);
+    case "DefaultProposalOpenedEvent":
+      return getString(data.proposer);
+    case "DefaultVoteCastEvent":
+      return getString(data.voter);
+    case "DutchBidAcceptedEvent":
+      return getString(data.bidder);
+    case "ListingCancelledEvent":
+    case "PositionListedEvent":
+      return getString(data.seller);
+    case "PositionBoughtEvent":
+      return getString(data.buyer);
+    case "ReputationUpdatedEvent":
+      return getString(data.wallet);
+    case "RoundResolvedEvent":
+      return getString(data.recipient);
+    case "VouchCreatedEvent":
+    case "VouchReleasedEvent":
+    case "VouchSlashedEvent":
+      return getString(data.voucher);
+    default:
+      return getString(data.member) ?? getString(data.creator) ?? getString(data.wallet);
+  }
 }
 
 function normalizePayoutCurve(value: unknown) {

@@ -254,11 +254,15 @@ fn ix_join_circle(
 }
 
 fn ix_start_circle(creator: &Pubkey, circle_id: u64) -> Instruction {
+    ix_start_circle_as(creator, creator, circle_id)
+}
+
+fn ix_start_circle_as(starter: &Pubkey, creator: &Pubkey, circle_id: u64) -> Instruction {
     let circle = circle_pda(creator, circle_id);
     Instruction {
         program_id: dhukuti_program::ID,
         accounts: vec![
-            AccountMeta::new(*creator, true),
+            AccountMeta::new(*starter, true),
             AccountMeta::new(circle, false),
             AccountMeta::new(round_pda(&circle, 0), false),
             AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
@@ -850,6 +854,76 @@ fn test_join_after_circle_full_rejected() {
         &[&extra, &extra_token_account],
     );
     assert!(result.is_err(), "joining a full circle must fail");
+}
+
+#[test]
+fn test_full_circle_can_be_started_by_member() {
+    let mut env = Env::new();
+    let creator = env.funded(sol(100.0));
+    let member_a = env.funded(sol(50.0));
+    let outsider = env.funded(sol(10.0));
+    let circle_id = 23;
+
+    env.send(
+        &[ix_create_circle(
+            &creator.pubkey(),
+            default_params(circle_id, 2),
+        )],
+        &[&creator],
+    )
+    .expect("create_circle");
+
+    let creator_token_account = Keypair::new();
+    env.send(
+        &[ix_join_circle(
+            &creator.pubkey(),
+            &creator.pubkey(),
+            circle_id,
+            &creator_token_account.pubkey(),
+            None,
+        )],
+        &[&creator, &creator_token_account],
+    )
+    .expect("creator join");
+
+    let early_start = env.send(
+        &[ix_start_circle_as(
+            &outsider.pubkey(),
+            &creator.pubkey(),
+            circle_id,
+        )],
+        &[&outsider],
+    );
+    assert!(
+        early_start.is_err(),
+        "non-host must not start before the circle is full",
+    );
+
+    let member_token_account = Keypair::new();
+    env.send(
+        &[ix_join_circle(
+            &member_a.pubkey(),
+            &creator.pubkey(),
+            circle_id,
+            &member_token_account.pubkey(),
+            None,
+        )],
+        &[&member_a, &member_token_account],
+    )
+    .expect("member join");
+
+    env.send(
+        &[ix_start_circle_as(
+            &member_a.pubkey(),
+            &creator.pubkey(),
+            circle_id,
+        )],
+        &[&member_a],
+    )
+    .expect("full circle member start");
+
+    let circle: Circle = env.get(&circle_pda(&creator.pubkey(), circle_id));
+    assert_eq!(circle.status, CircleStatus::Active);
 }
 
 #[test]

@@ -6,7 +6,9 @@ use anchor_lang::prelude::*;
 
 /// Locks a circle and opens the first round.
 ///
-/// Only the creator can call this. Requires at least 2 active members.
+/// The creator can start once at least 2 members have joined. Once the circle
+/// reaches its member cap, any signer may start it so a full circle cannot get
+/// stuck waiting on the host.
 /// On success the circle transitions from Open → Active and the first
 /// Round PDA is initialised.
 pub fn handler(ctx: Context<StartCircle>) -> Result<()> {
@@ -14,14 +16,14 @@ pub fn handler(ctx: Context<StartCircle>) -> Result<()> {
     let circle = &mut ctx.accounts.circle;
 
     require!(
-        ctx.accounts.creator.key() == circle.creator,
-        DhukutiError::UnauthorizedStart
-    );
-    require!(
         circle.status == CircleStatus::Open,
         DhukutiError::InvalidCircleStatus
     );
     require!(circle.current_members >= 2, DhukutiError::NotEnoughMembers);
+    require!(
+        ctx.accounts.starter.key() == circle.creator || circle.current_members == circle.max_members,
+        DhukutiError::UnauthorizedStart
+    );
 
     circle.status = CircleStatus::Active;
     circle.started_at = Some(clock.unix_timestamp);
@@ -62,19 +64,18 @@ pub fn handler(ctx: Context<StartCircle>) -> Result<()> {
 #[derive(Accounts)]
 pub struct StartCircle<'info> {
     #[account(mut)]
-    pub creator: Signer<'info>,
+    pub starter: Signer<'info>,
 
     #[account(
         mut,
-        seeds = [SEED_CIRCLE, creator.key().as_ref(), &circle.circle_id.to_le_bytes()],
-        bump = circle.bump,
-        has_one = creator
+        seeds = [SEED_CIRCLE, circle.creator.as_ref(), &circle.circle_id.to_le_bytes()],
+        bump = circle.bump
     )]
     pub circle: Account<'info, Circle>,
 
     #[account(
         init,
-        payer = creator,
+        payer = starter,
         space = Round::LEN,
         seeds = [SEED_ROUND, circle.key().as_ref(), &0u16.to_le_bytes()],
         bump

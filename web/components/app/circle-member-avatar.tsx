@@ -29,7 +29,15 @@ export function CircleMemberAvatar({
   const id = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
-  const [position, setPosition] = useState({ left: 0, top: 0 });
+  const [position, setPosition] = useState<{
+    left: number;
+    placement: "bottom" | "top";
+    top: number;
+  }>({
+    left: 0,
+    placement: "top",
+    top: 0,
+  });
   const isYou = member.role.startsWith("You");
   const isDefault = member.state === "Default risk";
   const isOpen = member.role === "Open";
@@ -42,13 +50,19 @@ export function CircleMemberAvatar({
     if (!rect) return;
 
     const cardHalfWidth = 128;
+    const cardHeight = 190;
+    const gap = 12;
+    const hasRoomAbove = rect.top >= cardHeight + gap + 12;
+    const placement = hasRoomAbove ? "top" : "bottom";
+
     setPosition({
       left: clamp(
         rect.left + rect.width / 2,
         cardHalfWidth + 12,
         window.innerWidth - cardHalfWidth - 12,
       ),
-      top: rect.top - 12,
+      placement,
+      top: placement === "top" ? rect.top - gap : rect.bottom + gap,
     });
     setOpen(true);
   }, []);
@@ -144,15 +158,19 @@ function MemberSummaryCard({
   id: string;
   member: CircleMemberAvatarData;
   minReputation: number;
-  position: { left: number; top: number };
+  position: { left: number; placement: "bottom" | "top"; top: number };
 }) {
   const isOpen = member.role === "Open";
+  const isBelow = position.placement === "bottom";
 
   return (
     <div
       id={id}
       role="tooltip"
-      className="pointer-events-none fixed z-[100] w-64 -translate-x-1/2 -translate-y-full rounded-lg border border-white/10 bg-[#151719] p-4 text-left opacity-100 shadow-[0_18px_44px_rgba(0,0,0,0.45)]"
+      className={cn(
+        "pointer-events-none fixed z-[100] w-64 -translate-x-1/2 rounded-lg border border-white/10 bg-[#151719] p-4 text-left opacity-100 shadow-[0_18px_44px_rgba(0,0,0,0.45)]",
+        isBelow ? "translate-y-0" : "-translate-y-full",
+      )}
       style={{ left: position.left, top: position.top }}
     >
       <div className="mb-3 flex items-start justify-between gap-3">
@@ -182,7 +200,12 @@ function MemberSummaryCard({
       </div>
 
       <span
-        className="absolute top-full left-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 border-r border-b border-white/10 bg-[#151719]"
+        className={cn(
+          "absolute left-1/2 h-2.5 w-2.5 -translate-x-1/2 rotate-45 border-white/10 bg-[#151719]",
+          isBelow
+            ? "top-0 -translate-y-1/2 border-t border-l"
+            : "top-full -translate-y-1/2 border-r border-b",
+        )}
         aria-hidden="true"
       />
     </div>

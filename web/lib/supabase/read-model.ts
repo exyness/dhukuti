@@ -354,42 +354,89 @@ function activityDetail(
   payload: Record<string, unknown>,
   circleLabel: string | null,
 ) {
-  const member = getPayloadAddress(payload, "member", "buyer", "seller", "bidder", "voucher");
-  const amount = getPayloadAmount(
-    payload,
-    "contribution_amount",
-    "payout",
-    "ask_price",
-    "stake_lamports",
-    "collateral_slashed",
-  );
+  const member = getPayloadAddress(payload, "member");
+  const buyer = getPayloadAddress(payload, "buyer");
+  const seller = getPayloadAddress(payload, "seller");
+  const bidder = getPayloadAddress(payload, "bidder");
+  const voucher = getPayloadAddress(payload, "voucher");
+  const candidate = getPayloadAddress(payload, "candidate");
+  const proposer = getPayloadAddress(payload, "proposer");
+  const voter = getPayloadAddress(payload, "voter");
+  const recipient = getPayloadAddress(payload, "recipient");
+  const round = formatRoundIndex(payload, "round_index");
 
   if (eventName === "CircleCreatedEvent") {
     const name = getPayloadString(payload, "name") ?? circleLabel;
-    return `${name ? `${name} · ` : ""}${getPayloadNumber(payload, "max_members")} members · ${amount ?? "Terms indexed"}`;
+    const contribution = getPayloadAmount(payload, "contribution_amount");
+    return `${name ? `${name} · ` : ""}${getPayloadNumber(payload, "max_members")} members · ${contribution ?? "Terms indexed"}`;
+  }
+  if (eventName === "CircleStartedEvent") {
+    const deadline = formatPayloadUnixTime(payload, "deadline_ts");
+    return `${getPayloadNumber(payload, "member_count") ?? "Members"} members locked${deadline ? ` · first deadline ${deadline}` : ""}.`;
   }
   if (eventName === "ContributionMadeEvent") {
-    return `${member ?? "Member"} contributed ${amount ?? "SOL"}.`;
+    const contribution = getPayloadAmount(payload, "contribution_amount");
+    const insurance = getPayloadAmount(payload, "insurance_fee");
+    const netToPot = getPayloadAmount(payload, "net_to_pot");
+    return `${member ?? "Member"} contributed ${contribution ?? "SOL"}${round ? ` for ${round}` : ""}${insurance ? ` · ${insurance} reserve` : ""}${netToPot ? ` · ${netToPot} to pot` : ""}.`;
   }
   if (eventName === "RoundResolvedEvent") {
-    return `${member ?? "Recipient"} received ${amount ?? "the round payout"}.`;
+    const payout = getPayloadAmount(payload, "payout");
+    const insurance = getPayloadAmount(payload, "insurance_share");
+    const discount = getPayloadAmount(payload, "member_discount_share");
+    return `${recipient ?? "Recipient"} received ${payout ?? "the round payout"}${round ? ` for ${round}` : ""}${insurance ? ` · ${insurance} reserve` : ""}${discount ? ` · ${discount} discount share` : ""}.`;
   }
   if (eventName === "MemberJoinedEvent") {
-    return `${member ?? "Member"} reserved a payout position.`;
+    const collateral = getPayloadAmount(payload, "collateral_deposited");
+    const joinOrder = formatJoinOrder(payload);
+    return `${member ?? "Member"} reserved ${joinOrder ?? "a payout position"}${collateral ? ` with ${collateral} collateral` : ""}.`;
   }
-  if (eventName === "PositionListedEvent" || eventName === "PositionBoughtEvent") {
-    return `${member ?? "Position"}${amount ? ` · ${amount}` : ""}`;
+  if (eventName === "PositionListedEvent") {
+    const ask = getPayloadAmount(payload, "ask_price");
+    return `${seller ?? "Seller"} listed a payout position${ask ? ` for ${ask}` : ""}.`;
+  }
+  if (eventName === "ListingCancelledEvent") {
+    return `${seller ?? "Seller"} cancelled the escrowed payout listing.`;
+  }
+  if (eventName === "PositionBoughtEvent") {
+    const ask = getPayloadAmount(payload, "ask_price");
+    const joinOrder = formatJoinOrder(payload);
+    return `${buyer ?? "Buyer"} bought ${seller ? `${seller}'s ` : ""}${joinOrder ?? "payout position"}${ask ? ` for ${ask}` : ""}.`;
   }
   if (eventName === "ReputationUpdatedEvent") {
     return `Score ${getPayloadNumber(payload, "score") ?? "updated"} · tier ${getPayloadNumber(payload, "discount_tier") ?? 0}`;
   }
+  if (eventName === "DefaultProposalOpenedEvent") {
+    const grace = formatPayloadUnixTime(payload, "grace_deadline_ts");
+    return `${proposer ?? "Proposer"} opened a default review for ${member ?? "member"}${round ? ` in ${round}` : ""}${grace ? ` · grace until ${grace}` : ""}.`;
+  }
   if (eventName === "DefaultVoteCastEvent") {
-    return payload.approve === true
-      ? "Approved the default proposal."
-      : "Rejected the default proposal.";
+    return `${voter ?? "Voter"} ${payload.approve === true ? "approved" : "rejected"} the default proposal for ${member ?? "member"}${round ? ` in ${round}` : ""}.`;
+  }
+  if (eventName === "DefaultHandledEvent") {
+    const slashed = getPayloadAmount(payload, "collateral_slashed");
+    const backstop = getPayloadAmount(payload, "insurance_backstop");
+    const haircut = getPayloadAmount(payload, "haircut");
+    return `${member ?? "Member"} default settled${round ? ` in ${round}` : ""}${slashed ? ` · ${slashed} slashed` : ""}${backstop ? ` · ${backstop} backstop` : ""}${haircut ? ` · ${haircut} haircut` : ""}.`;
   }
   if (eventName === "DutchBidAcceptedEvent") {
-    return `${member ?? "Member"} accepted a ${getPayloadNumber(payload, "discount_bps") ?? 0} bps discount.`;
+    return `${bidder ?? "Member"} accepted a ${formatBasisPointPayload(payload, "discount_bps")} discount${round ? ` in ${round}` : ""}.`;
+  }
+  if (eventName === "VouchCreatedEvent") {
+    const stake = getPayloadAmount(payload, "stake_lamports");
+    return `${voucher ?? "Voucher"} vouched ${stake ?? "stake"} for ${candidate ?? "candidate"}.`;
+  }
+  if (eventName === "VouchReleasedEvent") {
+    const stake = getPayloadAmount(payload, "stake_lamports");
+    return `${voucher ?? "Voucher"} recovered ${stake ?? "stake"} after ${candidate ?? "candidate"} completed safely.`;
+  }
+  if (eventName === "VouchSlashedEvent") {
+    const stake = getPayloadAmount(payload, "stake_lamports");
+    return `${voucher ?? "Voucher"} had ${stake ?? "stake"} slashed for ${candidate ?? "candidate"} default risk.`;
+  }
+  if (eventName === "CircleCompletedEvent") {
+    const residual = getPayloadAmount(payload, "residual_lamports");
+    return `Lifecycle completed${residual ? ` · ${residual} residual returned` : ""}.`;
   }
 
   return member ? `${member} · confirmed on devnet.` : "Confirmed on devnet.";
@@ -427,4 +474,39 @@ function getPayloadNumber(payload: Record<string, unknown>, key: string) {
 function getPayloadString(payload: Record<string, unknown>, key: string) {
   const value = payload[key];
   return typeof value === "string" ? value : null;
+}
+
+function formatJoinOrder(payload: Record<string, unknown>) {
+  const value = getPayloadNumber(payload, "join_order");
+  if (!value) return null;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? `round ${parsed + 1}` : null;
+}
+
+function formatRoundIndex(payload: Record<string, unknown>, key: string) {
+  const value = getPayloadNumber(payload, key);
+  if (!value) return null;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? `round ${parsed + 1}` : null;
+}
+
+function formatPayloadUnixTime(payload: Record<string, unknown>, key: string) {
+  const value = getPayloadNumber(payload, key);
+  if (!value) return null;
+  const seconds = Number.parseInt(value, 10);
+  if (!Number.isFinite(seconds) || seconds <= 0) return null;
+  return new Intl.DateTimeFormat("en-US", {
+    day: "2-digit",
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
+  }).format(new Date(seconds * 1000));
+}
+
+function formatBasisPointPayload(payload: Record<string, unknown>, key: string) {
+  const value = getPayloadNumber(payload, key);
+  if (!value) return "0%";
+  const bps = Number.parseInt(value, 10);
+  if (!Number.isFinite(bps)) return "0%";
+  return `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(bps / 100)}%`;
 }

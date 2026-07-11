@@ -123,7 +123,7 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
         { label: "Members", value: `${circle.members}/${circle.memberCap}` },
         { label: "First deadline", value: `${circle.cycle} from confirmation` },
       ],
-      buildStartCircleInstruction({ circle: context.circle, creator: walletKey }),
+      buildStartCircleInstruction({ circle: context.circle, starter: walletKey }),
     );
   }
 
@@ -487,7 +487,9 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
           ) : (
             <p className="text-sm leading-6 text-muted">
               {circle.status === "Forming"
-                ? "Join the circle until the host starts its first round."
+                ? circle.members >= circle.memberCap
+                  ? "This circle is full. Any connected wallet can start the first round."
+                  : "Join the circle until the host starts its first round."
                 : "This circle has completed its payout lifecycle."}
             </p>
           )}
@@ -743,7 +745,10 @@ function PrimaryAction({
       </Button>
     );
   }
-  if (circle.status === "Forming" && isHost && circle.members >= 2) {
+  if (
+    circle.status === "Forming" &&
+    ((isHost && circle.members >= 2) || circle.members >= circle.memberCap)
+  ) {
     return (
       <Button type="button" variant="primary" onClick={onStart}>
         <Play className="h-3.5 w-3.5" aria-hidden="true" />
@@ -768,7 +773,11 @@ function PrimaryAction({
 
   return (
     <Badge tone={circle.status === "Completed" ? "success" : "muted"} shape="square">
-      {circle.status === "Completed" ? "Lifecycle complete" : "Awaiting members"}
+      {circle.status === "Completed"
+        ? "Lifecycle complete"
+        : circle.members >= circle.memberCap
+          ? "Ready to start"
+          : "Awaiting members"}
     </Badge>
   );
 }

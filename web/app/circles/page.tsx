@@ -82,7 +82,7 @@ export default function CirclesPage() {
   }, [circles, contributionFilter, memberRangeOnly, modeFilter, query, sortMode]);
 
   return (
-    <AppShell title="Browse Circles" contentClassName="max-w-none px-6 py-10 md:px-12">
+    <AppShell title="Browse Circles" contentClassName="!max-w-none px-6 py-10 md:px-12">
       <header className="mb-12 flex flex-col justify-between gap-6 md:flex-row md:items-end">
         <div>
           <span className="mb-2 block font-mono text-[0.68rem] uppercase tracking-widest text-accent">

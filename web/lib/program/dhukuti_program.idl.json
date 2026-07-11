@@ -2179,12 +2179,9 @@
       ],
       "accounts": [
         {
-          "name": "creator",
+          "name": "starter",
           "writable": true,
-          "signer": true,
-          "relations": [
-            "circle"
-          ]
+          "signer": true
         },
         {
           "name": "circle",
@@ -2204,7 +2201,8 @@
               },
               {
                 "kind": "account",
-                "path": "creator"
+                "path": "circle.creator",
+                "account": "Circle"
               },
               {
                 "kind": "account",
@@ -3084,7 +3082,7 @@
     {
       "code": 6012,
       "name": "UnauthorizedStart",
-      "msg": "Only the circle creator can start the circle"
+      "msg": "Only the circle host can start before the circle is full"
     },
     {
       "code": 6013,

@@ -182,7 +182,7 @@ export default function MarketPage() {
   }
 
   return (
-    <AppShell title="Secondary Market" contentClassName="max-w-none px-6 py-10 md:px-12">
+    <AppShell title="Secondary Market" contentClassName="!max-w-none px-6 py-10 md:px-12">
       <div className="space-y-10">
         <AppPageHeader
           eyebrow="Payout positions"

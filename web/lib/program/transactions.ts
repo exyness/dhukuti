@@ -77,11 +77,11 @@ export function buildJoinCircleInstruction({
 
 export function buildStartCircleInstruction({
   circle,
-  creator,
-}: Pick<CircleInstructionContext, "circle" | "creator">): ProgramInstructionBundle {
+  starter,
+}: Pick<CircleInstructionContext, "circle"> & { starter: PublicKey }): ProgramInstructionBundle {
   return {
     instruction: buildInstruction("start_circle", {}, [
-      writableSigner(creator),
+      writableSigner(starter),
       writable(circle),
       writable(deriveRoundPda(circle, 0)),
       readonly(SystemProgram.programId),
@@ -220,7 +220,7 @@ export function buildResolveRoundInstruction({
     .flatMap((member) => [writable(member.member), readonly(member.membership)]);
 
   return {
-    instruction: buildInstruction("resolve_round", { nextRoundIndex }, [
+    instruction: buildInstruction("resolve_round", { next_round_index: nextRoundIndex }, [
       writableSigner(cranker),
       writable(circle),
       writable(vault),
@@ -271,7 +271,7 @@ export function buildVouchMemberInstruction({
   voucher: PublicKey;
 }): ProgramInstructionBundle {
   return {
-    instruction: buildInstruction("vouch_member", { stakeLamports }, [
+    instruction: buildInstruction("vouch_member", { stake_lamports: stakeLamports }, [
       writableSigner(voucher),
       readonly(candidate),
       readonly(circle),
@@ -349,7 +349,7 @@ export function buildListPositionInstruction({
   const listing = deriveListingPda(circle, membership);
 
   return {
-    instruction: buildInstruction("list_position", { askPrice }, [
+    instruction: buildInstruction("list_position", { ask_price: askPrice }, [
       writableSigner(seller),
       readonly(circle),
       readonly(membership),

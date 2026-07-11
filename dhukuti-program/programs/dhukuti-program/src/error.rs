@@ -31,7 +31,7 @@ pub enum DhukutiError {
     BuyerAlreadyMember,
 
     // ── Start ────────────────────────────────────────────────────────────────
-    #[msg("Only the circle creator can start the circle")]
+    #[msg("Only the circle host can start before the circle is full")]
     UnauthorizedStart,
     #[msg("Circle needs at least 2 members before it can start")]
     NotEnoughMembers,
