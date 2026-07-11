@@ -41,7 +41,7 @@ export function TransactionReviewPanel({
         <div>
           <div className="flex items-center gap-2">
             <Badge tone={confirmed ? "success" : "accent"} shape="square" size="xs">
-              {confirmed ? "Confirmed" : "Simulation passed"}
+              {confirmed ? "Confirmed" : "Ready to sign"}
             </Badge>
             <span className="font-mono text-[0.6rem] uppercase tracking-[0.1em] text-muted">
               Devnet
@@ -66,12 +66,8 @@ export function TransactionReviewPanel({
           <ReviewMetric key={detail.label} label={detail.label} value={detail.value} />
         ))}
         <ReviewMetric
-          label="Estimated network fee"
+          label="Estimated network cost"
           value={`${lamportsToSol(BigInt(review.estimatedFeeLamports))} SOL`}
-        />
-        <ReviewMetric
-          label="Compute units"
-          value={review.simulationUnits ? String(review.simulationUnits) : "Not reported"}
         />
       </div>
 
@@ -112,8 +108,7 @@ export function TransactionReviewPanel({
         </p>
       ) : (
         <p className="mt-4 text-xs leading-5 text-muted">
-          The transaction is confirmed. Indexed activity and balances refresh as the event indexer
-          observes devnet.
+          The transaction is confirmed. Your activity and balances will update shortly.
         </p>
       )}
     </Panel>
@@ -153,7 +148,7 @@ export function TransactionErrorPanel({
         {error.logs.length > 0 ? (
           <details className="mt-3">
             <summary className="cursor-pointer font-mono text-[0.62rem] uppercase tracking-[0.08em] text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              Simulation logs
+              Transaction details
             </summary>
             <pre className="dhukuti-scrollbar mt-3 max-h-44 overflow-auto rounded border border-border bg-black/20 p-3 font-mono text-[0.62rem] leading-5 whitespace-pre-wrap text-muted">
               {error.logs.slice(-10).join("\n")}

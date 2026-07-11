@@ -132,8 +132,8 @@ export function mapCircleDetail(input: CircleMapInput): CircleDetail {
         role: membership.join_order === 0 ? "Host" : "Member",
         state,
         summary: membership.defaulted
-          ? "Indexed default state from program events."
-          : "Membership indexed from the program event stream.",
+          ? "This membership was marked in default."
+          : "Membership confirmed by the circle.",
         vouch:
           memberVouches.length > 0
             ? `${memberVouches.length} active ${memberVouches.length === 1 ? "vouch" : "vouches"}`

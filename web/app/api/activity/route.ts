@@ -6,11 +6,7 @@ export async function GET(request: Request) {
   try {
     const wallet = new URL(request.url).searchParams.get("wallet");
     return Response.json({ activity: await getActivityLog(wallet) });
-  } catch (error) {
-    return Response.json({ error: getErrorMessage(error) }, { status: 500 });
+  } catch {
+    return Response.json({ error: "Couldn't load activity right now." }, { status: 500 });
   }
-}
-
-function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Failed to load activity.";
 }

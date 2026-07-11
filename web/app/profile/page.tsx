@@ -52,7 +52,10 @@ export default function ProfilePage() {
         ) : null}
         {error ? <StatePanel message={error.message} title="Unable to load profile" /> : null}
         {isLoading ? (
-          <StatePanel message="Fetching Supabase read models." title="Loading profile" />
+          <StatePanel
+            message="Loading your circle positions and standing."
+            title="Loading profile"
+          />
         ) : null}
 
         <section id="reputation" className="scroll-mt-24 grid grid-cols-1 gap-8 md:grid-cols-3">
@@ -70,7 +73,7 @@ export default function ProfilePage() {
               </div>
               <div className="w-full max-w-sm">
                 <div className="mb-2 flex justify-between font-mono text-[0.65rem] text-muted">
-                  <span>Indexed from ReputationUpdatedEvent</span>
+                  <span>Verified from your circle outcomes</span>
                   <span>{reputationProgress.percent}%</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">

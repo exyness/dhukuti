@@ -193,7 +193,7 @@ async function prepareTransaction({
 }
 
 function simulationError(error: unknown, logs: string[]) {
-  const message = `Transaction simulation failed: ${JSON.stringify(error)}`;
+  const message = `Transaction check failed: ${JSON.stringify(error)}`;
   const simulationFailure = new Error(message) as Error & { logs?: string[] };
   simulationFailure.logs = logs;
   return simulationFailure;
@@ -232,9 +232,24 @@ export function decodeProgramError(error: unknown): ProgramTransactionFailure {
     if (knownMessage) return { logs, message: knownMessage };
   }
 
+  if (/helius|supabase|rpc|network request|fetch failed/i.test(combinedError)) {
+    return {
+      logs,
+      message: "The network could not complete this transaction check. Try again in a moment.",
+    };
+  }
+
+  if (/^Transaction (?:simulation|check) failed:/.test(rawMessage)) {
+    return {
+      logs,
+      message: "This transaction could not be prepared. Review the details and try again.",
+    };
+  }
+
   return {
     logs,
-    message: rawMessage.replace(/^Transaction simulation failed: /, "") || "Transaction failed.",
+    message:
+      rawMessage.replace(/^Transaction (?:simulation|check) failed: /, "") || "Transaction failed.",
   };
 }
 

@@ -215,11 +215,11 @@ function TrustedStrip() {
         </span>
         <span className="flex items-center gap-1.5">
           <UserCheck className="h-3.5 w-3.5" aria-hidden="true" />
-          Wallet Reputation PDAs
+          Wallet Reputation
         </span>
         <span className="flex items-center gap-1.5">
           <Code2 className="h-3.5 w-3.5" aria-hidden="true" />
-          LiteSVM Tested
+          Security Tested
         </span>
       </div>
     </div>
@@ -432,7 +432,7 @@ function GovernanceSection() {
     <section id="program-surface">
       <div className="mb-6 flex items-baseline justify-between">
         <span className="font-mono text-[0.68rem] uppercase tracking-widest text-[var(--ink-dim)]">
-          Program Surface &amp; Updates
+          Protocol Status
         </span>
       </div>
 
@@ -453,9 +453,9 @@ function GovernanceSection() {
               status={<CategoryBadge tone="main">Live</CategoryBadge>}
             />
             <GovernanceRow
-              track="Indexer"
-              subject="Supabase event schema"
-              detail="Anchor event logs have read-model tables ready for a trusted server-side indexer."
+              track="Activity"
+              subject="Circle activity history"
+              detail="Confirmed circle activity is prepared to appear across the app."
               status={<CategoryBadge tone="dim">Ready</CategoryBadge>}
             />
             <GovernanceRow
@@ -556,12 +556,12 @@ function LandingFooter() {
           <FooterColumn
             title="Resources"
             links={[
-              { label: "Program README", href: "#program-surface" },
+              { label: "Protocol overview", href: "#program-surface" },
               {
                 label: "Devnet Explorer",
                 href: explorerAddressUrl(DHUKUTI_PROGRAM.programId),
               },
-              { label: "Supabase Schema", href: "#program-surface" },
+              { label: "Activity history", href: "/activity" },
             ]}
           />
           <FooterColumn

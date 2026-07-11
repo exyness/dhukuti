@@ -262,10 +262,7 @@ export default function MarketPage() {
           </div>
 
           {marketQuery.error ? (
-            <StatePanel
-              message={marketQuery.error.message}
-              title="Unable to load indexed listings"
-            />
+            <StatePanel message={marketQuery.error.message} title="Unable to load listings" />
           ) : null}
           {marketQuery.isLoading || profileQuery.isLoading ? <MarketSkeleton /> : null}
           {!marketQuery.isLoading &&

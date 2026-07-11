@@ -416,7 +416,7 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
               </Badge>
             </div>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-              Every action simulates before wallet signing and shows an explicit transaction review.
+              Every action is checked before wallet signing and includes a clear transaction review.
             </p>
           </div>
           <PrimaryAction

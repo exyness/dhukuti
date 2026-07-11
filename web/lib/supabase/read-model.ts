@@ -379,7 +379,7 @@ function activityDetail(eventName: string, payload: Record<string, unknown>) {
     return `${member ?? "Member"} accepted a ${getPayloadNumber(payload, "discount_bps") ?? 0} bps discount.`;
   }
 
-  return member ? `${member} · indexed on devnet.` : "Indexed on devnet.";
+  return member ? `${member} · confirmed on devnet.` : "Confirmed on devnet.";
 }
 
 function asRecord(value: unknown): Record<string, unknown> {

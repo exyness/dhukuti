@@ -88,10 +88,10 @@ export const governanceRows = [
   },
   {
     date: "Jul 10, 2026",
-    subject: "Event indexer schema",
+    subject: "Circle activity",
     detail:
-      "Supabase read models prepared for circle, membership, round, listing, and reputation projections.",
-    status: "Indexed",
+      "Circle, membership, payout, listing, and reputation activity is ready to appear across the app.",
+    status: "Ready",
   },
   {
     date: "Next",

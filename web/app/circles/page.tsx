@@ -175,14 +175,14 @@ export default function CirclesPage() {
         </BadgeButton>
       </div>
 
-      {error ? <StatePanel message={error.message} title="Unable to load indexed circles" /> : null}
+      {error ? <StatePanel message={error.message} title="Unable to load circles" /> : null}
       {isLoading ? (
-        <StatePanel message="Fetching Supabase read models." title="Loading circles" />
+        <StatePanel message="Loading available circles." title="Loading circles" />
       ) : null}
       {!isLoading && !error && filteredCircles.length === 0 ? (
         <StatePanel
-          message="No circle events have been indexed yet. Create a circle or run the Helius backfill."
-          title="No indexed circles"
+          message="Create a circle to get started, or check back when new circles are available."
+          title="No circles yet"
         />
       ) : null}
 

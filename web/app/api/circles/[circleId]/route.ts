@@ -12,11 +12,7 @@ export async function GET(_request: Request, context: { params: Promise<{ circle
     }
 
     return Response.json({ detail });
-  } catch (error) {
-    return Response.json({ error: getErrorMessage(error) }, { status: 500 });
+  } catch {
+    return Response.json({ error: "Couldn't load this circle right now." }, { status: 500 });
   }
-}
-
-function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Failed to load circle.";
 }

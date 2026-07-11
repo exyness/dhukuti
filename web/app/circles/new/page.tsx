@@ -100,7 +100,7 @@ export default function NewCirclePage() {
     event.preventDefault();
 
     if (!publicKey || !connected) {
-      setError("Connect a devnet wallet before simulating create_circle.");
+      setError("Connect a devnet wallet before reviewing this circle creation.");
       window.dispatchEvent(new Event(OPEN_WALLET_EVENT));
       return;
     }
@@ -226,7 +226,7 @@ export default function NewCirclePage() {
 
     const existingCircle = await connection.getAccountInfo(pdas.circle, "confirmed");
     if (existingCircle) {
-      throw new Error("Generated circle PDA already exists. Simulate again to pick a new ID.");
+      throw new Error("This circle ID is already in use. Review again to choose a new one.");
     }
 
     const [circleRent, insuranceRent, vaultRent, feeEstimate, simulation] = await Promise.all([
@@ -239,7 +239,7 @@ export default function NewCirclePage() {
 
     if (simulation.value.err) {
       throw new Error(
-        `Simulation failed: ${JSON.stringify(simulation.value.err)}${formatLogs(simulation.value.logs)}`,
+        `Transaction check failed: ${JSON.stringify(simulation.value.err)}${formatLogs(simulation.value.logs)}`,
       );
     }
 
@@ -262,15 +262,15 @@ export default function NewCirclePage() {
   }
 
   return (
-    <AppShell title="Create Circle" contentClassName="!max-w-7xl !px-6 !py-10 md:!px-10">
+    <AppShell title="Create Circle" contentClassName="max-w-none px-6 py-10 md:px-12">
       <AppPageHeader
         eyebrow="Circle Builder"
         title="Configure a savings circle."
         copy="Set the economic rules, admission gate, and payout model before publishing. These terms become fixed after the first member joins."
       />
 
-      <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_23.75rem]">
-        <form className="space-y-[1.125rem]" onSubmit={handleReview}>
+      <div className="grid min-w-0 items-start gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,24rem)]">
+        <form className="min-w-0 space-y-[1.125rem]" onSubmit={handleReview}>
           <Panel className="p-6">
             <fieldset className="m-0 min-w-0">
               <legend className="font-mono text-[0.68rem] uppercase tracking-widest text-muted">
@@ -393,7 +393,7 @@ export default function NewCirclePage() {
                         resetReview();
                       }}
                     />
-                    <span className="flex min-h-11 items-center justify-center rounded-md border border-border bg-white/[0.035] font-mono text-[0.84rem] text-foreground">
+                    <span className="flex min-h-11 items-center justify-center rounded-md border border-border bg-white/[0.035] font-mono tabular-nums text-[0.84rem] text-foreground">
                       {minReputation}
                     </span>
                   </div>
@@ -435,7 +435,7 @@ export default function NewCirclePage() {
               <div className="mb-5 flex items-center justify-between gap-4">
                 <div>
                   <span className="font-mono text-[0.62rem] uppercase tracking-[0.12em] text-muted">
-                    Simulation Review
+                    Creation review
                   </span>
                   <h2 className="mt-1 text-lg font-medium">{reviewStatusCopy(status)}</h2>
                 </div>
@@ -444,21 +444,21 @@ export default function NewCirclePage() {
                 </Badge>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
-                <ReviewMetric label="Circle PDA" value={truncateAddress(review.circlePda, 5)} />
-                <ReviewMetric label="Vault PDA" value={truncateAddress(review.vaultPda, 5)} />
+                <ReviewMetric label="Circle address" value={truncateAddress(review.circlePda, 5)} />
+                <ReviewMetric
+                  label="Shared balance address"
+                  value={truncateAddress(review.vaultPda, 5)}
+                />
                 <ReviewMetric
                   label="Contribution"
                   value={`${lamportsToSol(review.contributionLamports)} SOL`}
                 />
                 <ReviewMetric
-                  label="Estimated rent + fee"
+                  label="Estimated network cost"
                   value={`${lamportsToSol(BigInt(review.estimatedRentLamports + review.estimatedFeeLamports))} SOL`}
                 />
                 <ReviewMetric label="Members" value={String(review.maxMembers)} />
-                <ReviewMetric
-                  label="Compute units"
-                  value={review.simulationUnits ? String(review.simulationUnits) : "Not reported"}
-                />
+                <ReviewMetric label="Payout model" value={payoutCurveLabel(review.payoutCurve)} />
               </div>
               {review.confirmationSignature ? (
                 <a
@@ -483,7 +483,7 @@ export default function NewCirclePage() {
                   ) : (
                     <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
                   )}
-                  Sign create_circle
+                  Sign and create circle
                 </Button>
               )}
             </Panel>
@@ -499,13 +499,13 @@ export default function NewCirclePage() {
               ) : (
                 <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
               )}
-              Simulate create_circle
+              Review circle creation
             </Button>
           </div>
         </form>
 
-        <aside className="space-y-6">
-          <Panel className="sticky top-24 p-6">
+        <aside className="min-w-0 space-y-6">
+          <Panel className="p-6">
             <div className="mb-7 flex items-center justify-between">
               <span className="font-mono text-[0.62rem] uppercase tracking-[0.12em] text-muted">
                 Live Preview
@@ -516,10 +516,10 @@ export default function NewCirclePage() {
               Projected pot value
             </span>
             <div className="mt-2 flex items-baseline gap-2">
-              <strong className="font-mono text-[2.45rem] font-semibold tracking-tight">
+              <strong className="font-mono tabular-nums text-[2.45rem] font-semibold tracking-tight">
                 {lamportsToSol(projectedPotLamports)}
               </strong>
-              <span className="font-mono text-sm text-muted">SOL</span>
+              <span className="font-mono tabular-nums text-sm text-muted">SOL</span>
             </div>
             <p className="mt-1 mb-7 text-[0.78rem] leading-5 text-muted">
               Based on {contribution || "0"} SOL across {maxMembers || "0"} committed member slots.
@@ -562,21 +562,21 @@ export default function NewCirclePage() {
             <div className="mb-4 flex items-center gap-2">
               <WalletCards className="h-4 w-4 text-accent" aria-hidden="true" />
               <span className="font-mono text-[0.62rem] uppercase tracking-[0.12em] text-muted">
-                Instruction Map
+                How it works
               </span>
             </div>
             <ul className="space-y-3 text-sm leading-6 text-muted">
               <li>
-                <strong className="font-medium text-foreground">create_circle</strong> creates
-                circle, vault, and insurance PDAs.
+                <strong className="font-medium text-foreground">Create a circle</strong> sets up the
+                shared balance and protection reserve.
               </li>
               <li>
-                <strong className="font-medium text-foreground">join_circle</strong> locks
-                collateral and mints the member position NFT.
+                <strong className="font-medium text-foreground">Join</strong> locks collateral and
+                reserves a payout position.
               </li>
               <li>
-                <strong className="font-medium text-foreground">start_circle</strong> opens round
-                zero after the host is ready.
+                <strong className="font-medium text-foreground">Start</strong> opens the first
+                contribution round when the host is ready.
               </li>
             </ul>
           </Panel>
@@ -585,12 +585,12 @@ export default function NewCirclePage() {
             <div className="mb-3 flex items-center gap-2">
               <LockKeyhole className="h-4 w-4 text-warning" aria-hidden="true" />
               <span className="font-mono text-[0.62rem] uppercase tracking-[0.12em] text-warning">
-                Mainnet Gate
+                Devnet preview
               </span>
             </div>
             <p className="text-sm leading-6 text-muted">
-              This UI targets {DHUKUTI_PROGRAM.cluster}. Simulation runs before the wallet receives
-              the create_circle transaction.
+              This version runs on {DHUKUTI_PROGRAM.cluster}. You can review the creation before
+              your wallet asks you to sign.
             </p>
           </Panel>
         </aside>
@@ -659,7 +659,10 @@ function AmountInput({
         value={value}
         autoComplete="off"
         readOnly={readOnly}
-        className={cn("input-control pr-14 font-mono text-[0.84rem]", readOnly && "text-muted")}
+        className={cn(
+          "input-control pr-14 font-mono tabular-nums text-[0.84rem]",
+          readOnly && "text-muted",
+        )}
         onChange={(event) => onChange?.(event.target.value)}
       />
       <span className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 font-mono text-[0.68rem] text-muted">
@@ -707,20 +710,24 @@ function StrategyCard({
 
 function PreviewStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-border bg-white/[0.025] p-3">
+    <div className="min-w-0 rounded-md border border-border bg-white/[0.025] p-3">
       <span className="block font-mono text-[0.52rem] uppercase tracking-[0.08em] text-muted">
         {label}
       </span>
-      <span className="mt-1 block font-mono text-[0.75rem] text-foreground">{value}</span>
+      <span className="mt-1 block font-mono tabular-nums text-[0.75rem] text-foreground">
+        {value}
+      </span>
     </div>
   );
 }
 
 function PreviewRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between border-b border-border py-2 last:border-b-0">
-      <span className="font-mono text-[0.64rem] text-muted">{label}</span>
-      <strong className="font-mono text-[0.72rem] font-medium text-foreground">{value}</strong>
+    <div className="flex min-w-0 items-center justify-between gap-4 border-b border-border py-2 last:border-b-0">
+      <span className="min-w-0 font-mono text-[0.64rem] text-muted">{label}</span>
+      <strong className="shrink-0 text-right font-mono tabular-nums text-[0.72rem] font-medium text-foreground">
+        {value}
+      </strong>
     </div>
   );
 }
@@ -731,7 +738,9 @@ function ReviewMetric({ label, value }: { label: string; value: string }) {
       <span className="block font-mono text-[0.52rem] uppercase tracking-[0.08em] text-muted">
         {label}
       </span>
-      <span className="mt-1 block break-all font-mono text-[0.72rem] text-foreground">{value}</span>
+      <span className="mt-1 block break-all font-mono tabular-nums text-[0.72rem] text-foreground">
+        {value}
+      </span>
     </div>
   );
 }
@@ -754,10 +763,10 @@ function formatLogs(logs: string[] | null | undefined) {
 }
 
 function reviewStatusCopy(status: CreateStatus) {
-  if (status === "confirmed") return "create_circle confirmed";
+  if (status === "confirmed") return "Circle created";
   if (status === "confirming") return "Waiting for confirmation";
   if (status === "signing") return "Wallet signature requested";
-  return "Simulation succeeded";
+  return "Ready for your wallet";
 }
 
 function buildPreviewRows(cycleDays: number, projectedPotLamports: bigint) {

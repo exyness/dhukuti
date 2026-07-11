@@ -56,7 +56,7 @@ export default function ActivityPage() {
       >
         <AppPageHeader
           eyebrow="Protocol Activity"
-          title="Every indexed circle event, in one place."
+          title="Every circle event, in one place."
           copy="This log combines transactions attributed to your wallet with activity from circles where you hold a position."
           actions={
             <Button
@@ -93,7 +93,7 @@ export default function ActivityPage() {
               <div className="flex items-center gap-2">
                 <Activity className="h-4 w-4 text-accent" aria-hidden="true" />
                 <span className="font-mono text-[0.62rem] uppercase tracking-[0.1em] text-muted">
-                  Indexed events
+                  Circle activity
                 </span>
               </div>
               <span className="font-mono text-[0.68rem] tabular-nums text-muted">
@@ -198,10 +198,9 @@ function ActivityEmpty() {
       <span className="flex h-12 w-12 items-center justify-center rounded-full border border-accent/20 bg-accent/10 text-accent">
         <Activity className="h-5 w-5" aria-hidden="true" />
       </span>
-      <h2 className="mt-5 text-lg font-medium">No indexed activity yet</h2>
+      <h2 className="mt-5 text-lg font-medium">No activity yet</h2>
       <p className="mt-2 max-w-md text-sm leading-6 text-muted">
-        Create or join a circle, then confirmed devnet transactions will appear here once the
-        indexer records their events.
+        Create or join a circle, then confirmed transactions will appear here shortly.
       </p>
       <Link
         href="/circles"
@@ -215,9 +214,9 @@ function ActivityEmpty() {
 }
 
 function formatActivityTime(value: string | null) {
-  if (!value) return "Indexed";
+  if (!value) return "Confirmed";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Indexed";
+  if (Number.isNaN(date.getTime())) return "Confirmed";
   return new Intl.DateTimeFormat("en-US", {
     day: "2-digit",
     hour: "2-digit",

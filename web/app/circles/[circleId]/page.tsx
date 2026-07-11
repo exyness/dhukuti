@@ -42,7 +42,7 @@ export default function CircleDetailsPage() {
   if (isLoading) {
     return (
       <AppShell title="Circle" contentClassName="!max-w-7xl !px-6 !py-10 md:!px-10">
-        <StatePanel message="Fetching indexed circle state." title="Loading circle" />
+        <StatePanel message="Loading the latest circle details." title="Loading circle" />
       </AppShell>
     );
   }
@@ -51,8 +51,12 @@ export default function CircleDetailsPage() {
     return (
       <AppShell title="Circle" contentClassName="!max-w-7xl !px-6 !py-10 md:!px-10">
         <StatePanel
-          message={error?.message ?? "This circle is not present in the Supabase read model."}
-          title="Circle not indexed"
+          message={
+            error
+              ? "We couldn't load this circle. Try again in a moment."
+              : "This circle is not available yet."
+          }
+          title="Circle unavailable"
         />
       </AppShell>
     );

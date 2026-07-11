@@ -270,7 +270,7 @@ export function WalletConnectCard() {
               </p>
               <p className="mt-1 truncate font-mono text-sm text-foreground">{currentAddress}</p>
               <p className="mt-1 font-mono text-[0.55rem] text-muted">
-                {sessionActive ? "Supabase session active" : "Session not signed"}
+                {sessionActive ? "Wallet verified" : "Wallet verification pending"}
               </p>
             </div>
             <button
@@ -312,7 +312,7 @@ export function WalletConnectCard() {
               ) : (
                 <KeyRound className="h-4 w-4 text-muted" aria-hidden="true" />
               )}
-              {sessionActive ? "Sign out session" : "Sign in session"}
+              {sessionActive ? "End verification" : "Verify wallet"}
             </button>
             {authError ? (
               <p className="px-2 py-1 text-sm leading-5 text-warning">{authError}</p>

@@ -397,7 +397,7 @@ function SidebarReputation({
         </div>
       ) : error ? (
         <p className="font-mono text-[0.56rem] leading-5 text-warning">
-          Unable to load indexed reputation.
+          Unable to load reputation.
         </p>
       ) : !isConnected ? (
         <p className="font-mono text-[0.56rem] leading-5 text-[#7a756e]">
@@ -583,7 +583,7 @@ function WalletSummary() {
               {truncateAddress(currentAddress)}
             </p>
             <p className="mt-1 font-mono text-[0.55rem] text-muted">
-              {sessionActive ? "Supabase session active" : "Session not signed"}
+              {sessionActive ? "Wallet verified" : "Wallet verification pending"}
             </p>
           </div>
           <button
@@ -621,7 +621,7 @@ function WalletSummary() {
             ) : (
               <KeyRound className="h-3.5 w-3.5" aria-hidden="true" />
             )}
-            {sessionActive ? "Sign out session" : "Sign in session"}
+            {sessionActive ? "End verification" : "Verify wallet"}
           </button>
           {authError ? (
             <p className="px-3 py-1 text-xs leading-5 text-warning">{authError}</p>
@@ -706,13 +706,13 @@ export function TokenScopeNotice({ className }: { className?: string }) {
       )}
     >
       <BadgeDollarSign className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
-      <div>
+      <div className="min-w-0">
         <p className="font-mono text-[0.62rem] uppercase tracking-[0.1em] text-warning">
-          Native SOL V1
+          Native SOL settlement
         </p>
         <p className="mt-1 text-sm leading-6 text-muted">
-          The deployed program rejects custom token settlement today. USDC or Token-2022 support
-          should be added only after program-level SPL account, mint, decimal, and transfer tests.
+          Circles settle in SOL today. Other payment options will be added after they are ready for
+          real use.
         </p>
       </div>
     </div>
