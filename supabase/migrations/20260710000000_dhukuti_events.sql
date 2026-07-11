@@ -27,7 +27,7 @@ create index if not exists dhukuti_event_log_event_name_idx
 create table if not exists public.dhukuti_circles (
   circle text primary key,
   creator text not null,
-  circle_id bigint not null,
+  circle_id numeric(20,0) not null,
   contribution_amount numeric(20,0) not null,
   cycle_duration_seconds bigint not null default 0,
   max_members integer not null,
