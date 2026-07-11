@@ -101,14 +101,6 @@ export type MarketListing = {
   value: string;
 };
 
-export type ContributionHistoryRow = {
-  amount: string;
-  circle: string;
-  date: string;
-  signature: string;
-  status: string;
-};
-
 export type ProfileStats = {
   activeCircles: string;
   collateralLocked: string;
@@ -125,7 +117,6 @@ export type ProfileStats = {
 export type ProfileData = {
   activeCircles: CircleSummary[];
   circleHistory: CircleSummary[];
-  contributionHistory: ContributionHistoryRow[];
   listings: MarketListing[];
   positions: ProfilePosition[];
   stats: ProfileStats;

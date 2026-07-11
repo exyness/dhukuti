@@ -1,6 +1,6 @@
 import "server-only";
 
-import { formatDate, formatSolValue, shortAddress, toBigIntString } from "@/lib/data/format";
+import { formatSolValue, shortAddress, toBigIntString } from "@/lib/data/format";
 import {
   emptyProfile,
   mapCircleDetail,
@@ -194,13 +194,6 @@ export async function getProfileData(wallet: string | null): Promise<ProfileData
   return {
     activeCircles,
     circleHistory,
-    contributionHistory: contributions.map((row) => ({
-      amount: formatSolValue(row.contribution_amount),
-      circle: circles.find((circle) => circle.address === row.circle)?.name ?? row.circle,
-      date: formatDate(row.created_at),
-      signature: row.signature,
-      status: "Paid",
-    })),
     listings: marketListings,
     positions: memberships.map((membership) => ({
       active: membership.active,

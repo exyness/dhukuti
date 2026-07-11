@@ -15,7 +15,6 @@ type ListingData = MarketListing;
 const emptyProfile: ProfileData = {
   activeCircles: [],
   circleHistory: [],
-  contributionHistory: [],
   listings: [],
   positions: [],
   stats: {
@@ -47,7 +46,7 @@ export default function ProfilePage() {
       <div className="space-y-12">
         {!wallet ? (
           <StatePanel
-            message="Connect a wallet to load indexed memberships, contribution history, and reputation."
+            message="Connect a wallet to load indexed memberships, activity, and reputation."
             title="Wallet required"
           />
         ) : null}
@@ -153,67 +152,40 @@ export default function ProfilePage() {
           </div>
         </section>
 
-        <section id="contributions" className="scroll-mt-24 grid grid-cols-1 gap-12 xl:grid-cols-3">
-          <div className="space-y-6 xl:col-span-2">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Contribution History</h2>
-              <span className="font-mono text-[0.62rem] uppercase tracking-[0.08em] text-muted">
-                Indexed payments
+        <section id="market-listings" className="scroll-mt-24">
+          <div className="mb-6 flex items-baseline justify-between gap-4">
+            <div>
+              <span className="font-mono text-[0.62rem] uppercase tracking-[0.1em] text-accent">
+                Secondary market
               </span>
+              <h2 className="mt-2 text-xl font-semibold">My payout listings</h2>
             </div>
-
-            <Panel className="overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[620px] text-left">
-                  <thead className="border-b border-border bg-white/5">
-                    <tr>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Circle</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead align="right">Status</TableHead>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {profile.contributionHistory.map((row) => (
-                      <tr key={row.signature} className="border-b border-border last:border-b-0">
-                        <td className="px-6 py-4 font-mono text-[0.7rem]">{row.date}</td>
-                        <td className="px-6 py-4 text-sm font-medium">{row.circle}</td>
-                        <td className="px-6 py-4 font-mono text-[0.75rem] tabular-nums">
-                          {row.amount}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <StatusBadge>
-                            {row.status === "Paid" ? "Success" : row.status}
-                          </StatusBadge>
-                        </td>
-                      </tr>
-                    ))}
-                    {profile.contributionHistory.length === 0 ? (
-                      <tr>
-                        <td className="px-6 py-6 text-sm text-muted" colSpan={4}>
-                          No indexed contributions for this wallet.
-                        </td>
-                      </tr>
-                    ) : null}
-                  </tbody>
-                </table>
-              </div>
-            </Panel>
+            <Link
+              href="/market"
+              className="font-mono text-[0.65rem] uppercase tracking-[0.08em] text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              Open market →
+            </Link>
           </div>
-
-          <div className="space-y-6">
-            <h2 className="text-xl font-semibold">Market Listings</h2>
-            <div className="space-y-4">
-              {profile.listings.slice(0, 2).map((listing) => (
+          {profile.listings.length === 0 ? (
+            <Panel className="flex min-h-32 items-center justify-between gap-4 p-6">
+              <p className="text-sm leading-6 text-muted">
+                No payout positions are listed from this wallet yet.
+              </p>
+              <Link
+                href="/market"
+                className="inline-flex min-h-10 shrink-0 items-center rounded-md border border-border px-3 font-mono text-[0.62rem] uppercase tracking-[0.08em] text-accent transition-colors hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                List position
+              </Link>
+            </Panel>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {profile.listings.slice(0, 3).map((listing) => (
                 <ProfileListing key={listing.listing} listing={listing} />
               ))}
-              {profile.listings.length === 0 ? (
-                <Panel className="p-4 text-sm text-muted">
-                  No indexed listings for this wallet.
-                </Panel>
-              ) : null}
             </div>
-          </div>
+          )}
         </section>
 
         <section id="history" className="scroll-mt-24">
@@ -369,26 +341,6 @@ function StatusBadge({ children }: { children: ReactNode }) {
     <span className="inline-flex min-h-6 items-center rounded-full border border-success/25 bg-success/12 px-2 font-mono text-[0.58rem] uppercase tracking-[0.08em] text-success">
       {children}
     </span>
-  );
-}
-
-function TableHead({
-  align = "left",
-  children,
-}: {
-  align?: "left" | "right";
-  children: ReactNode;
-}) {
-  return (
-    <th
-      className={
-        align === "right"
-          ? "px-6 py-3 text-right font-mono text-[0.6rem] uppercase text-muted"
-          : "px-6 py-3 font-mono text-[0.6rem] uppercase text-muted"
-      }
-    >
-      {children}
-    </th>
   );
 }
 

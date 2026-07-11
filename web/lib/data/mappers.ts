@@ -192,7 +192,6 @@ export function emptyProfile(wallet: string | null): ProfileData {
   return {
     activeCircles: [],
     circleHistory: [],
-    contributionHistory: [],
     listings: [],
     positions: [],
     stats: {

@@ -6,7 +6,6 @@ import {
   Check,
   Copy,
   ExternalLink,
-  History,
   KeyRound,
   Layers,
   LayoutGrid,
@@ -36,11 +35,10 @@ import { useWalletIdentity } from "@/lib/use-wallet-identity";
 import { truncateAddress } from "@/lib/wallet";
 
 const navIcons = {
-  "Contribution History": History,
   "Explore Marketplace": LayoutGrid,
   "My Circles": Users,
-  "Reputation Score": Award,
   "Activity Log": ScrollText,
+  Profile: Award,
 };
 
 export function AppShell({
@@ -471,7 +469,7 @@ function isActiveNavItem(pathname: string, item: (typeof appNavItems)[number]) {
     return pathname.startsWith("/circles/") && pathname !== "/circles/new";
   }
 
-  if (item.label === "Reputation Score") {
+  if (item.label === "Profile") {
     return pathname === "/profile";
   }
 
