@@ -22,5 +22,22 @@ export async function POST(request: Request) {
 }
 
 function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Failed to index this transaction.";
+  if (error instanceof Error) return error.message;
+
+  if (error && typeof error === "object") {
+    const candidate = error as {
+      code?: unknown;
+      details?: unknown;
+      hint?: unknown;
+      message?: unknown;
+    };
+    const message = typeof candidate.message === "string" ? candidate.message : null;
+    const details = typeof candidate.details === "string" ? candidate.details : null;
+    const hint = typeof candidate.hint === "string" ? candidate.hint : null;
+    const code = typeof candidate.code === "string" ? candidate.code : null;
+
+    return [message, details, hint, code ? `Code: ${code}` : null].filter(Boolean).join(" ");
+  }
+
+  return "Failed to index this transaction.";
 }
