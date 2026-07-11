@@ -3,12 +3,22 @@
 import type { WalletName } from "@solana/wallet-adapter-base";
 import type { Wallet as AdapterWallet } from "@solana/wallet-adapter-react";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Check, ChevronDown, Copy, ExternalLink, Loader2, LogOut, Wallet } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Copy,
+  ExternalLink,
+  KeyRound,
+  Loader2,
+  LogOut,
+  Wallet,
+} from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { explorerAddressUrl } from "@/lib/constants";
+import { useSupabaseAuth } from "@/lib/supabase/auth-context";
 import {
   isWalletReady,
   normalizeWalletError,
@@ -24,6 +34,12 @@ const WALLET_PANEL = {
 export function WalletConnectCard() {
   const { wallets, wallet, publicKey, connected, connecting, select, connect, disconnect } =
     useWallet();
+  const {
+    error: authError,
+    signInWithWallet,
+    signOut: signOutSession,
+    status: authStatus,
+  } = useSupabaseAuth();
   const [choosing, setChoosing] = useState(false);
   const [pendingWalletName, setPendingWalletName] = useState<WalletName | null>(null);
   const [error, setError] = useState("");
@@ -37,6 +53,8 @@ export function WalletConnectCard() {
   const providerName = wallet?.adapter.name ?? "wallet";
   const isConnected = connected && Boolean(address);
   const isChoosing = choosing || connecting || Boolean(error);
+  const sessionActive = authStatus === "authenticated";
+  const sessionBusy = authStatus === "authenticating";
 
   const connectWallet = useCallback(
     (nextWallet: AdapterWallet) => {
@@ -78,13 +96,25 @@ export function WalletConnectCard() {
   }, [connect, pendingWalletName, wallet?.adapter.name]);
 
   const disconnectWallet = useCallback(async () => {
+    if (sessionActive) {
+      await signOutSession();
+    }
     await disconnect();
     setMenuOpen(false);
     setChoosing(false);
     setError("");
     setPendingWalletName(null);
     triggerRef.current?.focus();
-  }, [disconnect]);
+  }, [disconnect, sessionActive, signOutSession]);
+
+  const toggleSession = useCallback(async () => {
+    if (sessionActive) {
+      await signOutSession();
+      return;
+    }
+
+    await signInWithWallet();
+  }, [sessionActive, signInWithWallet, signOutSession]);
 
   const copyAddress = useCallback(async () => {
     try {
@@ -238,6 +268,9 @@ export function WalletConnectCard() {
                 Connected with {providerName}
               </p>
               <p className="mt-1 truncate font-mono text-sm text-foreground">{address}</p>
+              <p className="mt-1 font-mono text-[0.55rem] text-muted">
+                {sessionActive ? "Supabase session active" : "Session not signed"}
+              </p>
             </div>
             <button
               type="button"
@@ -266,6 +299,23 @@ export function WalletConnectCard() {
               <ExternalLink className="h-4 w-4 text-muted" aria-hidden="true" />
               View on explorer
             </a>
+            <button
+              type="button"
+              role="menuitem"
+              className="flex min-h-10 w-full items-center gap-2 rounded-md px-2 text-sm text-foreground transition-colors duration-100 ease-out hover:bg-foreground/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              disabled={sessionBusy}
+              onClick={() => void toggleSession()}
+            >
+              {sessionBusy ? (
+                <Loader2 className="h-4 w-4 animate-spin text-muted" aria-hidden="true" />
+              ) : (
+                <KeyRound className="h-4 w-4 text-muted" aria-hidden="true" />
+              )}
+              {sessionActive ? "Sign out session" : "Sign in session"}
+            </button>
+            {authError ? (
+              <p className="px-2 py-1 text-sm leading-5 text-warning">{authError}</p>
+            ) : null}
             <button
               type="button"
               role="menuitem"

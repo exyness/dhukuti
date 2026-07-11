@@ -7,6 +7,7 @@ import { PhantomWalletAdapter, SolflareWalletAdapter } from "@solana/wallet-adap
 import { clusterApiUrl } from "@solana/web3.js";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { type ReactNode, useMemo, useState } from "react";
+import { SupabaseAuthProvider } from "@/lib/supabase/auth-context";
 import { WALLET_STORAGE_KEY } from "@/lib/wallet";
 
 const network = WalletAdapterNetwork.Devnet;
@@ -37,7 +38,7 @@ export function Providers({ children }: { children: ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <ConnectionProvider endpoint={endpoint}>
         <WalletProvider wallets={wallets} autoConnect localStorageKey={WALLET_STORAGE_KEY}>
-          {children}
+          <SupabaseAuthProvider>{children}</SupabaseAuthProvider>
         </WalletProvider>
       </ConnectionProvider>
     </QueryClientProvider>

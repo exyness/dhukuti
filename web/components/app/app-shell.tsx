@@ -8,8 +8,10 @@ import {
   Copy,
   ExternalLink,
   History,
+  KeyRound,
   Layers,
   LayoutGrid,
+  Loader2,
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
@@ -23,6 +25,7 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { cn } from "@/lib/cn";
 import { explorerAddressUrl } from "@/lib/constants";
 import { appNavItems } from "@/lib/navigation";
+import { useSupabaseAuth } from "@/lib/supabase/auth-context";
 import { truncateAddress } from "@/lib/wallet";
 
 const navIcons = {
@@ -241,10 +244,18 @@ function isActiveNavItem(pathname: string, item: (typeof appNavItems)[number]) {
 
 function WalletSummary() {
   const { connected, disconnect, publicKey, wallet } = useWallet();
+  const {
+    error: authError,
+    signInWithWallet,
+    signOut: signOutSession,
+    status: authStatus,
+  } = useSupabaseAuth();
   const [copied, setCopied] = useState(false);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const address = publicKey?.toBase58();
+  const sessionActive = authStatus === "authenticated";
+  const sessionBusy = authStatus === "authenticating";
 
   useEffect(() => {
     function onPointerDown(event: PointerEvent) {
@@ -287,6 +298,24 @@ function WalletSummary() {
     window.setTimeout(() => setCopied(false), 1400);
   }
 
+  async function toggleSession() {
+    if (sessionActive) {
+      await signOutSession();
+      return;
+    }
+
+    await signInWithWallet();
+  }
+
+  async function disconnectWallet() {
+    if (sessionActive) {
+      await signOutSession();
+    }
+
+    setOpen(false);
+    await disconnect();
+  }
+
   return (
     <div ref={rootRef} className="relative">
       <button
@@ -317,7 +346,9 @@ function WalletSummary() {
         >
           <div className="border-b border-border px-3 py-2">
             <p className="font-mono text-[0.62rem] text-foreground">{truncateAddress(address)}</p>
-            <p className="mt-1 font-mono text-[0.55rem] text-muted">Devnet wallet</p>
+            <p className="mt-1 font-mono text-[0.55rem] text-muted">
+              {sessionActive ? "Supabase session active" : "Session not signed"}
+            </p>
           </div>
           <button
             type="button"
@@ -345,10 +376,26 @@ function WalletSummary() {
           <button
             type="button"
             role="menuitem"
+            className="flex min-h-9 w-full items-center gap-2 rounded px-3 font-mono text-[0.65rem] uppercase tracking-[0.06em] text-muted transition-colors hover:bg-white/[0.055] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            disabled={sessionBusy}
+            onClick={() => void toggleSession()}
+          >
+            {sessionBusy ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+            ) : (
+              <KeyRound className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
+            {sessionActive ? "Sign out session" : "Sign in session"}
+          </button>
+          {authError ? (
+            <p className="px-3 py-1 text-xs leading-5 text-warning">{authError}</p>
+          ) : null}
+          <button
+            type="button"
+            role="menuitem"
             className="flex min-h-9 w-full items-center gap-2 rounded px-3 font-mono text-[0.65rem] uppercase tracking-[0.06em] text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => {
-              setOpen(false);
-              void disconnect();
+              void disconnectWallet();
             }}
           >
             <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
