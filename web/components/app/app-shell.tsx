@@ -1,6 +1,5 @@
 "use client";
 
-import { useWallet } from "@solana/wallet-adapter-react";
 import {
   Award,
   BadgeDollarSign,
@@ -12,6 +11,7 @@ import {
   Layers,
   LayoutGrid,
   Loader2,
+  LockKeyhole,
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
@@ -21,11 +21,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { NoiseCanvas } from "@/components/layout/noise-canvas";
+import { Badge } from "@/components/ui/badge";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { WalletConnectCard } from "@/components/wallet/wallet-connect";
 import { cn } from "@/lib/cn";
 import { explorerAddressUrl } from "@/lib/constants";
 import { appNavItems } from "@/lib/navigation";
 import { useSupabaseAuth } from "@/lib/supabase/auth-context";
+import { useWalletIdentity } from "@/lib/use-wallet-identity";
 import { truncateAddress } from "@/lib/wallet";
 
 const navIcons = {
@@ -46,6 +49,7 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const [railCollapsed, setRailCollapsed] = useState(false);
+  const { isConnected } = useWalletIdentity();
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -219,10 +223,41 @@ export function AppShell({
           <WalletSummary />
         </header>
         <div className={cn("mx-auto w-full max-w-[1120px] px-6 py-10 md:px-10", contentClassName)}>
-          {children}
+          {isConnected ? children : <WalletRequiredPanel />}
         </div>
       </main>
     </div>
+  );
+}
+
+function WalletRequiredPanel() {
+  return (
+    <section
+      id="wallet-access"
+      className="mx-auto flex min-h-[calc(100vh-152px)] w-full max-w-3xl items-center justify-center py-10"
+    >
+      <div className="grid w-full gap-6 lg:grid-cols-[1fr_22rem] lg:items-center">
+        <div>
+          <Badge tone="accent">Wallet required</Badge>
+          <div className="mt-5 flex items-start gap-4">
+            <span
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-accent/20 bg-accent/10 text-accent"
+              aria-hidden="true"
+            >
+              <LockKeyhole className="h-5 w-5" />
+            </span>
+            <div>
+              <h2 className="text-2xl font-semibold tracking-tight">Connect to continue</h2>
+              <p className="mt-3 max-w-md text-sm leading-6 text-muted">
+                Dhukuti actions are scoped to your Solana wallet. Connect a devnet wallet to load
+                indexed circles, reputation, positions, and transaction controls.
+              </p>
+            </div>
+          </div>
+        </div>
+        <WalletConnectCard />
+      </div>
+    </section>
   );
 }
 
@@ -243,7 +278,7 @@ function isActiveNavItem(pathname: string, item: (typeof appNavItems)[number]) {
 }
 
 function WalletSummary() {
-  const { connected, disconnect, publicKey, wallet } = useWallet();
+  const { address, disconnect, isConnected, wallet } = useWalletIdentity();
   const {
     error: authError,
     signInWithWallet,
@@ -253,7 +288,7 @@ function WalletSummary() {
   const [copied, setCopied] = useState(false);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const address = publicKey?.toBase58();
+  const currentAddress = address ?? "";
   const sessionActive = authStatus === "authenticated";
   const sessionBusy = authStatus === "authenticating";
 
@@ -279,21 +314,21 @@ function WalletSummary() {
     };
   }, []);
 
-  if (!connected || !address) {
+  if (!isConnected || !currentAddress) {
     return (
-      <Link
-        href="/"
+      <a
+        href="#wallet-access"
         className="inline-flex min-h-10 items-center gap-2 rounded-md bg-foreground px-4 font-mono text-[0.68rem] font-medium uppercase tracking-[0.08em] text-background transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         Connect Wallet
-      </Link>
+      </a>
     );
   }
 
   async function copyAddress() {
-    if (!address) return;
+    if (!currentAddress) return;
 
-    await navigator.clipboard.writeText(address);
+    await navigator.clipboard.writeText(currentAddress);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1400);
   }
@@ -327,7 +362,7 @@ function WalletSummary() {
       >
         <div className="text-right">
           <p className="font-mono text-[0.7rem] leading-none text-foreground">
-            {truncateAddress(address)}
+            {truncateAddress(currentAddress)}
           </p>
           <p className="mt-1 font-mono text-[0.55rem] text-muted">
             {wallet?.adapter.name ?? "Wallet"}
@@ -345,7 +380,9 @@ function WalletSummary() {
           className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-md border border-border bg-[#151719] p-1 shadow-[0_16px_40px_rgba(0,0,0,0.42)]"
         >
           <div className="border-b border-border px-3 py-2">
-            <p className="font-mono text-[0.62rem] text-foreground">{truncateAddress(address)}</p>
+            <p className="font-mono text-[0.62rem] text-foreground">
+              {truncateAddress(currentAddress)}
+            </p>
             <p className="mt-1 font-mono text-[0.55rem] text-muted">
               {sessionActive ? "Supabase session active" : "Session not signed"}
             </p>
@@ -365,7 +402,7 @@ function WalletSummary() {
           </button>
           <a
             role="menuitem"
-            href={explorerAddressUrl(address)}
+            href={explorerAddressUrl(currentAddress)}
             target="_blank"
             rel="noreferrer"
             className="flex min-h-9 w-full items-center gap-2 rounded px-3 font-mono text-[0.65rem] uppercase tracking-[0.06em] text-muted transition-colors hover:bg-white/[0.055] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

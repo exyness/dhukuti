@@ -2,12 +2,12 @@
 
 import type { WalletName } from "@solana/wallet-adapter-base";
 import type { Wallet as AdapterWallet } from "@solana/wallet-adapter-react";
-import { useWallet } from "@solana/wallet-adapter-react";
 import { ArrowLeft, ChevronDown, ChevronRight, Wallet } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { useClientMounted } from "@/lib/use-client-mounted";
+import { useWalletIdentity } from "@/lib/use-wallet-identity";
 import {
   isWalletReady,
   normalizeWalletError,
@@ -23,8 +23,8 @@ type WalletPanelState = "choice" | "connecting" | "connected";
 const MOCK_WALLET_ADDRESS = "7xKX11111111111111111111111111111111p2aB";
 
 export function SidebarWalletFlow() {
-  const { wallets, wallet, publicKey, connected, connecting, select, connect, disconnect } =
-    useWallet();
+  const { address, wallets, wallet, isConnected, connecting, select, connect, disconnect } =
+    useWalletIdentity();
   const [view, setView] = useState<SidebarView>("intro");
   const [walletState, setWalletState] = useState<WalletPanelState>("choice");
   const [selectedProviderName, setSelectedProviderName] = useState("wallet");
@@ -33,24 +33,51 @@ export function SidebarWalletFlow() {
   const [error, setError] = useState("");
   const [copyLabel, setCopyLabel] = useState("Copy");
   const connectButtonRef = useRef<HTMLButtonElement>(null);
+  const connectionGraceActiveRef = useRef(false);
+  const connectionGraceTimeoutRef = useRef<number | null>(null);
   const firstProviderRef = useRef<HTMLButtonElement>(null);
+  const isConnectedRef = useRef(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
 
   const hasMounted = useClientMounted();
   const supportedWallets = hasMounted ? sortSupportedWallets(wallets) : [];
-  const currentAddress = publicKey?.toBase58() ?? "";
-  const isConnected = connected && Boolean(currentAddress);
-  const displayWalletState: WalletPanelState = isConnected
+  const currentAddress = address ?? "";
+  const hasConnectedSignal = isConnected || walletState === "connected";
+  const displayWalletState: WalletPanelState = hasConnectedSignal
     ? "connected"
     : connecting || walletState === "connecting"
       ? "connecting"
       : "choice";
-  const shortAddress = isConnected ? truncateAddress(currentAddress) : "";
-  const selectedWalletIconUrl = isConnected ? wallet?.adapter.icon : undefined;
+  const shortAddress = currentAddress ? truncateAddress(currentAddress) : "Connected";
+  const selectedWalletIconUrl = hasConnectedSignal ? wallet?.adapter.icon : undefined;
+  const connectedProviderName = wallet?.adapter.name ?? selectedProviderName;
+  const resolvingConnectedAddress = hasConnectedSignal && !isConnected;
 
   const closeWalletAccountMenu = useCallback(() => {
     setIsMenuOpen(false);
   }, []);
+
+  const clearConnectionGrace = useCallback(() => {
+    connectionGraceActiveRef.current = false;
+
+    if (connectionGraceTimeoutRef.current !== null) {
+      window.clearTimeout(connectionGraceTimeoutRef.current);
+      connectionGraceTimeoutRef.current = null;
+    }
+  }, []);
+
+  const startConnectionGrace = useCallback(() => {
+    clearConnectionGrace();
+    connectionGraceActiveRef.current = true;
+    connectionGraceTimeoutRef.current = window.setTimeout(() => {
+      connectionGraceActiveRef.current = false;
+      connectionGraceTimeoutRef.current = null;
+
+      if (!isConnectedRef.current) {
+        setWalletState("choice");
+      }
+    }, 1500);
+  }, [clearConnectionGrace]);
 
   const showSidebarWalletMode = useCallback(() => {
     closeWalletAccountMenu();
@@ -91,13 +118,9 @@ export function SidebarWalletFlow() {
       try {
         await connect();
         if (cancelled) return;
+        startConnectionGrace();
         setWalletState("connected");
         setPendingWalletName(null);
-        window.setTimeout(() => {
-          setWalletState("choice");
-          setView("intro");
-          connectButtonRef.current?.focus();
-        }, 650);
       } catch (walletError) {
         if (cancelled) return;
         setError(normalizeWalletError(walletError));
@@ -111,16 +134,53 @@ export function SidebarWalletFlow() {
     return () => {
       cancelled = true;
     };
-  }, [connect, pendingWalletName, wallet?.adapter.name]);
+  }, [connect, pendingWalletName, startConnectionGrace, wallet?.adapter.name]);
+
+  useEffect(() => {
+    isConnectedRef.current = isConnected;
+
+    if (isConnected) {
+      clearConnectionGrace();
+    }
+  }, [clearConnectionGrace, isConnected]);
+
+  useEffect(() => {
+    const adapter = wallet?.adapter;
+    if (!adapter) return;
+
+    const handleConnect = () => {
+      isConnectedRef.current = true;
+      clearConnectionGrace();
+    };
+
+    const handleDisconnect = () => {
+      isConnectedRef.current = false;
+      clearConnectionGrace();
+      closeWalletAccountMenu();
+      setPendingWalletName(null);
+      setWalletState("choice");
+    };
+
+    adapter.on("connect", handleConnect);
+    adapter.on("disconnect", handleDisconnect);
+
+    return () => {
+      adapter.off("connect", handleConnect);
+      adapter.off("disconnect", handleDisconnect);
+    };
+  }, [clearConnectionGrace, closeWalletAccountMenu, wallet?.adapter]);
+
+  useEffect(() => () => clearConnectionGrace(), [clearConnectionGrace]);
 
   const resetConnectedWallet = useCallback(async () => {
+    clearConnectionGrace();
     await disconnect();
     closeWalletAccountMenu();
     setSelectedProviderName("wallet");
     setPendingWalletName(null);
     setWalletState("choice");
     setError("");
-  }, [closeWalletAccountMenu, disconnect]);
+  }, [clearConnectionGrace, closeWalletAccountMenu, disconnect]);
 
   const copyWalletAddress = useCallback(
     async (label = "Copy") => {
@@ -202,13 +262,13 @@ export function SidebarWalletFlow() {
               size="md"
               className={cn(
                 "min-w-[156px] focus-visible:ring-[rgba(255,210,196,0.92)] focus-visible:ring-offset-[3px] focus-visible:ring-offset-[#0a0a0a]",
-                isConnected && "normal-case tracking-[0.04em]",
+                hasConnectedSignal && "normal-case tracking-[0.04em]",
               )}
               aria-controls={isConnected ? "walletAccountMenu" : "sidebarWalletView"}
               aria-expanded={isConnected ? isMenuOpen : view === "wallet"}
               aria-haspopup={isConnected ? "menu" : undefined}
-              aria-busy={connecting || walletState === "connecting"}
-              disabled={connecting || walletState === "connecting"}
+              aria-busy={connecting || walletState === "connecting" || resolvingConnectedAddress}
+              disabled={connecting || walletState === "connecting" || resolvingConnectedAddress}
               onClick={() => {
                 if (isConnected) {
                   setIsMenuOpen((open) => !open);
@@ -225,13 +285,13 @@ export function SidebarWalletFlow() {
                 />
               ) : null}
               <span>
-                {isConnected
+                {hasConnectedSignal
                   ? shortAddress
                   : connecting || walletState === "connecting"
                     ? "Connecting..."
                     : "Connect Wallet"}
               </span>
-              {!isConnected ? (
+              {!hasConnectedSignal ? (
                 <Wallet
                   className="h-3.5 w-3.5 drop-shadow-[0_1px_1px_rgba(90,18,8,0.35)]"
                   aria-hidden="true"
@@ -385,7 +445,7 @@ export function SidebarWalletFlow() {
                     {shortAddress || "7xKX...p2aB"}
                   </span>
                   <span className="mt-[0.12rem] block font-mono text-[0.58rem] leading-[1.5] text-[var(--ink-dim)]">
-                    Connected with {selectedProviderName}
+                    Connected with {connectedProviderName}
                   </span>
                 </span>
               </div>

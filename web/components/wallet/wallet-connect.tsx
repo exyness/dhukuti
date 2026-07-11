@@ -2,7 +2,6 @@
 
 import type { WalletName } from "@solana/wallet-adapter-base";
 import type { Wallet as AdapterWallet } from "@solana/wallet-adapter-react";
-import { useWallet } from "@solana/wallet-adapter-react";
 import {
   Check,
   ChevronDown,
@@ -20,6 +19,7 @@ import { cn } from "@/lib/cn";
 import { explorerAddressUrl } from "@/lib/constants";
 import { useSupabaseAuth } from "@/lib/supabase/auth-context";
 import { useClientMounted } from "@/lib/use-client-mounted";
+import { useWalletIdentity } from "@/lib/use-wallet-identity";
 import {
   isWalletReady,
   normalizeWalletError,
@@ -33,8 +33,8 @@ const WALLET_PANEL = {
 };
 
 export function WalletConnectCard() {
-  const { wallets, wallet, publicKey, connected, connecting, select, connect, disconnect } =
-    useWallet();
+  const { address, wallets, wallet, isConnected, connecting, select, connect, disconnect } =
+    useWalletIdentity();
   const {
     error: authError,
     signInWithWallet,
@@ -49,14 +49,13 @@ export function WalletConnectCard() {
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  const address = publicKey?.toBase58() ?? "";
   const hasMounted = useClientMounted();
   const supportedWallets = hasMounted ? sortSupportedWallets(wallets) : [];
   const providerName = wallet?.adapter.name ?? "wallet";
-  const isConnected = connected && Boolean(address);
   const isChoosing = choosing || connecting || Boolean(error);
   const sessionActive = authStatus === "authenticated";
   const sessionBusy = authStatus === "authenticating";
+  const currentAddress = address ?? "";
 
   const connectWallet = useCallback(
     (nextWallet: AdapterWallet) => {
@@ -120,13 +119,13 @@ export function WalletConnectCard() {
 
   const copyAddress = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(address);
+      await navigator.clipboard.writeText(currentAddress);
       setCopyState("copied");
     } catch {
       setCopyState("failed");
     }
     window.setTimeout(() => setCopyState("idle"), 1200);
-  }, [address]);
+  }, [currentAddress]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -195,7 +194,7 @@ export function WalletConnectCard() {
             )}
             <span className="truncate">
               {isConnected
-                ? truncateAddress(address)
+                ? truncateAddress(currentAddress)
                 : connecting
                   ? "Connecting"
                   : "Connect Wallet"}
@@ -269,7 +268,7 @@ export function WalletConnectCard() {
               <p className="font-mono text-[0.62rem] uppercase tracking-[0.1em] text-muted">
                 Connected with {providerName}
               </p>
-              <p className="mt-1 truncate font-mono text-sm text-foreground">{address}</p>
+              <p className="mt-1 truncate font-mono text-sm text-foreground">{currentAddress}</p>
               <p className="mt-1 font-mono text-[0.55rem] text-muted">
                 {sessionActive ? "Supabase session active" : "Session not signed"}
               </p>
@@ -293,7 +292,7 @@ export function WalletConnectCard() {
             </button>
             <a
               role="menuitem"
-              href={explorerAddressUrl(address)}
+              href={explorerAddressUrl(currentAddress)}
               target="_blank"
               rel="noreferrer"
               className="flex min-h-10 w-full items-center gap-2 rounded-md px-2 text-sm text-foreground transition-colors duration-100 ease-out hover:bg-foreground/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

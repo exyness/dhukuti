@@ -1,6 +1,5 @@
 "use client";
 
-import { useWallet } from "@solana/wallet-adapter-react";
 import {
   ArrowRight,
   ChevronRight,
@@ -16,6 +15,7 @@ import Link from "next/link";
 import { type ReactNode, useState } from "react";
 import { cn } from "@/lib/cn";
 import { DHUKUTI_PROGRAM, explorerAddressUrl } from "@/lib/constants";
+import { useWalletIdentity } from "@/lib/use-wallet-identity";
 import { OPEN_WALLET_EVENT } from "@/lib/wallet";
 import { LandingSidebar } from "./landing-sidebar";
 
@@ -23,7 +23,7 @@ const PROGRAM_ID_LABEL = `${DHUKUTI_PROGRAM.programId.slice(0, 4)}...${DHUKUTI_P
 
 export function LandingPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const { connected } = useWallet();
+  const { connecting, isConnected } = useWalletIdentity();
 
   const openWalletFlow = () => {
     setSidebarCollapsed(false);
@@ -43,7 +43,11 @@ export function LandingPage() {
           sidebarCollapsed ? "ml-0 w-full" : "ml-[420px] w-[calc(100%_-_420px)]",
         )}
       >
-        <MainNav walletConnected={connected} onConnectWallet={openWalletFlow} />
+        <MainNav
+          walletConnected={isConnected}
+          walletConnecting={connecting}
+          onConnectWallet={openWalletFlow}
+        />
         <ContentWrap />
       </main>
     </div>
@@ -52,9 +56,11 @@ export function LandingPage() {
 
 function MainNav({
   walletConnected,
+  walletConnecting,
   onConnectWallet,
 }: {
   walletConnected: boolean;
+  walletConnecting: boolean;
   onConnectWallet: () => void;
 }) {
   return (
@@ -94,10 +100,12 @@ function MainNav({
       ) : (
         <button
           type="button"
-          className="group flex min-h-[34px] cursor-pointer items-center gap-2 rounded-md bg-[var(--ink)] px-4 py-2 font-mono text-[0.7rem] uppercase tracking-wide text-[var(--bg)] transition-opacity duration-100 ease-out hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(255,210,196,0.85)]"
+          className="group flex min-h-[34px] cursor-pointer items-center gap-2 rounded-md bg-[var(--ink)] px-4 py-2 font-mono text-[0.7rem] uppercase tracking-wide text-[var(--bg)] transition-opacity duration-100 ease-out hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(255,210,196,0.85)] disabled:cursor-not-allowed disabled:opacity-70"
+          aria-busy={walletConnecting}
+          disabled={walletConnecting}
           onClick={onConnectWallet}
         >
-          Connect Wallet
+          {walletConnecting ? "Connecting" : "Connect Wallet"}
           <Wallet className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
       )}

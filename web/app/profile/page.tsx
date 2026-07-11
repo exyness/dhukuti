@@ -1,6 +1,5 @@
 "use client";
 
-import { useWallet } from "@solana/wallet-adapter-react";
 import { ChevronDown, MoreHorizontal, Plus } from "lucide-react";
 import Link from "next/link";
 import { AppShell, Panel } from "@/components/app/app-shell";
@@ -8,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useProfileQuery } from "@/lib/data/queries";
 import type { CircleSummary, MarketListing, ProfileData } from "@/lib/data/types";
+import { useWalletIdentity } from "@/lib/use-wallet-identity";
 
 type CircleCardData = CircleSummary;
 type ListingData = MarketListing;
@@ -29,8 +29,8 @@ const emptyProfile: ProfileData = {
 };
 
 export default function ProfilePage() {
-  const { publicKey } = useWallet();
-  const wallet = publicKey?.toBase58() ?? null;
+  const { address } = useWalletIdentity();
+  const wallet = address ?? null;
   const { data, error, isLoading } = useProfileQuery(wallet);
   const profile = data ?? emptyProfile;
   const profileStats = profile.stats;
