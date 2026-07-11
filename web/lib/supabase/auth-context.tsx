@@ -9,6 +9,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { createSupabaseBrowserClient } from "./browser";
@@ -45,6 +46,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState("");
   const [session, setSession] = useState<Session | null>(null);
   const [status, setStatus] = useState<Web3AuthStatus>("loading");
+  const autoSignAttemptedWalletRef = useRef<string | null>(null);
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const walletAddress = wallet.publicKey?.toBase58() ?? null;
   const userWallet = getSessionWallet(session);
@@ -115,6 +117,25 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
     setStatus("idle");
   }, [supabase]);
+
+  useEffect(() => {
+    if (!walletAddress) {
+      autoSignAttemptedWalletRef.current = null;
+      return;
+    }
+
+    if (
+      !wallet.connected ||
+      session ||
+      status !== "idle" ||
+      autoSignAttemptedWalletRef.current === walletAddress
+    ) {
+      return;
+    }
+
+    autoSignAttemptedWalletRef.current = walletAddress;
+    void signInWithWallet();
+  }, [session, signInWithWallet, status, wallet.connected, walletAddress]);
 
   const value = useMemo(
     () => ({
