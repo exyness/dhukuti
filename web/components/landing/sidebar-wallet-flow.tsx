@@ -7,6 +7,7 @@ import { ArrowLeft, ChevronDown, ChevronRight, Wallet } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
+import { useClientMounted } from "@/lib/use-client-mounted";
 import {
   isWalletReady,
   normalizeWalletError,
@@ -35,7 +36,8 @@ export function SidebarWalletFlow() {
   const firstProviderRef = useRef<HTMLButtonElement>(null);
   const accountMenuRef = useRef<HTMLDivElement>(null);
 
-  const supportedWallets = sortSupportedWallets(wallets);
+  const hasMounted = useClientMounted();
+  const supportedWallets = hasMounted ? sortSupportedWallets(wallets) : [];
   const currentAddress = publicKey?.toBase58() ?? "";
   const isConnected = connected && Boolean(currentAddress);
   const displayWalletState: WalletPanelState = isConnected

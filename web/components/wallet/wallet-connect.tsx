@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { explorerAddressUrl } from "@/lib/constants";
 import { useSupabaseAuth } from "@/lib/supabase/auth-context";
+import { useClientMounted } from "@/lib/use-client-mounted";
 import {
   isWalletReady,
   normalizeWalletError,
@@ -49,7 +50,8 @@ export function WalletConnectCard() {
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   const address = publicKey?.toBase58() ?? "";
-  const supportedWallets = sortSupportedWallets(wallets);
+  const hasMounted = useClientMounted();
+  const supportedWallets = hasMounted ? sortSupportedWallets(wallets) : [];
   const providerName = wallet?.adapter.name ?? "wallet";
   const isConnected = connected && Boolean(address);
   const isChoosing = choosing || connecting || Boolean(error);
