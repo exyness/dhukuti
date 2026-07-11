@@ -47,7 +47,7 @@ export default function CircleDetailsPage() {
     );
   }
 
-  if (error || !data || !currentCircle) {
+  if (!data || !currentCircle) {
     return (
       <AppShell title="Circle" contentClassName="!max-w-7xl !px-6 !py-10 md:!px-10">
         <StatePanel

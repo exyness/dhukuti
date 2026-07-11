@@ -15,6 +15,7 @@ type ListingData = MarketListing;
 const emptyProfile: ProfileData = {
   activeCircles: [],
   circleHistory: [],
+  hostedCircles: [],
   listings: [],
   positions: [],
   stats: {
@@ -24,6 +25,7 @@ const emptyProfile: ProfileData = {
     contributionVolume: "0 SOL",
     defaultedCircles: "0",
     discountTier: "0",
+    hostedCircles: "0",
     hostCompletions: "0",
     memberReputation: "0",
     vouchesMade: "0",
@@ -42,7 +44,7 @@ export default function ProfilePage() {
   const reputationProgress = getReputationProgress(reputationScore);
 
   return (
-    <AppShell title="Profile & Assets">
+    <AppShell title="Profile & Assets" contentClassName="max-w-none px-6 py-10 md:px-12">
       <div className="space-y-12">
         {!wallet ? (
           <StatePanel
@@ -92,6 +94,8 @@ export default function ProfilePage() {
               <div className="space-y-3">
                 <ProfileMetric label="Discount tier" value={`Tier ${profileStats.discountTier}`} />
                 <ProfileMetric label="Circles Completed" value={profileStats.completedCircles} />
+                <ProfileMetric label="Hosted circles" value={profileStats.hostedCircles} />
+                <ProfileMetric label="Host completions" value={profileStats.hostCompletions} />
                 <ProfileMetric label="Defaults" value={profileStats.defaultedCircles} />
                 <ProfileMetric label="Vouches made" value={profileStats.vouchesMade} />
               </div>
@@ -153,6 +157,37 @@ export default function ProfilePage() {
               </Panel>
             ) : null}
           </div>
+        </section>
+
+        <section id="hosted-circles" className="scroll-mt-24">
+          <div className="mb-6 flex items-baseline justify-between gap-4">
+            <div>
+              <span className="font-mono text-[0.62rem] uppercase tracking-[0.1em] text-accent">
+                Hosted circles
+              </span>
+              <h2 className="mt-2 text-xl font-semibold">Circles created by this wallet</h2>
+            </div>
+            <Link
+              href="/circles/new"
+              className="font-mono text-[0.65rem] uppercase tracking-[0.08em] text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              Create circle →
+            </Link>
+          </div>
+          {profile.hostedCircles.length === 0 ? (
+            <Panel className="flex min-h-36 flex-col justify-center p-6">
+              <h3 className="font-medium">No hosted circles yet</h3>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+                Created circles will appear here after the circle-created event is indexed.
+              </p>
+            </Panel>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {profile.hostedCircles.map((circle) => (
+                <HostedCircleCard key={circle.id} circle={circle} />
+              ))}
+            </div>
+          )}
         </section>
 
         <section id="market-listings" className="scroll-mt-24">
@@ -248,6 +283,36 @@ function ActiveCircleCard({ circle }: { circle: CircleCardData }) {
           </div>
         </div>
       </div>
+    </Panel>
+  );
+}
+
+function HostedCircleCard({ circle }: { circle: CircleCardData }) {
+  return (
+    <Panel className="p-5">
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-[0.95rem] font-medium">{circle.name}</h3>
+          <p className="mt-1 font-mono text-[0.62rem] text-muted">
+            {circle.members}/{circle.memberCap} members
+          </p>
+        </div>
+        <Badge tone={circle.status === "Completed" ? "success" : "accent"} shape="square" size="xs">
+          {circle.status}
+        </Badge>
+      </div>
+      <div className="space-y-3 border-t border-border pt-4">
+        <MiniMetric label="Contribution" value={circle.contribution} />
+        <MiniMetric label="Payout model" value={circle.mode} />
+        <MiniMetric label="Next action" value={circle.nextAction} />
+      </div>
+      <Link
+        href={`/circles/${circle.address}`}
+        className="mt-5 inline-flex min-h-10 items-center gap-2 font-mono text-[0.62rem] uppercase tracking-[0.08em] text-accent transition-colors hover:text-accent-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        Open circle
+        <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+      </Link>
     </Panel>
   );
 }

@@ -13,6 +13,14 @@ type ProjectionContext = {
   supabase: SupabaseClient;
 };
 
+const PRIMARY_CONFLICT_COLUMNS: Record<string, string[]> = {
+  dhukuti_circles: ["circle"],
+  dhukuti_default_proposals: ["proposal"],
+  dhukuti_listings: ["listing"],
+  dhukuti_reputations: ["wallet"],
+  dhukuti_vouches: ["vouch"],
+};
+
 export async function storeAndProjectEvents({
   blockTime,
   events,
@@ -371,6 +379,10 @@ async function upsert(
   values: Record<string, unknown>,
   onConflict?: string,
 ) {
+  if (await isStaleProjection(context, table, values, onConflict)) {
+    return;
+  }
+
   const { error } = await context.supabase
     .from(table)
     .upsert(values, onConflict ? { onConflict } : undefined);
@@ -384,7 +396,13 @@ async function updateByPrimary(
   value: string,
   values: Record<string, unknown>,
 ) {
-  const { error } = await context.supabase.from(table).update(values).eq(column, value);
+  let query = context.supabase.from(table).update(values).eq(column, value);
+  const incomingSlot = getProjectionSlot(values);
+  if (incomingSlot !== null) {
+    query = query.lte("last_slot", incomingSlot);
+  }
+
+  const { error } = await query;
   if (error) throw error;
 }
 
@@ -394,12 +412,63 @@ async function updateMembership(
   member: string,
   values: Record<string, unknown>,
 ) {
-  const { error } = await context.supabase
+  let query = context.supabase
     .from("dhukuti_memberships")
     .update(values)
     .eq("circle", circle)
     .eq("member", member);
+  const incomingSlot = getProjectionSlot(values);
+  if (incomingSlot !== null) {
+    query = query.lte("last_slot", incomingSlot);
+  }
+
+  const { error } = await query;
   if (error) throw error;
+}
+
+async function isStaleProjection(
+  context: ProjectionContext,
+  table: string,
+  values: Record<string, unknown>,
+  onConflict?: string,
+) {
+  const incomingSlot = getProjectionSlot(values);
+  if (incomingSlot === null) return false;
+
+  const conflictColumns = getConflictColumns(table, onConflict);
+  if (conflictColumns.length === 0) return false;
+
+  let query = context.supabase.from(table).select("last_slot");
+  for (const column of conflictColumns) {
+    const value = values[column];
+    if (value === null || value === undefined) return false;
+    query = query.eq(column, value as string | number | boolean);
+  }
+
+  const { data, error } = await query.maybeSingle();
+  if (error) throw error;
+
+  const existing = data as { last_slot?: number | string } | null;
+  const currentSlot = toSlotNumber(existing?.last_slot);
+  return currentSlot !== null && currentSlot > incomingSlot;
+}
+
+function getConflictColumns(table: string, onConflict?: string) {
+  if (onConflict) return onConflict.split(",").map((column) => column.trim());
+  return PRIMARY_CONFLICT_COLUMNS[table] ?? [];
+}
+
+function getProjectionSlot(values: Record<string, unknown>) {
+  return toSlotNumber(values.last_slot);
+}
+
+function toSlotNumber(value: unknown) {
+  if (typeof value === "number" && Number.isSafeInteger(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isSafeInteger(parsed) ? parsed : null;
+  }
+  return null;
 }
 
 function getRequiredString(value: unknown) {

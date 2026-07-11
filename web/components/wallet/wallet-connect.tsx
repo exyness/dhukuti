@@ -97,8 +97,12 @@ export function WalletConnectCard() {
   }, [connect, pendingWalletName, wallet?.adapter.name]);
 
   const disconnectWallet = useCallback(async () => {
-    if (sessionActive) {
-      await signOutSession();
+    try {
+      if (sessionActive) {
+        await signOutSession();
+      }
+    } catch {
+      // Continue disconnecting the wallet even if session cleanup fails.
     }
     await disconnect();
     setMenuOpen(false);
@@ -109,12 +113,16 @@ export function WalletConnectCard() {
   }, [disconnect, sessionActive, signOutSession]);
 
   const toggleSession = useCallback(async () => {
-    if (sessionActive) {
-      await signOutSession();
-      return;
-    }
+    try {
+      if (sessionActive) {
+        await signOutSession();
+        return;
+      }
 
-    await signInWithWallet();
+      await signInWithWallet();
+    } catch {
+      // SupabaseAuthProvider owns the user-facing error copy.
+    }
   }, [sessionActive, signInWithWallet, signOutSession]);
 
   const copyAddress = useCallback(async () => {

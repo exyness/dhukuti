@@ -108,6 +108,7 @@ export type ProfileStats = {
   contributionVolume: string;
   discountTier: string;
   defaultedCircles: string;
+  hostedCircles: string;
   hostCompletions: string;
   memberReputation: string;
   vouchesMade: string;
@@ -117,6 +118,7 @@ export type ProfileStats = {
 export type ProfileData = {
   activeCircles: CircleSummary[];
   circleHistory: CircleSummary[];
+  hostedCircles: CircleSummary[];
   listings: MarketListing[];
   positions: ProfilePosition[];
   stats: ProfileStats;

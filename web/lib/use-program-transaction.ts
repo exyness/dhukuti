@@ -112,8 +112,10 @@ export function useProgramTransaction() {
         throw simulationError(confirmation.value.err, []);
       }
 
-      await queryClient.invalidateQueries();
       setReview({ ...request, signature, status: "confirmed" });
+      void syncConfirmedTransaction(signature).finally(() => {
+        void queryClient.invalidateQueries();
+      });
     } catch (nextError) {
       const failure = decodeProgramError(nextError);
       setError(
@@ -141,6 +143,18 @@ export function useProgramTransaction() {
     review,
     sign,
   };
+}
+
+async function syncConfirmedTransaction(signature: string) {
+  const response = await fetch("/api/indexer/signature", {
+    body: JSON.stringify({ signature }),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    throw new Error("Indexer sync failed.");
+  }
 }
 
 async function prepareAndSimulate({

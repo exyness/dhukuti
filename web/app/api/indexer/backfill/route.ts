@@ -21,8 +21,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = BackfillRequest.parse(await request.json());
-    return Response.json(await backfillProgramEvents(body));
+    const parsed = BackfillRequest.safeParse((await request.json().catch(() => null)) ?? {});
+    if (!parsed.success) {
+      return Response.json({ error: "Invalid backfill request." }, { status: 400 });
+    }
+
+    return Response.json(await backfillProgramEvents(parsed.data));
   } catch (error) {
     return Response.json({ error: getErrorMessage(error) }, { status: 500 });
   }

@@ -24,7 +24,10 @@ export async function backfillProgramEvents({
   limit?: number;
 }) {
   const signatures = await fetchSignaturesForAddress({ address, before, limit });
-  const successfulSignatures = signatures.filter((item) => !item.err).map((item) => item.signature);
+  const successfulSignatures = signatures
+    .filter((item) => !item.err)
+    .map((item) => item.signature)
+    .reverse();
   const result = await ingestSignatures(successfulSignatures);
 
   return {

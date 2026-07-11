@@ -60,8 +60,9 @@ function normalizeAnchorValue(value: unknown): unknown {
   }
 
   if ("toNumber" in value && typeof value.toNumber === "function") {
-    const numeric = value.toNumber();
-    return Number.isSafeInteger(numeric) ? numeric : value.toString();
+    const raw = "toString" in value && typeof value.toString === "function" ? value.toString() : "";
+    const numeric = Number(raw);
+    return Number.isSafeInteger(numeric) ? numeric : raw;
   }
 
   const entries = Object.entries(value).map(([key, nestedValue]) => [

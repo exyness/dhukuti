@@ -1,6 +1,7 @@
 "use client";
 
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
   ArrowRight,
@@ -11,6 +12,7 @@ import {
   LockKeyhole,
   WalletCards,
 } from "lucide-react";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { AppPageHeader, AppShell, Panel, TokenScopeNotice } from "@/components/app/app-shell";
@@ -18,6 +20,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { DHUKUTI_PROGRAM, explorerTransactionUrl } from "@/lib/constants";
+import { queryKeys } from "@/lib/data/queries";
+import type { CircleDetail, CircleSummary } from "@/lib/data/types";
 import {
   buildCreateCircleInstruction,
   CIRCLE_ACCOUNT_SPACE,
@@ -33,6 +37,7 @@ import { decodeProgramError } from "@/lib/use-program-transaction";
 import { OPEN_WALLET_EVENT, truncateAddress } from "@/lib/wallet";
 
 type CreateStatus = "confirmed" | "confirming" | "idle" | "ready" | "signing" | "simulating";
+type IndexStatus = "failed" | "idle" | "syncing" | "synced";
 
 type CreateCircleReview = {
   circleId: bigint;
@@ -61,12 +66,15 @@ const ZERO_BIGINT = BigInt(0);
 export default function NewCirclePage() {
   const { connection } = useConnection();
   const { connected, publicKey, sendTransaction } = useWallet();
+  const queryClient = useQueryClient();
   const [cycleDays, setCycleDays] = useState("30");
   const [contribution, setContribution] = useState("5.00");
   const [maxMembers, setMaxMembers] = useState("12");
   const [payoutCurve, setPayoutCurve] = useState<PayoutCurveValue>("fixed");
   const [minReputation, setMinReputation] = useState("450");
   const [status, setStatus] = useState<CreateStatus>("idle");
+  const [indexStatus, setIndexStatus] = useState<IndexStatus>("idle");
+  const [indexError, setIndexError] = useState("");
   const [review, setReview] = useState<CreateCircleReview | null>(null);
   const [error, setError] = useState("");
 
@@ -91,6 +99,8 @@ export default function NewCirclePage() {
   function resetReview() {
     setReview(null);
     setError("");
+    setIndexStatus("idle");
+    setIndexError("");
     if (status !== "idle") {
       setStatus("idle");
     }
@@ -107,6 +117,8 @@ export default function NewCirclePage() {
 
     setStatus("simulating");
     setError("");
+    setIndexStatus("idle");
+    setIndexError("");
     setReview(null);
 
     try {
@@ -159,11 +171,63 @@ export default function NewCirclePage() {
         throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
       }
 
-      setReview({ ...review, confirmationSignature: signature });
+      const confirmedReview = { ...review, confirmationSignature: signature };
+      setReview(confirmedReview);
       setStatus("confirmed");
+      seedConfirmedCircle(confirmedReview);
+      void syncConfirmedCircle(confirmedReview);
     } catch (nextError) {
       setStatus("ready");
       setError(normalizeCreateError(nextError));
+    }
+  }
+
+  function seedConfirmedCircle(confirmedReview: CreateCircleReview) {
+    const circle = toOptimisticCircleSummary(confirmedReview, publicKey?.toBase58() ?? "");
+    const detail = toOptimisticCircleDetail(circle);
+
+    queryClient.setQueryData<CircleSummary[]>(queryKeys.circles, (currentCircles = []) => {
+      const existingIndex = currentCircles.findIndex((item) => item.address === circle.address);
+      if (existingIndex >= 0) {
+        return currentCircles.map((item, index) => (index === existingIndex ? circle : item));
+      }
+
+      return [circle, ...currentCircles];
+    });
+    queryClient.setQueryData<CircleDetail>(queryKeys.circle(circle.address), detail);
+  }
+
+  async function syncConfirmedCircle(confirmedReview: CreateCircleReview) {
+    if (!confirmedReview.confirmationSignature) return;
+
+    setIndexStatus("syncing");
+    setIndexError("");
+
+    try {
+      const response = await fetch("/api/indexer/signature", {
+        body: JSON.stringify({
+          signature: confirmedReview.confirmationSignature,
+        }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error ?? "Indexer sync failed.");
+      }
+
+      const result = (await response.json().catch(() => null)) as { eventCount?: number } | null;
+      if (!result?.eventCount) {
+        throw new Error("The indexer did not find a Dhukuti event for this signature.");
+      }
+
+      setIndexStatus("synced");
+      await queryClient.invalidateQueries({ queryKey: queryKeys.circles });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.profile(publicKey?.toBase58()) });
+    } catch (syncError) {
+      setIndexStatus("failed");
+      setIndexError(normalizeCreateError(syncError));
     }
   }
 
@@ -270,7 +334,7 @@ export default function NewCirclePage() {
       />
 
       <div className="grid min-w-0 items-start gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,24rem)]">
-        <form className="min-w-0 space-y-[1.125rem]" onSubmit={handleReview}>
+        <form className="min-w-0 space-y-[1.125rem]" aria-busy={isWorking} onSubmit={handleReview}>
           <Panel className="p-6">
             <fieldset className="m-0 min-w-0">
               <legend className="font-mono text-[0.68rem] uppercase tracking-widest text-muted">
@@ -461,15 +525,20 @@ export default function NewCirclePage() {
                 <ReviewMetric label="Payout model" value={payoutCurveLabel(review.payoutCurve)} />
               </div>
               {review.confirmationSignature ? (
-                <a
-                  href={explorerTransactionUrl(review.confirmationSignature)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-5 inline-flex min-h-10 items-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 font-mono text-[0.65rem] uppercase tracking-[0.08em] text-foreground transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  View transaction
-                  <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-                </a>
+                <CircleCreatedSuccess
+                  indexError={indexError}
+                  indexStatus={indexStatus}
+                  review={review}
+                  onCreateAnother={() => {
+                    setCycleDays("30");
+                    setContribution("5.00");
+                    setMaxMembers("12");
+                    setPayoutCurve("fixed");
+                    setMinReputation("450");
+                    resetReview();
+                  }}
+                  onRetryIndex={() => void syncConfirmedCircle(review)}
+                />
               ) : (
                 <Button
                   type="button"
@@ -480,28 +549,23 @@ export default function NewCirclePage() {
                 >
                   {status === "signing" || status === "confirming" ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                  ) : (
-                    <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
-                  )}
+                  ) : null}
                   Sign and create circle
                 </Button>
               )}
             </Panel>
           ) : null}
 
-          <div className="flex flex-wrap justify-end gap-3 pt-1">
-            <Button type="button" variant="secondary" onClick={resetReview}>
-              Reset Review
-            </Button>
-            <Button type="submit" variant="primary" disabled={isWorking}>
-              {status === "simulating" ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-              ) : (
-                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-              )}
-              Review circle creation
-            </Button>
-          </div>
+          {!review ? (
+            <div className="flex flex-wrap justify-end gap-3 pt-1">
+              <Button type="submit" variant="primary" disabled={isWorking}>
+                {status === "simulating" ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                ) : null}
+                Review circle creation
+              </Button>
+            </div>
+          ) : null}
         </form>
 
         <aside className="min-w-0 space-y-6">
@@ -596,6 +660,116 @@ export default function NewCirclePage() {
         </aside>
       </div>
     </AppShell>
+  );
+}
+
+function CircleCreatedSuccess({
+  indexError,
+  indexStatus,
+  onCreateAnother,
+  onRetryIndex,
+  review,
+}: {
+  indexError: string;
+  indexStatus: IndexStatus;
+  onCreateAnother: () => void;
+  onRetryIndex: () => void;
+  review: CreateCircleReview;
+}) {
+  if (!review.confirmationSignature) return null;
+
+  return (
+    <div className="mt-5 rounded-md border border-success/25 bg-success/10 p-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 gap-3">
+          <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-success/25 bg-success/12 text-success">
+            <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="font-medium text-foreground">Circle created</h3>
+              <IndexStatusIndicator status={indexStatus} />
+            </div>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+              The circle is confirmed on devnet. Indexing now only controls when it appears in
+              server-backed lists.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-3">
+        <Link
+          href={`/circles/${review.circlePda}`}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-success/25 bg-success/12 px-4 font-mono text-[0.68rem] font-medium uppercase tracking-[0.08em] text-success transition-colors hover:bg-success/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Open circle
+          <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+        </Link>
+        {indexStatus === "failed" ? (
+          <Button type="button" variant="secondary" onClick={onRetryIndex}>
+            Retry index
+          </Button>
+        ) : (
+          <Link
+            href="/circles"
+            className="inline-flex min-h-11 items-center justify-center rounded-md border border-white/10 bg-white/[0.04] px-4 font-mono text-[0.68rem] font-medium uppercase tracking-[0.08em] text-foreground transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Browse circles
+          </Link>
+        )}
+        <a
+          href={explorerTransactionUrl(review.confirmationSignature)}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-4 font-mono text-[0.68rem] font-medium uppercase tracking-[0.08em] text-foreground transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          View transaction
+          <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+        </a>
+        <Button type="button" variant="ghost" onClick={onCreateAnother}>
+          Create another
+        </Button>
+      </div>
+
+      <p className="mt-3 text-xs leading-5 text-muted">{indexStatusCopy(indexStatus)}</p>
+      {indexError && indexStatus === "failed" ? (
+        <p className="mt-2 text-xs leading-5 text-warning">{indexError}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function IndexStatusIndicator({ status }: { status: IndexStatus }) {
+  if (status === "syncing") {
+    return (
+      <Badge tone="accent" shape="square" size="xs">
+        <Loader2 className="mr-1 h-3 w-3 animate-spin" aria-hidden="true" />
+        Syncing
+      </Badge>
+    );
+  }
+
+  if (status === "synced") {
+    return (
+      <Badge tone="success" shape="square" size="xs">
+        Indexed
+      </Badge>
+    );
+  }
+
+  if (status === "failed") {
+    return (
+      <Badge tone="warning" shape="square" size="xs">
+        Index delayed
+      </Badge>
+    );
+  }
+
+  return (
+    <Badge tone="success" shape="square" size="xs">
+      Confirmed
+    </Badge>
   );
 }
 
@@ -767,6 +941,83 @@ function reviewStatusCopy(status: CreateStatus) {
   if (status === "confirming") return "Waiting for confirmation";
   if (status === "signing") return "Wallet signature requested";
   return "Ready for your wallet";
+}
+
+function indexStatusCopy(status: IndexStatus) {
+  if (status === "synced")
+    return "This circle has been indexed and the circles list was refreshed.";
+  if (status === "syncing") return "Syncing the confirmed event into the indexed read model.";
+  if (status === "failed") {
+    return "The transaction is confirmed. The indexer sync failed, so this browser keeps the circle visible while you retry or run a backfill.";
+  }
+  return "The circles list was updated locally while the indexer catches up.";
+}
+
+function toOptimisticCircleSummary(review: CreateCircleReview, creator: string): CircleSummary {
+  const contribution = `${lamportsToSol(review.contributionLamports)} SOL`;
+  const pot = `${lamportsToSol(review.contributionLamports * BigInt(review.maxMembers))} SOL`;
+  const collateralLamports =
+    (review.contributionLamports * BigInt(review.collateralBps)) / BPS_DENOMINATOR;
+
+  return {
+    address: review.circlePda,
+    circleId: review.circleId.toString(),
+    collateral: `${lamportsToSol(collateralLamports)} SOL`,
+    collateralBps: review.collateralBps,
+    contribution,
+    contributionLamports: review.contributionLamports.toString(),
+    creator,
+    currentRoundIndex: 0,
+    cycle: cycleLabelFromSeconds(Number(review.cycleDurationSeconds)),
+    cycleDurationSeconds: Number(review.cycleDurationSeconds),
+    deadline: "Not started",
+    deadlineAt: null,
+    id: review.circlePda,
+    insurance: "0 SOL",
+    insuranceFeeBps: INSURANCE_FEE_BPS,
+    memberCap: review.maxMembers,
+    members: 0,
+    minReputation: Number(review.minReputation),
+    mode: circleModeFromPayoutCurve(review.payoutCurve),
+    name: `Dhukuti #${review.circleId}`,
+    nextAction: "Join Circle",
+    nextPayout: "Start circle",
+    pot,
+    progress: 0,
+    reserveRatioBps: review.reserveRatioBps,
+    round: `0 / ${review.maxMembers}`,
+    status: "Forming",
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function toOptimisticCircleDetail(circle: CircleSummary): CircleDetail {
+  return {
+    circle,
+    defaultProposal: null,
+    members: [],
+    payoutSchedule: Array.from({ length: circle.memberCap }, (_, index) => ({
+      amount: circle.pot,
+      recipient: "Unassigned",
+      round: String(index + 1).padStart(2, "0"),
+      status: "Pending",
+    })),
+    vouches: [],
+  };
+}
+
+function cycleLabelFromSeconds(seconds: number) {
+  const days = Math.round(seconds / (24 * 60 * 60));
+  if (days === 7) return "Weekly";
+  if (days === 30) return "Monthly";
+  if (days === 90) return "Quarterly";
+  return `${days} days`;
+}
+
+function circleModeFromPayoutCurve(value: PayoutCurveValue): CircleSummary["mode"] {
+  if (value === "auction") return "Dutch bid";
+  if (value === "lottery") return "VRF lottery";
+  return "Fixed order";
 }
 
 function buildPreviewRows(cycleDays: number, projectedPotLamports: bigint) {

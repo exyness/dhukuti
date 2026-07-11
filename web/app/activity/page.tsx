@@ -48,7 +48,7 @@ export default function ActivityPage() {
   }, [reducedMotion]);
 
   return (
-    <AppShell title="Activity Log" contentClassName="!max-w-6xl">
+    <AppShell title="Activity Log" contentClassName="max-w-none px-6 py-10 md:px-12">
       <motion.div
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: loadStage >= 1 ? 1 : 0, y: loadStage >= 1 ? 0 : -12 }}

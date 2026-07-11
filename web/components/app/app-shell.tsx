@@ -461,12 +461,12 @@ function WalletRequiredPanel() {
 }
 
 function isActiveNavItem(pathname: string, item: (typeof appNavItems)[number]) {
-  if (item.href === "/circles") {
-    return pathname === "/circles";
+  if (item.label === "Explore Marketplace") {
+    return pathname === "/market";
   }
 
   if (item.label === "My Circles") {
-    return pathname.startsWith("/circles/") && pathname !== "/circles/new";
+    return pathname === "/circles" || pathname.startsWith("/circles/");
   }
 
   if (item.label === "Profile") {
@@ -533,17 +533,25 @@ function WalletSummary() {
   }
 
   async function toggleSession() {
-    if (sessionActive) {
-      await signOutSession();
-      return;
-    }
+    try {
+      if (sessionActive) {
+        await signOutSession();
+        return;
+      }
 
-    await signInWithWallet();
+      await signInWithWallet();
+    } catch {
+      // SupabaseAuthProvider owns the user-facing error copy.
+    }
   }
 
   async function disconnectWallet() {
-    if (sessionActive) {
-      await signOutSession();
+    try {
+      if (sessionActive) {
+        await signOutSession();
+      }
+    } catch {
+      // Continue disconnecting the wallet even if session cleanup fails.
     }
 
     setOpen(false);

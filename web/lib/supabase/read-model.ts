@@ -149,14 +149,16 @@ export async function getProfileData(wallet: string | null): Promise<ProfileData
 
   if (reputationError) throw reputationError;
 
+  const allCircles = await getCircleSummaries();
+  const hostedCircles = allCircles.filter((circle) => circle.creator === wallet);
   const circleAddresses = Array.from(
     new Set([
       ...memberships.map((membership) => membership.circle),
       ...contributions.map((contribution) => contribution.circle),
       ...listings.map((listing) => listing.circle),
+      ...hostedCircles.map((circle) => circle.address),
     ]),
   );
-  const allCircles = await getCircleSummaries();
   const circles = allCircles.filter((circle) => circleAddresses.includes(circle.address));
   const activeMembershipCircles = new Set(
     memberships.filter((membership) => membership.active).map((membership) => membership.circle),
@@ -165,7 +167,9 @@ export async function getProfileData(wallet: string | null): Promise<ProfileData
     memberships.filter((membership) => !membership.active).map((membership) => membership.circle),
   );
   const activeCircles = circles.filter(
-    (circle) => circle.status !== "Completed" && activeMembershipCircles.has(circle.address),
+    (circle) =>
+      circle.status !== "Completed" &&
+      (activeMembershipCircles.has(circle.address) || circle.creator === wallet),
   );
   const circleHistory = circles.filter(
     (circle) => circle.status === "Completed" || inactiveMembershipCircles.has(circle.address),
@@ -194,6 +198,7 @@ export async function getProfileData(wallet: string | null): Promise<ProfileData
   return {
     activeCircles,
     circleHistory,
+    hostedCircles,
     listings: marketListings,
     positions: memberships.map((membership) => ({
       active: membership.active,
@@ -209,6 +214,7 @@ export async function getProfileData(wallet: string | null): Promise<ProfileData
       contributionVolume: formatSolValue(contributionVolume.toString()),
       defaultedCircles: String((reputation as DhukutiReputationRow | null)?.circles_defaulted ?? 0),
       discountTier: String((reputation as DhukutiReputationRow | null)?.discount_tier ?? 0),
+      hostedCircles: String(hostedCircles.length),
       hostCompletions: String((reputation as DhukutiReputationRow | null)?.circles_hosted ?? 0),
       memberReputation: String((reputation as DhukutiReputationRow | null)?.score ?? 0),
       vouchesMade: String((reputation as DhukutiReputationRow | null)?.vouches_made ?? 0),

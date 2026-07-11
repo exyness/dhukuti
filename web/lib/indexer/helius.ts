@@ -81,6 +81,7 @@ async function heliusRpc<T>(method: string, params: unknown[]) {
       "content-type": "application/json",
     },
     method: "POST",
+    signal: AbortSignal.timeout(15_000),
   });
 
   if (!response.ok) {
