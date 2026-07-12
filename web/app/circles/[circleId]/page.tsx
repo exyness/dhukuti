@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { AppShell, Panel } from "@/components/app/app-shell";
 import { CircleMemberAvatar } from "@/components/app/circle-member-avatar";
 import { CircleActionDesk } from "@/components/program/circle-action-desk";
-import { TransactionReviewPanel } from "@/components/program/transaction-review";
+import { TransactionReviewModal } from "@/components/circles/TransactionReviewModal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
@@ -74,7 +74,7 @@ function CircleDetailsInner({ data }: { data: CircleDetail }) {
 
   return (
     <AppShell title={currentCircle.name} contentClassName="!max-w-none px-6 py-10 md:px-12">
-      <TransactionReviewPanel
+      <TransactionReviewModal
         error={transaction.error}
         onDismiss={transaction.dismiss}
         onSign={() => void transaction.sign()}
@@ -164,114 +164,118 @@ function CircleDetailsInner({ data }: { data: CircleDetail }) {
 
         <CircleActionDesk detail={data} />
 
-        <section className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          <div className="space-y-6 lg:col-span-2">
-            <div className="flex items-baseline justify-between gap-4">
-              <span className="font-mono text-[0.68rem] uppercase tracking-widest text-muted">
-                Payout Schedule
-              </span>
-              <span className="font-mono text-[0.6rem] text-muted">Program-defined order</span>
-            </div>
+        <Panel className="p-6">
+          <div className="mb-6 flex items-baseline justify-between gap-4">
+            <span className="font-mono text-[0.68rem] uppercase tracking-widest text-muted">
+              Circle economics
+            </span>
+            <span className="font-mono text-[0.6rem] text-muted">Program-defined order</span>
+          </div>
 
-            <Panel className="overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[620px] text-left font-mono text-[0.7rem]">
-                  <thead className="border-b border-border bg-white/[0.03]">
-                    <tr>
-                      <TableHead>Round</TableHead>
-                      <TableHead>Recipient</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {payoutSchedule.map((row) => {
-                      const isCurrent = row.round === currentCircle.round;
-                      const isCompleted = row.status === "Completed";
-                      const isDefault = row.status === "Default vote";
-                      return (
-                        <tr
-                          key={row.round}
-                          className={cn(
-                            "border-b border-border transition-colors last:border-b-0 hover:bg-white/[0.03]",
-                            isCompleted && "opacity-60",
-                            isDefault && "bg-white/[0.02]",
-                            !isCompleted && !isDefault && "opacity-70 hover:opacity-100",
-                          )}
-                        >
-                          <td
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+            <div className="space-y-3 lg:col-span-2">
+              <span className="block font-mono text-[0.6rem] uppercase tracking-[0.08em] text-muted">
+                Payout schedule
+              </span>
+              <div className="overflow-hidden rounded-lg border border-border">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[620px] text-left font-mono text-[0.7rem]">
+                    <thead className="border-b border-border bg-white/[0.03]">
+                      <tr>
+                        <TableHead>Round</TableHead>
+                        <TableHead>Recipient</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Status</TableHead>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {payoutSchedule.map((row) => {
+                        const isCurrent = row.round === currentCircle.round;
+                        const isCompleted = row.status === "Completed";
+                        const isDefault = row.status === "Default vote";
+                        return (
+                          <tr
+                            key={row.round}
                             className={cn(
-                              "p-4 font-mono",
-                              isCurrent && "font-medium text-accent",
+                              "border-b border-border transition-colors last:border-b-0 hover:bg-white/[0.03]",
+                              isCompleted && "opacity-60",
+                              isDefault && "bg-white/[0.02]",
+                              !isCompleted && !isDefault && "opacity-70 hover:opacity-100",
                             )}
                           >
-                            {row.round}/{currentCircle.memberCap}
-                          </td>
-                          <td className="p-4">
-                            <div className="flex items-center gap-2">
-                              <span
-                                className={cn(
-                                  "h-4 w-4 rounded-full",
-                                  isCompleted
-                                    ? "border border-white/15 bg-white/5"
-                                    : isCurrent
-                                      ? "border border-accent/30 bg-accent/15"
-                                      : "border border-white/15 bg-white/5",
-                                )}
-                                aria-hidden="true"
-                              />
-                              <span className="text-muted">{row.recipient}</span>
-                            </div>
-                          </td>
-                          <td className="p-4 font-mono font-medium tabular-nums">{row.amount}</td>
-                          <td className="p-4">
-                            <PayoutStatus status={row.status} />
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </Panel>
-          </div>
-
-          <div className="space-y-6">
-            <span className="block font-mono text-[0.68rem] uppercase tracking-widest text-muted">
-              Circle Health
-            </span>
-
-            <Panel className="space-y-6 p-6">
-              <div>
-                <div className="mb-2 flex items-end justify-between">
-                  <span className="font-mono text-[0.55rem] uppercase text-muted">
-                    Insurance Pool
-                  </span>
-                  <span className="font-mono text-sm font-medium">{currentCircle.insurance}</span>
+                            <td
+                              className={cn(
+                                "p-4 font-mono",
+                                isCurrent && "font-medium text-accent",
+                              )}
+                            >
+                              {row.round}/{currentCircle.memberCap}
+                            </td>
+                            <td className="p-4">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={cn(
+                                    "h-4 w-4 rounded-full",
+                                    isCompleted
+                                      ? "border border-white/15 bg-white/5"
+                                      : isCurrent
+                                        ? "border border-accent/30 bg-accent/15"
+                                        : "border border-white/15 bg-white/5",
+                                  )}
+                                  aria-hidden="true"
+                                />
+                                <span className="text-muted">{row.recipient}</span>
+                              </div>
+                            </td>
+                            <td className="p-4 font-mono font-medium tabular-nums">{row.amount}</td>
+                            <td className="p-4">
+                              <PayoutStatus status={row.status} />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
-                  <div
-                    className="h-full rounded-full bg-accent"
-                    style={{
-                      width: `${healthCoveragePercent(currentCircle)}%`,
-                    }}
-                  />
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <span className="block font-mono text-[0.6rem] uppercase tracking-[0.08em] text-muted">
+                Circle health
+              </span>
+              <div className="space-y-6">
+                <div>
+                  <div className="mb-2 flex items-end justify-between">
+                    <span className="font-mono text-[0.55rem] uppercase text-muted">
+                      Insurance Pool
+                    </span>
+                    <span className="font-mono text-sm font-medium">{currentCircle.insurance}</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
+                    <div
+                      className="h-full rounded-full bg-accent"
+                      style={{
+                        width: `${healthCoveragePercent(currentCircle)}%`,
+                      }}
+                    />
+                  </div>
+                  <p className="mt-3 font-mono text-[0.6rem] leading-relaxed text-muted">
+                    Reserve target: {(currentCircle.reserveRatioBps / 100).toFixed(2)}% of indexed
+                    obligations.
+                  </p>
                 </div>
-                <p className="mt-3 font-mono text-[0.6rem] leading-relaxed text-muted">
-                  Reserve target: {(currentCircle.reserveRatioBps / 100).toFixed(2)}% of indexed
-                  obligations.
-                </p>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4 border-t border-border pt-6">
-                <HealthMetric label="Collateral" value={currentCircle.collateral} />
-                <HealthMetric label="Min rep" value={String(currentCircle.minReputation)} />
-              </div>
+                <div className="grid grid-cols-2 gap-4 border-t border-border pt-6">
+                  <HealthMetric label="Collateral" value={currentCircle.collateral} />
+                  <HealthMetric label="Min rep" value={String(currentCircle.minReputation)} />
+                </div>
 
-              <ActionRequiredBlock proposal={data.defaultProposal} />
-            </Panel>
+                <ActionRequiredBlock proposal={data.defaultProposal} />
+              </div>
+            </div>
           </div>
-        </section>
+        </Panel>
       </div>
     </AppShell>
   );

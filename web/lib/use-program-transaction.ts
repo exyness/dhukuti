@@ -3,6 +3,7 @@
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { Transaction } from "@solana/web3.js";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { useCallback, useState } from "react";
 import type { ProgramInstructionBundle } from "@/lib/program";
 
@@ -69,6 +70,7 @@ export function useProgramTransaction() {
       } catch (nextError) {
         const failure = decodeProgramError(nextError);
         setError(failure);
+        toast.error(failure.message);
         setReview(null);
         throw new Error(failure.message);
       }
@@ -113,6 +115,9 @@ export function useProgramTransaction() {
       }
 
       setReview({ ...request, signature, status: "confirmed" });
+      toast.success("Transaction confirmed", {
+        description: `${request.title} was submitted to the network.`,
+      });
       void syncConfirmedTransaction(signature).finally(() => {
         void queryClient.invalidateQueries();
       });
@@ -127,6 +132,9 @@ export function useProgramTransaction() {
             }
           : failure,
       );
+      if (!/cancel/i.test(failure.message)) {
+        toast.error(failure.message);
+      }
       setReview({ ...request, signature: submittedSignature, status: "ready" });
     }
   }, [connection, publicKey, queryClient, review, sendTransaction]);
@@ -283,6 +291,17 @@ export function decodeProgramError(error: unknown): ProgramTransactionFailure {
     }
     const knownMessage = DHUKUTI_ERROR_MESSAGES[code - 6000];
     if (knownMessage) return { logs, message: knownMessage };
+  }
+
+  if (
+    /Allocate: account .* already in use/i.test(combinedError) ||
+    (/custom program error: 0x0\b/i.test(combinedError) && /already in use/i.test(combinedError))
+  ) {
+    return {
+      logs,
+      message:
+        "This round has already been resolved, so its next-round account already exists. Refresh the circle and continue to the next round.",
+    };
   }
 
   if (/helius|supabase|rpc|network request|fetch failed/i.test(combinedError)) {

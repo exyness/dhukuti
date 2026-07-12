@@ -5,7 +5,7 @@ import { PublicKey } from "@solana/web3.js";
 import { Filter, ListPlus, ShieldAlert, ShieldCheck, ShoppingCart, X } from "lucide-react";
 import { type FormEvent, type ReactNode, useMemo, useState } from "react";
 import { AppPageHeader, AppShell, Panel } from "@/components/app/app-shell";
-import { TransactionReviewPanel } from "@/components/program/transaction-review";
+import { TransactionReviewModal } from "@/components/circles/TransactionReviewModal";
 import { Button } from "@/components/ui/button";
 import { useMarketListingsQuery, useProfileQuery } from "@/lib/data/queries";
 import type { CircleSummary, MarketListing, ProfilePosition } from "@/lib/data/types";
@@ -204,7 +204,7 @@ export default function MarketPage() {
           }
         />
 
-        <TransactionReviewPanel
+        <TransactionReviewModal
           error={transaction.error}
           onDismiss={transaction.dismiss}
           onSign={() => void transaction.sign()}
