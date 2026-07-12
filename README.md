@@ -10,12 +10,12 @@ production value.
 
 ## Repository Layout
 
-| Path | Purpose |
-| --- | --- |
-| [`web/`](web/README.md) | Next.js application, wallet connection, program client, and indexed read surfaces. |
-| [`dhukuti-program/`](dhukuti-program/README.md) | Anchor/Rust Solana program and LiteSVM test suite. |
-| [`supabase/`](supabase/README.md) | Event-store migration and local Supabase validation instructions. |
-| [`Architecture.md`](Architecture.md) | Protocol design, account model, and roadmap. |
+| Path                                            | Purpose                                                                            |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------- |
+| [`web/`](web/README.md)                         | Next.js application, wallet connection, program client, and indexed read surfaces. |
+| [`dhukuti-program/`](dhukuti-program/README.md) | Anchor/Rust Solana program and LiteSVM test suite.                                 |
+| [`supabase/`](supabase/README.md)               | Event-store migration and local Supabase validation instructions.                  |
+| [`Architecture.md`](Architecture.md)            | Protocol design, account model, and roadmap.                                       |
 
 ## Run the Web App
 
@@ -47,7 +47,7 @@ bun run build
 
 The Solana program currently targets devnet:
 
-- Program ID: `GMhsYxEmeCpKaxqKPzSTmuoEuid6YnbfFJRYBur7ZcmL`
+- Program ID: `FrVMUmF1maCCiCZaVAkGn9mT69kQ5Hbgd9sUvzfmsgvs`
 - Settlement asset: native SOL
 
 For program build, test, deployment, and mainnet-gate details, see

@@ -61,7 +61,7 @@ Current local coverage includes LiteSVM tests for lifecycle, duplicate contribut
 ## Devnet Deployment
 
 - Cluster: Solana devnet
-- Program ID: `GMhsYxEmeCpKaxqKPzSTmuoEuid6YnbfFJRYBur7ZcmL`
+- Program ID: `FrVMUmF1maCCiCZaVAkGn9mT69kQ5Hbgd9sUvzfmsgvs`
 - ProgramData: `vyW7FuSSXARQXAhuLEohpfas8rzVWJAjxwM9tz816hM`
 - Upgrade authority: `6rqcaPUEdcyAp8u3bw8xeMKtSRYB7jxXt1xb51YWbYmP`
 - Deploy signature: `2jeydVCQo2p9vZktrf7xsYzDoKgujixvikEWghXx6fMJjjzbPNaL8szVG6uFEvqpfmxHGJ7EP2iq86KcSsPfr2YW`

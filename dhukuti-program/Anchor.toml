@@ -5,11 +5,11 @@ package_manager = "npm"
 resolution = true
 skip-lint = false
 
-[programs.localnet]
-dhukuti_program = "GMhsYxEmeCpKaxqKPzSTmuoEuid6YnbfFJRYBur7ZcmL"
-
 [programs.devnet]
-dhukuti_program = "GMhsYxEmeCpKaxqKPzSTmuoEuid6YnbfFJRYBur7ZcmL"
+dhukuti_program = "FrVMUmF1maCCiCZaVAkGn9mT69kQ5Hbgd9sUvzfmsgvs"
+
+[programs.localnet]
+dhukuti_program = "FrVMUmF1maCCiCZaVAkGn9mT69kQ5Hbgd9sUvzfmsgvs"
 
 [provider]
 cluster = "localnet"

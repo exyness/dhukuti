@@ -67,7 +67,7 @@ submit transactions.
 ## Deployed Program
 
 - Cluster: devnet
-- Program ID: `GMhsYxEmeCpKaxqKPzSTmuoEuid6YnbfFJRYBur7ZcmL`
+- Program ID: `FrVMUmF1maCCiCZaVAkGn9mT69kQ5Hbgd9sUvzfmsgvs`
 
 The full program deployment details live in `../../dhukuti-program/README.md`.
 

@@ -11,7 +11,7 @@ pub use events::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("GMhsYxEmeCpKaxqKPzSTmuoEuid6YnbfFJRYBur7ZcmL");
+declare_id!("FrVMUmF1maCCiCZaVAkGn9mT69kQ5Hbgd9sUvzfmsgvs");
 
 #[program]
 pub mod dhukuti_program {

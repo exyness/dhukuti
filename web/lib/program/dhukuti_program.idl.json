@@ -1,5 +1,5 @@
 {
-  "address": "GMhsYxEmeCpKaxqKPzSTmuoEuid6YnbfFJRYBur7ZcmL",
+  "address": "FrVMUmF1maCCiCZaVAkGn9mT69kQ5Hbgd9sUvzfmsgvs",
   "metadata": {
     "name": "dhukuti_program",
     "version": "0.1.0",
@@ -3032,7 +3032,7 @@
     {
       "code": 6002,
       "name": "InvalidCycleDuration",
-      "msg": "Cycle duration out of allowed range (1 hour – 365 days)"
+      "msg": "Cycle duration out of allowed range (1 minute – 365 days)"
     },
     {
       "code": 6003,

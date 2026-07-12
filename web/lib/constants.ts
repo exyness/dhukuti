@@ -1,6 +1,6 @@
 export const DHUKUTI_PROGRAM = {
   cluster: "devnet",
-  programId: "GMhsYxEmeCpKaxqKPzSTmuoEuid6YnbfFJRYBur7ZcmL",
+  programId: "FrVMUmF1maCCiCZaVAkGn9mT69kQ5Hbgd9sUvzfmsgvs",
   programData: "vyW7FuSSXARQXAhuLEohpfas8rzVWJAjxwM9tz816hM",
   deploySignature:
     "4NnrJ5ZCseUM3ZaEPmWaTfeAb3Go8yjUJEFTsyhQrbs9EYpxfwMuyRZVToWGorZcoEn7N94gyhCZNhKePUi5rnBg",
