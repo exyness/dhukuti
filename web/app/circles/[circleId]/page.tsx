@@ -42,7 +42,7 @@ export default function CircleDetailsPage() {
 
   if (isLoading) {
     return (
-      <AppShell title="Circle" contentClassName="!max-w-none px-6 py-10 md:px-10">
+      <AppShell title="Circle" contentClassName="!max-w-7xl px-6 py-10 md:px-10">
         <StatePanel message="Loading the latest circle details." title="Loading circle" />
       </AppShell>
     );
@@ -50,7 +50,7 @@ export default function CircleDetailsPage() {
 
   if (!data || !currentCircle) {
     return (
-      <AppShell title="Circle" contentClassName="!max-w-none px-6 py-10 md:px-10">
+      <AppShell title="Circle" contentClassName="!max-w-7xl px-6 py-10 md:px-10">
         <StatePanel
           message={
             error
@@ -64,10 +64,10 @@ export default function CircleDetailsPage() {
   }
 
   return (
-    <AppShell title={currentCircle.name} contentClassName="!max-w-none px-6 py-10 md:px-10">
+    <AppShell title={currentCircle.name} contentClassName="!max-w-7xl px-6 py-10 md:px-10">
       <div className="space-y-8">
         <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <Panel className="flex min-h-[17rem] flex-col items-center justify-between gap-6 p-6 text-center">
+          <Panel className="flex min-h-[17rem] flex-col items-center justify-between gap-6 p-8 text-center">
             <div className="w-full">
               <div className="mb-5 flex items-center justify-center gap-2">
                 <Clock3 className="h-4 w-4 text-accent" aria-hidden="true" />
@@ -94,7 +94,7 @@ export default function CircleDetailsPage() {
             </Badge>
           </Panel>
 
-          <Panel className="p-6 lg:col-span-2">
+          <Panel className="p-8 lg:col-span-2">
             <div className="mb-6 flex items-center justify-between gap-4">
               <span className="font-mono text-[0.65rem] uppercase tracking-widest text-muted">
                 Circle Members ({currentCircle.memberCap})
@@ -105,7 +105,7 @@ export default function CircleDetailsPage() {
                 <LegendDot label="Default risk" tone="default" />
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-6">
+            <div className="grid grid-cols-4 gap-6 md:grid-cols-6">
               {circleMembers.map((member) => (
                 <CircleMemberAvatar
                   key={member.handle}
@@ -204,7 +204,7 @@ export default function CircleDetailsPage() {
                   <div
                     className="h-full rounded-full bg-accent"
                     style={{
-                      width: `${Math.min(Math.max(currentCircle.reserveRatioBps / 100, 2), 100)}%`,
+                      width: `${healthCoveragePercent(currentCircle)}%`,
                     }}
                   />
                 </div>
@@ -229,6 +229,18 @@ export default function CircleDetailsPage() {
 function circleStatusAction(circle: CircleSummary) {
   if (circle.status === "Forming" && circle.members >= circle.memberCap) return "Ready to start";
   return circle.nextAction;
+}
+
+function healthCoveragePercent(circle: CircleSummary) {
+  const insurance = parseSolDisplay(circle.insurance);
+  const pot = parseSolDisplay(circle.pot);
+  if (insurance <= 0 || pot <= 0) return 0;
+  return Math.min(Math.max((insurance / pot) * 100, 2), 100);
+}
+
+function parseSolDisplay(value: string) {
+  const parsed = Number.parseFloat(value.replace(/[^\d.]/g, ""));
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function CountdownUnit({ label, value }: { label: string; value: string }) {
