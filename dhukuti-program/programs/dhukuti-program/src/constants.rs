@@ -36,8 +36,8 @@ pub const DUTCH_AUCTION_MAX_DISCOUNT_BPS: u16 = 2_000;
 /// The remainder is distributed to other active members.
 pub const DUTCH_AUCTION_INSURANCE_SPLIT_BPS: u16 = 5_000;
 
-/// Minimum cycle duration: 1 hour.
-pub const MIN_CYCLE_DURATION_SECS: i64 = 3_600;
+/// Minimum cycle duration: 1 minute.
+pub const MIN_CYCLE_DURATION_SECS: i64 = 60;
 
 /// Maximum cycle duration: 365 days.
 pub const MAX_CYCLE_DURATION_SECS: i64 = 365 * 24 * 3_600;

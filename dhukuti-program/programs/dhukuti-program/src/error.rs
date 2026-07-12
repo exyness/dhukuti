@@ -7,7 +7,7 @@ pub enum DhukutiError {
     InvalidMaxMembers,
     #[msg("Contribution amount must be greater than zero")]
     ZeroContributionAmount,
-    #[msg("Cycle duration out of allowed range (1 hour – 365 days)")]
+    #[msg("Cycle duration out of allowed range (1 minute – 365 days)")]
     InvalidCycleDuration,
     #[msg("Collateral basis points below minimum (500 bps = 5%)")]
     CollateralTooLow,
