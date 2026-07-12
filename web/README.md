@@ -44,12 +44,14 @@ Required for indexer writes:
 
 ```bash
 SUPABASE_SECRET_KEY=
+SUPABASE_INDEXER_KEY=
 HELIUS_API_KEY=
 HELIUS_WEBHOOK_SECRET=
+HELIUS_WEBHOOK_URL=
 INDEXER_ADMIN_SECRET=
 ```
 
-`SUPABASE_SECRET_KEY`, `HELIUS_API_KEY`, `HELIUS_WEBHOOK_SECRET`, and
+`SUPABASE_SECRET_KEY`, `SUPABASE_INDEXER_KEY`, `HELIUS_API_KEY`, `HELIUS_WEBHOOK_SECRET`, and
 `INDEXER_ADMIN_SECRET` must stay server-only. Do not prefix them with
 `NEXT_PUBLIC_`. For hosted Supabase, create the secret key from the Dashboard's
 Publishable and secret API keys tab. For local Supabase CLI, use the
