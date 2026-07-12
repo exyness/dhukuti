@@ -1,44 +1,23 @@
 "use client";
 
-import { Clock3 } from "lucide-react";
+import { AlertCircle, Clock3 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { AppShell, Panel } from "@/components/app/app-shell";
 import { CircleMemberAvatar } from "@/components/app/circle-member-avatar";
 import { CircleActionDesk } from "@/components/program/circle-action-desk";
+import { TransactionReviewPanel } from "@/components/program/transaction-review";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { useCircleDetailQuery } from "@/lib/data/queries";
-import type { CircleSummary } from "@/lib/data/types";
+import type { CircleDetail, CircleSummary, DefaultProposal } from "@/lib/data/types";
+import { useCirclePrimaryAction } from "@/lib/use-circle-primary-action";
 import { useWalletIdentity } from "@/lib/use-wallet-identity";
 
 export default function CircleDetailsPage() {
   const params = useParams<{ circleId: string }>();
   const circleId = decodeURIComponent(params.circleId);
   const { data, error, isLoading } = useCircleDetailQuery(circleId);
-  const { address } = useWalletIdentity();
-  const currentCircle = data?.circle;
-  const circleMembers = data?.members ?? [];
-  const payoutSchedule = data?.payoutSchedule ?? [];
-  const openSlots = currentCircle ? Math.max(currentCircle.memberCap - circleMembers.length, 0) : 0;
-  const openSlotMembers = Array.from({ length: openSlots }, (_, index) => {
-    const slotNumber = circleMembers.length + index + 1;
-
-    return {
-      active: false,
-      collateral: "Not locked",
-      defaulted: false,
-      handle: `Slot ${slotNumber}`,
-      joinOrder: slotNumber - 1,
-      nextPayout: "Unassigned",
-      positionNftMint: "",
-      reputation: 0,
-      role: "Open",
-      state: "Open",
-      summary: `Open slot gated by ${currentCircle?.minReputation ?? 0}+ reputation and ${currentCircle?.collateral ?? "indexed"} collateral.`,
-      vouch: "Available",
-    };
-  });
-  const countdown = currentCircle ? getCountdownUnits(currentCircle.deadlineAt) : null;
 
   if (isLoading) {
     return (
@@ -48,7 +27,7 @@ export default function CircleDetailsPage() {
     );
   }
 
-  if (!data || !currentCircle) {
+  if (!data || !data.circle) {
     return (
       <AppShell title="Circle" contentClassName="!max-w-none px-6 py-10 md:px-12">
         <StatePanel
@@ -63,8 +42,49 @@ export default function CircleDetailsPage() {
     );
   }
 
+  return <CircleDetailsInner data={data} />;
+}
+
+function CircleDetailsInner({ data }: { data: CircleDetail }) {
+  const { address } = useWalletIdentity();
+  const currentCircle = data.circle;
+  const circleMembers = data.members ?? [];
+  const payoutSchedule = data.payoutSchedule ?? [];
+  const { localError, primaryAction, transaction } = useCirclePrimaryAction(data);
+  const openSlots = Math.max(currentCircle.memberCap - circleMembers.length, 0);
+  const openSlotMembers = Array.from({ length: openSlots }, (_, index) => {
+    const slotNumber = circleMembers.length + index + 1;
+
+    return {
+      active: false,
+      collateral: "Not locked",
+      defaulted: false,
+      handle: `Slot ${slotNumber}`,
+      joinOrder: slotNumber - 1,
+      nextPayout: "Unassigned",
+      positionNftMint: "",
+      reputation: 0,
+      role: "Open",
+      state: "Open",
+      summary: `Open slot gated by ${currentCircle.minReputation}+ reputation and ${currentCircle.collateral} collateral.`,
+      vouch: "Available",
+    };
+  });
+  const countdown = getCountdownUnits(currentCircle.deadlineAt);
+
   return (
     <AppShell title={currentCircle.name} contentClassName="!max-w-none px-6 py-10 md:px-12">
+      <TransactionReviewPanel
+        error={transaction.error}
+        onDismiss={transaction.dismiss}
+        onSign={() => void transaction.sign()}
+        review={transaction.review}
+      />
+      {localError ? (
+        <Panel className="mb-8 border-warning/25 bg-warning/8 p-4" role="alert">
+          <p className="text-sm leading-6 text-foreground">{localError}</p>
+        </Panel>
+      ) : null}
       <div className="space-y-8">
         <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <Panel className="flex min-h-[17rem] flex-col items-center justify-between gap-6 p-8 text-center">
@@ -76,7 +96,7 @@ export default function CircleDetailsPage() {
                 </span>
               </div>
               {countdown ? (
-                <div className="flex items-start justify-center gap-3">
+                <div className="flex items-start justify-center gap-3" aria-live="polite">
                   <CountdownUnit value={countdown.days} label="Days" />
                   <span className="mt-1 font-mono text-3xl text-white/20">:</span>
                   <CountdownUnit value={countdown.hours} label="Hrs" />
@@ -89,9 +109,21 @@ export default function CircleDetailsPage() {
                 </div>
               )}
             </div>
-            <Badge tone={currentCircle.status === "Completed" ? "success" : "accent"}>
-              {circleStatusAction(currentCircle)}
-            </Badge>
+            {primaryAction ? (
+              <Button
+                type="button"
+                variant="primary"
+                disabled={primaryAction.disabled}
+                className="w-full font-mono text-[0.7rem] font-medium uppercase tracking-widest"
+                onClick={primaryAction.onClick}
+              >
+                {primaryAction.label}
+              </Button>
+            ) : (
+              <Badge tone={currentCircle.status === "Completed" ? "success" : "accent"}>
+                {circleStatusAction(currentCircle)}
+              </Badge>
+            )}
           </Panel>
 
           <Panel className="p-8 lg:col-span-2">
@@ -153,34 +185,51 @@ export default function CircleDetailsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {payoutSchedule.map((row) => (
-                      <tr
-                        key={row.round}
-                        className={cn(
-                          "group border-b border-border transition-colors hover:bg-white/[0.03] last:border-b-0",
-                          row.status === "Default vote"
-                            ? "bg-white/[0.02]"
-                            : "opacity-70 hover:opacity-100",
-                        )}
-                      >
-                        <td className="p-4 font-medium text-accent">
-                          {row.round}/{currentCircle.memberCap}
-                        </td>
-                        <td className="p-4">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className="h-4 w-4 rounded-full border border-white/15 bg-white/5"
-                              aria-hidden="true"
-                            />
-                            <span className="text-muted">{row.recipient}</span>
-                          </div>
-                        </td>
-                        <td className="p-4 font-mono font-medium tabular-nums">{row.amount}</td>
-                        <td className="p-4">
-                          <PayoutStatus status={row.status} />
-                        </td>
-                      </tr>
-                    ))}
+                    {payoutSchedule.map((row) => {
+                      const isCurrent = row.round === currentCircle.round;
+                      const isCompleted = row.status === "Completed";
+                      const isDefault = row.status === "Default vote";
+                      return (
+                        <tr
+                          key={row.round}
+                          className={cn(
+                            "border-b border-border transition-colors last:border-b-0 hover:bg-white/[0.03]",
+                            isCompleted && "opacity-60",
+                            isDefault && "bg-white/[0.02]",
+                            !isCompleted && !isDefault && "opacity-70 hover:opacity-100",
+                          )}
+                        >
+                          <td
+                            className={cn(
+                              "p-4 font-mono",
+                              isCurrent && "font-medium text-accent",
+                            )}
+                          >
+                            {row.round}/{currentCircle.memberCap}
+                          </td>
+                          <td className="p-4">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={cn(
+                                  "h-4 w-4 rounded-full",
+                                  isCompleted
+                                    ? "border border-white/15 bg-white/5"
+                                    : isCurrent
+                                      ? "border border-accent/30 bg-accent/15"
+                                      : "border border-white/15 bg-white/5",
+                                )}
+                                aria-hidden="true"
+                              />
+                              <span className="text-muted">{row.recipient}</span>
+                            </div>
+                          </td>
+                          <td className="p-4 font-mono font-medium tabular-nums">{row.amount}</td>
+                          <td className="p-4">
+                            <PayoutStatus status={row.status} />
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -218,6 +267,8 @@ export default function CircleDetailsPage() {
                 <HealthMetric label="Collateral" value={currentCircle.collateral} />
                 <HealthMetric label="Min rep" value={String(currentCircle.minReputation)} />
               </div>
+
+              <ActionRequiredBlock proposal={data.defaultProposal} />
             </Panel>
           </div>
         </section>
@@ -229,6 +280,44 @@ export default function CircleDetailsPage() {
 function circleStatusAction(circle: CircleSummary) {
   if (circle.status === "Forming" && circle.members >= circle.memberCap) return "Ready to start";
   return circle.nextAction;
+}
+
+function ActionRequiredBlock({ proposal }: { proposal: DefaultProposal | null }) {
+  if (!proposal) return null;
+
+  const deadlineLabel = proposal.graceDeadline
+    ? `Voting for member exclusion begins ${formatRelative(proposal.graceDeadline)}.`
+    : "Voting for member exclusion is open now.";
+
+  return (
+    <div className="border-t border-border pt-6">
+      <div className="mb-3 flex items-center gap-2 text-accent">
+        <AlertCircle className="h-4 w-4" aria-hidden="true" />
+        <span className="font-mono text-[0.65rem] font-semibold uppercase tracking-wider">
+          Action required
+        </span>
+      </div>
+      <p className="text-[0.75rem] leading-relaxed text-muted">
+        {proposal.candidateHandle
+          ? `Default proposal open for ${proposal.candidateHandle}. ${deadlineLabel}`
+          : `A default proposal is open for exclusion. ${deadlineLabel}`}
+      </p>
+      <Button type="button" variant="secondary" className="mt-4 w-full">
+        View governance
+      </Button>
+    </div>
+  );
+}
+
+function formatRelative(iso: string): string {
+  const ms = new Date(iso).getTime() - Date.now();
+  if (Number.isNaN(ms)) return "soon";
+  if (ms <= 0) return "now";
+  const hours = Math.floor(ms / 3_600_000);
+  if (hours < 1) return `in ${Math.max(1, Math.floor(ms / 60_000))}m`;
+  if (hours < 48) return `in ${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `in ${days}d`;
 }
 
 function healthCoveragePercent(circle: CircleSummary) {

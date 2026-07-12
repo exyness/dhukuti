@@ -7,7 +7,6 @@ import {
   CircleDollarSign,
   Gavel,
   Landmark,
-  Play,
   ShieldAlert,
   ShieldCheck,
   UserCheck,
@@ -89,42 +88,6 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
       creator: new PublicKey(circle.creator),
       currentRoundIndex: circle.currentRoundIndex,
     };
-  }
-
-  function reviewJoin() {
-    if (!walletKey) return;
-    const context = getContext();
-    const bundle = buildJoinCircleInstruction({
-      circle: context.circle,
-      member: walletKey,
-      minReputation: BigInt(circle.minReputation),
-    });
-    requestReview(
-      "Join circle",
-      "Lock the required collateral and mint a 1-of-1 payout position to your wallet.",
-      [
-        { label: "Circle", value: circle.name },
-        { label: "Collateral", value: circle.collateral },
-        { label: "Admission gate", value: `${circle.minReputation} reputation` },
-        { label: "Position mint", value: shortAddress(bundle.positionNftMint.toBase58(), 5) },
-      ],
-      bundle,
-    );
-  }
-
-  function reviewStart() {
-    if (!walletKey) return;
-    const context = getContext();
-    requestReview(
-      "Start circle",
-      "Lock admissions and create the first contribution round on devnet.",
-      [
-        { label: "Circle", value: circle.name },
-        { label: "Members", value: `${circle.members}/${circle.memberCap}` },
-        { label: "First deadline", value: `${circle.cycle} from confirmation` },
-      ],
-      buildStartCircleInstruction({ circle: context.circle, starter: walletKey }),
-    );
   }
 
   function reviewContribution() {
@@ -419,16 +382,13 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
               Every action is checked before wallet signing and includes a clear transaction review.
             </p>
           </div>
-          <PrimaryAction
-            allActiveMembersPaid={allActiveMembersPaid}
-            circle={circle}
-            isHost={isHost}
-            myMembership={myMembership}
-            onContribute={reviewContribution}
-            onJoin={reviewJoin}
-            onResolve={() => void reviewResolveRound()}
-            onStart={reviewStart}
-          />
+          <Badge
+            tone={circle.status === "Completed" ? "success" : "accent"}
+            shape="square"
+            size="sm"
+          >
+            {circle.status}
+          </Badge>
         </div>
       </Panel>
 
@@ -716,69 +676,6 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
         </Panel>
       </div>
     </section>
-  );
-}
-
-function PrimaryAction({
-  allActiveMembersPaid,
-  circle,
-  isHost,
-  myMembership,
-  onContribute,
-  onJoin,
-  onResolve,
-  onStart,
-}: {
-  allActiveMembersPaid: boolean;
-  circle: CircleDetail["circle"];
-  isHost: boolean;
-  myMembership: CircleDetail["members"][number] | undefined;
-  onContribute: () => void;
-  onJoin: () => void;
-  onResolve: () => void;
-  onStart: () => void;
-}) {
-  if (circle.status === "Forming" && !myMembership) {
-    return (
-      <Button type="button" variant="primary" onClick={onJoin}>
-        Review join
-      </Button>
-    );
-  }
-  if (
-    circle.status === "Forming" &&
-    ((isHost && circle.members >= 2) || circle.members >= circle.memberCap)
-  ) {
-    return (
-      <Button type="button" variant="primary" onClick={onStart}>
-        <Play className="h-3.5 w-3.5" aria-hidden="true" />
-        Review start
-      </Button>
-    );
-  }
-  if (circle.status === "Active" && myMembership?.active && myMembership.state !== "Paid") {
-    return (
-      <Button type="button" variant="primary" onClick={onContribute}>
-        Review contribution
-      </Button>
-    );
-  }
-  if (circle.status === "Active" && allActiveMembersPaid) {
-    return (
-      <Button type="button" variant="primary" onClick={onResolve}>
-        Review payout
-      </Button>
-    );
-  }
-
-  return (
-    <Badge tone={circle.status === "Completed" ? "success" : "muted"} shape="square">
-      {circle.status === "Completed"
-        ? "Lifecycle complete"
-        : circle.members >= circle.memberCap
-          ? "Ready to start"
-          : "Awaiting members"}
-    </Badge>
   );
 }
 

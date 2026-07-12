@@ -1,4 +1,4 @@
-import { BorshInstructionCoder, type Idl } from "@coral-xyz/anchor";
+import { BN, BorshInstructionCoder, type Idl } from "@coral-xyz/anchor";
 import {
   Keypair,
   type PublicKey,
@@ -478,7 +478,7 @@ function buildInstruction(
   args: Record<string, unknown>,
   keys: TransactionInstruction["keys"],
 ) {
-  const data = instructionCoder.encode(name, args);
+  const data = instructionCoder.encode(name, toCodable(args));
   if (!data) {
     throw new Error(`Unable to encode ${name}.`);
   }
@@ -488,6 +488,19 @@ function buildInstruction(
 
 function readonly(pubkey: PublicKey) {
   return { isSigner: false, isWritable: false, pubkey };
+}
+
+function toCodable(value: unknown): unknown {
+  if (typeof value === "bigint") return new BN(value.toString());
+  if (Array.isArray(value)) return value.map(toCodable);
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [key, nested] of Object.entries(value)) {
+      out[key] = toCodable(nested);
+    }
+    return out;
+  }
+  return value;
 }
 
 function readonlySigner(pubkey: PublicKey) {

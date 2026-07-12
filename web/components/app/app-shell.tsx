@@ -617,20 +617,27 @@ function WalletSummary() {
             <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
             View explorer
           </a>
-          <button
-            type="button"
-            role="menuitem"
-            className="flex min-h-9 w-full items-center gap-2 rounded px-3 font-mono text-[0.65rem] uppercase tracking-[0.06em] text-muted transition-colors hover:bg-white/[0.055] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            disabled={sessionBusy}
-            onClick={() => void toggleSession()}
-          >
-            {sessionBusy ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-            ) : (
-              <KeyRound className="h-3.5 w-3.5" aria-hidden="true" />
-            )}
-            {sessionActive ? "End verification" : "Verify wallet"}
-          </button>
+          {sessionActive ? (
+            <p className="flex min-h-9 w-full items-center gap-2 rounded px-3 font-mono text-[0.65rem] uppercase tracking-[0.06em] text-success">
+              <Check className="h-3.5 w-3.5" aria-hidden="true" />
+              Wallet verified
+            </p>
+          ) : (
+            <button
+              type="button"
+              role="menuitem"
+              className="flex min-h-9 w-full items-center gap-2 rounded px-3 font-mono text-[0.65rem] uppercase tracking-[0.06em] text-muted transition-colors hover:bg-white/[0.055] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              disabled={sessionBusy}
+              onClick={() => void toggleSession()}
+            >
+              {sessionBusy ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+              ) : (
+                <KeyRound className="h-3.5 w-3.5" aria-hidden="true" />
+              )}
+              Verify wallet
+            </button>
+          )}
           {authError ? (
             <p className="px-3 py-1 text-xs leading-5 text-warning">{authError}</p>
           ) : null}

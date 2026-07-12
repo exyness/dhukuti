@@ -1,6 +1,7 @@
 "use client";
 
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { Transaction } from "@solana/web3.js";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
@@ -41,11 +42,13 @@ type CreateStatus = "confirmed" | "confirming" | "idle" | "ready" | "signing" | 
 type IndexStatus = "failed" | "idle" | "syncing" | "synced";
 
 type CreateCircleReview = {
+  blockhash: string;
   circleId: bigint;
   circlePda: string;
   collateralBps: number;
   confirmationSignature?: string;
   contributionLamports: bigint;
+  creator: string;
   cycleDurationSeconds: bigint;
   estimatedFeeLamports: number;
   estimatedRentLamports: number;
@@ -53,7 +56,9 @@ type CreateCircleReview = {
   maxMembers: number;
   minReputation: bigint;
   name: string;
+  lastValidBlockHeight: number;
   payoutCurve: PayoutCurveValue;
+  reviewedAt: number;
   reserveRatioBps: number;
   simulationUnits?: number;
   vaultPda: string;
@@ -136,24 +141,39 @@ export default function NewCirclePage() {
   }
 
   async function handleSignCreateCircle() {
-    if (!publicKey || !review) return;
+    if (!publicKey || !connected || !review) {
+      setError("Connect the wallet used for the review before creating this circle.");
+      return;
+    }
+
+    if (review.creator !== publicKey.toBase58()) {
+      setStatus("idle");
+      setReview(null);
+      setError("Your connected wallet changed. Review the circle again before signing.");
+      return;
+    }
 
     setStatus("signing");
     setError("");
 
     try {
-      const params = getCreateParams(publicKey, review.circleId);
-      await simulateCreateCircle(params);
+      if (Date.now() - review.reviewedAt > 45_000) {
+        setStatus("idle");
+        setReview(null);
+        setError("This review expired. Review the circle again before signing.");
+        return;
+      }
 
+      const params = getCreateParams(publicKey, review.circleId);
       const { instruction } = buildCreateCircleInstruction(params);
-      const latestBlockhash = await connection.getLatestBlockhash("confirmed");
-      const { Transaction } = await import("@solana/web3.js");
       const transaction = new Transaction({
         feePayer: publicKey,
-        blockhash: latestBlockhash.blockhash,
-        lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+        blockhash: review.blockhash,
+        lastValidBlockHeight: review.lastValidBlockHeight,
       }).add(instruction);
 
+      // Keep this adapter call synchronous with the click. Some wallet extensions will not
+      // open their signing window after an awaited RPC or module-loading step.
       const signature = await sendTransaction(transaction, connection, {
         maxRetries: 3,
         preflightCommitment: "confirmed",
@@ -164,8 +184,8 @@ export default function NewCirclePage() {
       const confirmation = await connection.confirmTransaction(
         {
           signature,
-          blockhash: latestBlockhash.blockhash,
-          lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+          blockhash: review.blockhash,
+          lastValidBlockHeight: review.lastValidBlockHeight,
         },
         "confirmed",
       );
@@ -319,9 +339,11 @@ export default function NewCirclePage() {
 
     return {
       circleId: params.circleId,
+      blockhash: latestBlockhash.blockhash,
       circlePda: pdas.circle.toBase58(),
       collateralBps: params.collateralBps,
       contributionLamports: params.contributionLamports,
+      creator: params.creator.toBase58(),
       cycleDurationSeconds: params.cycleDurationSeconds,
       estimatedFeeLamports: feeEstimate.value ?? 0,
       estimatedRentLamports: circleRent + insuranceRent + vaultRent,
@@ -329,8 +351,10 @@ export default function NewCirclePage() {
       maxMembers: params.maxMembers,
       minReputation: params.minReputation,
       name: params.name,
+      lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
       payoutCurve: params.payoutCurve,
       reserveRatioBps: params.reserveRatioBps,
+      reviewedAt: Date.now(),
       simulationUnits: simulation.value.unitsConsumed ?? undefined,
       vaultPda: pdas.vault.toBase58(),
     };
