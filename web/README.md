@@ -49,13 +49,6 @@ HELIUS_WEBHOOK_SECRET=
 INDEXER_ADMIN_SECRET=
 ```
 
-Optional server-side aliases:
-
-```bash
-SUPABASE_URL=
-SUPABASE_PUBLISHABLE_KEY=
-```
-
 `SUPABASE_SECRET_KEY`, `HELIUS_API_KEY`, `HELIUS_WEBHOOK_SECRET`, and
 `INDEXER_ADMIN_SECRET` must stay server-only. Do not prefix them with
 `NEXT_PUBLIC_`. For hosted Supabase, create the secret key from the Dashboard's
