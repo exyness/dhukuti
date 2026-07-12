@@ -418,7 +418,7 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
                   ? "Resolve the payout and open the next round."
                   : `${unpaidMembers.length} contribution ${unpaidMembers.length === 1 ? "slot" : "slots"} unpaid.`
               }
-              disabled={!allActiveMembersPaid}
+              disabled={!allActiveMembersPaid || !isHost}
               icon={<Landmark className="h-4 w-4" aria-hidden="true" />}
               label="Resolve payout"
               onClick={() => void reviewResolveRound()}

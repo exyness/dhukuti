@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, ChevronDown, Loader2, LockKeyhole, WalletCards } from "lucide-react";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { AppPageHeader, AppShell, Panel, TokenScopeNotice } from "@/components/app/app-shell";
 import {
   CreateCircleModal,
@@ -45,7 +46,10 @@ export default function NewCirclePage() {
   const { connected, publicKey, sendTransaction } = useWallet();
   const queryClient = useQueryClient();
   const [circleName, setCircleName] = useState("Community Circle");
-  const [cycleDays, setCycleDays] = useState("30");
+  const [cyclePreset, setCyclePreset] = useState<string>("720");
+  const [customDays, setCustomDays] = useState("0");
+  const [customHours, setCustomHours] = useState("0");
+  const [customMinutes, setCustomMinutes] = useState("30");
   const [contribution, setContribution] = useState("5.00");
   const [maxMembers, setMaxMembers] = useState("12");
   const [payoutCurve, setPayoutCurve] = useState<PayoutCurveValue>("fixed");
@@ -63,15 +67,36 @@ export default function NewCirclePage() {
   const projectedPotLamports = contributionLamports
     ? contributionLamports * BigInt(Number.parseInt(maxMembers, 10) || 0)
     : ZERO_BIGINT;
-  const cycleLabel = cycleDays === "7" ? "Weekly" : cycleDays === "90" ? "Quarterly" : "Monthly";
+  const cycleDurationHours =
+    cyclePreset === "custom"
+      ? (Number.parseInt(customDays || "0", 10) * 24 +
+          Number.parseInt(customHours || "0", 10) +
+          Number.parseInt(customMinutes || "0", 10) / 60)
+      : Number.parseInt(cyclePreset, 10) / 60;
+  const cycleLabel =
+    cyclePreset === "custom"
+      ? "Custom"
+      : Number.parseInt(cyclePreset, 10) < 60
+        ? `${cyclePreset} min`
+        : Number.parseInt(cyclePreset, 10) === 60
+          ? "Hourly"
+          : Number.parseInt(cyclePreset, 10) < 1440
+            ? `${Number.parseInt(cyclePreset, 10) / 60} hours`
+            : Number.parseInt(cyclePreset, 10) === 1440
+              ? "Daily"
+              : Number.parseInt(cyclePreset, 10) === 10080
+                ? "Weekly"
+                : `${Number.parseInt(cyclePreset, 10) / 1440} days`;
   const lengthLabel =
-    cycleDays === "7"
-      ? `${maxMembers} Weeks`
-      : cycleDays === "90"
-        ? `${maxMembers} Quarters`
-        : `${maxMembers} Months`;
+    cyclePreset === "custom"
+      ? `${customDays}d ${customHours}h ${customMinutes}m × ${maxMembers}`
+      : Number.parseInt(cyclePreset, 10) < 60
+        ? `${maxMembers} × ${cyclePreset} min`
+        : Number.parseInt(cyclePreset, 10) < 1440
+          ? `${maxMembers} × ${Number.parseInt(cyclePreset, 10) / 60} hrs`
+          : `${maxMembers} × ${Number.parseInt(cyclePreset, 10) / 1440} days`;
   const isWorking = status === "simulating" || status === "signing" || status === "confirming";
-  const previewRows = buildPreviewRows(Number.parseInt(cycleDays, 10), projectedPotLamports);
+  const previewRows = buildPreviewRows(cycleDurationHours / 24, projectedPotLamports);
 
   function resetReview() {
     setReview(null);
@@ -167,10 +192,15 @@ export default function NewCirclePage() {
       setReview(confirmedReview);
       setStatus("confirmed");
       seedConfirmedCircle(confirmedReview);
+      toast.success("Circle created", {
+        description: "Your circle is now live. Waiting for indexer to sync.",
+      });
       void syncConfirmedCircle(confirmedReview);
     } catch (nextError) {
       setStatus("ready");
-      setError(normalizeCreateError(nextError));
+      const message = normalizeCreateError(nextError);
+      setError(message);
+      toast.error("Circle creation failed", { description: message });
     }
   }
 
@@ -218,12 +248,17 @@ export default function NewCirclePage() {
       }
 
       setIndexStatus("synced");
+      toast.success("Circle synced", {
+        description: "Your circle is fully available in the list.",
+      });
       await queryClient.invalidateQueries({ queryKey: queryKeys.circles(publicKey?.toBase58()) });
       await queryClient.invalidateQueries({ queryKey: queryKeys.activity(publicKey?.toBase58()) });
       await queryClient.invalidateQueries({ queryKey: queryKeys.profile(publicKey?.toBase58()) });
     } catch (syncError) {
       setIndexStatus("failed");
-      setIndexError(normalizeCreateError(syncError));
+      const message = normalizeCreateError(syncError);
+      setIndexError(message);
+      toast.error("Indexer sync failed", { description: message });
     }
   }
 
@@ -238,7 +273,7 @@ export default function NewCirclePage() {
       (contributionLamportsValue * BigInt(SECURITY_BOND_RATIO_BPS)) / BPS_DENOMINATOR;
     const memberCap = Number.parseInt(maxMembers, 10);
     const minRep = BigInt(Number.parseInt(minReputation, 10));
-    const cycleDurationSeconds = BigInt(Number.parseInt(cycleDays, 10) * 24 * 60 * 60);
+    const cycleDurationSeconds = BigInt(cycleDurationHours * 60 * 60);
 
     if (!normalizedName || utf8ByteLength(normalizedName) > MAX_CIRCLE_NAME_BYTES) {
       throw new Error("Circle name must be 1-64 UTF-8 bytes.");
@@ -367,22 +402,88 @@ export default function NewCirclePage() {
                   />
                 </Field>
                 <Field label="Cycle duration" htmlFor="cycle-duration">
-                  <SelectShell>
-                    <select
-                      id="cycle-duration"
-                      name="cycle-duration"
-                      className="input-control appearance-none pr-10 font-mono text-[0.84rem]"
-                      value={cycleDays}
-                      onChange={(event) => {
-                        setCycleDays(event.target.value);
-                        resetReview();
-                      }}
-                    >
-                      <option value="7">Weekly - 7 days</option>
-                      <option value="30">Monthly - 30 days</option>
-                      <option value="90">Quarterly - 90 days</option>
-                    </select>
-                  </SelectShell>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { value: "5", label: "5 min" },
+                        { value: "15", label: "15 min" },
+                        { value: "30", label: "30 min" },
+                        { value: "60", label: "1 hour" },
+                        { value: "360", label: "6 hours" },
+                        { value: "1440", label: "1 day" },
+                        { value: "10080", label: "1 week" },
+                        { value: "custom", label: "Custom" },
+                      ].map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => {
+                            setCyclePreset(option.value);
+                            resetReview();
+                          }}
+                          className={cn(
+                            "rounded-md border px-3 py-2 font-mono text-[0.7rem] transition-colors",
+                            cyclePreset === option.value
+                              ? "border-accent bg-accent/10 text-accent"
+                              : "border-border bg-white/[0.03] text-muted hover:border-white/20",
+                          )}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                    {cyclePreset === "custom" && (
+                      <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-2">
+                          <span className="font-mono text-[0.65rem] text-muted">Days</span>
+                          <input
+                            type="number"
+                            min="0"
+                            max="364"
+                            value={customDays}
+                            onChange={(e) => {
+                              setCustomDays(e.target.value);
+                              resetReview();
+                            }}
+                            className="input-control w-20 font-mono text-[0.84rem]"
+                          />
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <span className="font-mono text-[0.65rem] text-muted">Hours</span>
+                          <input
+                            type="number"
+                            min="0"
+                            max="23"
+                            value={customHours}
+                            onChange={(e) => {
+                              setCustomHours(e.target.value);
+                              resetReview();
+                            }}
+                            className="input-control w-20 font-mono text-[0.84rem]"
+                          />
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <span className="font-mono text-[0.65rem] text-muted">Min</span>
+                          <input
+                            type="number"
+                            min="0"
+                            max="59"
+                            value={customMinutes}
+                            onChange={(e) => {
+                              setCustomMinutes(e.target.value);
+                              resetReview();
+                            }}
+                            className="input-control w-20 font-mono text-[0.84rem]"
+                          />
+                        </label>
+                        <span className="font-mono text-[0.65rem] text-muted">
+                          {cycleDurationHours * 60 < 1
+                            ? "< 1 min (minimum)"
+                            : `${Math.round(cycleDurationHours * 60)} min total`}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </Field>
                 <Field label="Contribution amount" htmlFor="contribution">
                   <AmountInput
@@ -537,7 +638,10 @@ export default function NewCirclePage() {
           onClose={resetReview}
           onCreateAnother={() => {
             setCircleName("Community Circle");
-            setCycleDays("30");
+            setCyclePreset("720");
+            setCustomDays("0");
+            setCustomHours("0");
+            setCustomMinutes("30");
             setContribution("5.00");
             setMaxMembers("12");
             setPayoutCurve("fixed");

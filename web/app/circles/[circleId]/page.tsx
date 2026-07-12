@@ -3,13 +3,14 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, Clock3 } from "lucide-react";
 import { useParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AppShell, Panel } from "@/components/app/app-shell";
 import { CircleMemberAvatar } from "@/components/app/circle-member-avatar";
 import { TransactionReviewModal } from "@/components/circles/TransactionReviewModal";
 import { CircleActionDesk } from "@/components/program/circle-action-desk";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useCountdown } from "@/components/ui/countdown-timer";
 import { cn } from "@/lib/cn";
 import { queryKeys, useCircleDetailQuery } from "@/lib/data/queries";
 import type { CircleDetail, CircleSummary, DefaultProposal, ProfileData } from "@/lib/data/types";
@@ -53,9 +54,15 @@ function CircleDetailsInner({ data }: { data: CircleDetail }) {
   const currentCircle = data.circle;
   const circleMembers = data.members ?? [];
   const payoutSchedule = data.payoutSchedule ?? [];
-  const { localError, primaryAction, transaction } = useCirclePrimaryAction(data);
   const queryClient = useQueryClient();
   const openSlots = Math.max(currentCircle.memberCap - circleMembers.length, 0);
+  const myMembership = circleMembers.find((member) => member.member === address);
+  const activeMembers = circleMembers.filter((member) => member.active);
+  const unpaidMembers = activeMembers.filter((member) => member.state !== "Paid");
+  const allActiveMembersPaid = activeMembers.length > 0 && unpaidMembers.length === 0;
+  const isHost = currentCircle.creator === address;
+  const [justResolved, setJustResolved] = useState(false);
+  const { localError, primaryAction, transaction } = useCirclePrimaryAction(data, { justResolved });
 
   useEffect(() => {
     const review = transaction.review;
@@ -91,6 +98,39 @@ function CircleDetailsInner({ data }: { data: CircleDetail }) {
       };
     });
   }, [address, currentCircle.address, queryClient, transaction.review]);
+
+  useEffect(() => {
+    const review = transaction.review;
+    if (review?.status !== "confirmed" || review.title !== "Resolve payout") return;
+
+    setJustResolved(true);
+    queryClient.setQueryData<CircleDetail>(
+      [...queryKeys.circle(currentCircle.address), address ?? "guest"],
+      (detail) => {
+        if (!detail) return detail;
+        const nextRoundIndex = detail.circle.currentRoundIndex + 1;
+        const isLastRound = nextRoundIndex >= detail.circle.memberCap;
+        return {
+          ...detail,
+          circle: {
+            ...detail.circle,
+            currentRoundIndex: nextRoundIndex,
+            round: `${nextRoundIndex + 1} / ${detail.circle.memberCap}`,
+            nextAction: isLastRound
+              ? "View Settlement"
+              : detail.circle.mode === "Dutch bid"
+                ? "Place bid"
+                : "Contribute",
+          },
+          members: detail.members.map((member) => ({
+            ...member,
+            state: isLastRound ? member.state : "Unpaid",
+          })),
+        };
+      },
+    );
+  }, [address, currentCircle.address, queryClient, transaction.review]);
+
   const openSlotMembers = Array.from({ length: openSlots }, (_, index) => {
     const slotNumber = circleMembers.length + index + 1;
 
@@ -109,7 +149,7 @@ function CircleDetailsInner({ data }: { data: CircleDetail }) {
       vouch: "Available",
     };
   });
-  const countdown = getCountdownUnits(currentCircle.deadlineAt);
+  const countdown = useCountdown(currentCircle.deadlineAt);
 
   return (
     <AppShell title={currentCircle.name} contentClassName="!max-w-none px-6 py-10 md:px-12">
@@ -126,7 +166,7 @@ function CircleDetailsInner({ data }: { data: CircleDetail }) {
       ) : null}
       <div className="space-y-8">
         <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <Panel className="flex min-h-[17rem] flex-col items-center justify-between gap-6 p-8 text-center">
+          <Panel className="flex min-h-[17rem] flex-col items-center justify-center gap-6 p-8 text-center">
             <div className="w-full">
               <div className="mb-5 flex items-center justify-center gap-2">
                 <Clock3 className="h-4 w-4 text-accent" aria-hidden="true" />
@@ -136,11 +176,21 @@ function CircleDetailsInner({ data }: { data: CircleDetail }) {
               </div>
               {countdown ? (
                 <div className="flex items-start justify-center gap-3" aria-live="polite">
-                  <CountdownUnit value={countdown.days} label="Days" />
-                  <span className="mt-1 font-mono text-3xl text-white/20">:</span>
+                  {countdown.days && (
+                    <>
+                      <CountdownUnit value={countdown.days} label="Days" />
+                      <span className="mt-1 font-mono text-3xl text-white/20">:</span>
+                    </>
+                  )}
                   <CountdownUnit value={countdown.hours} label="Hrs" />
                   <span className="mt-1 font-mono text-3xl text-white/20">:</span>
                   <CountdownUnit value={countdown.minutes} label="Mins" />
+                  {!countdown.days && (
+                    <>
+                      <span className="mt-1 font-mono text-3xl text-white/20">:</span>
+                      <CountdownUnit value={countdown.seconds} label="Secs" />
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="flex min-h-[4.4rem] items-center justify-center">
@@ -160,7 +210,7 @@ function CircleDetailsInner({ data }: { data: CircleDetail }) {
               </Button>
             ) : (
               <Badge tone={currentCircle.status === "Completed" ? "success" : "accent"}>
-                {circleStatusAction(currentCircle)}
+                {circleStatusAction(currentCircle, myMembership)}
               </Badge>
             )}
           </Panel>
@@ -200,6 +250,37 @@ function CircleDetailsInner({ data }: { data: CircleDetail }) {
             </div>
           </Panel>
         </section>
+
+        {currentCircle.status === "Active" && (
+          <Panel className="p-5">
+            <div className="flex flex-wrap items-center gap-3 text-sm leading-6">
+              {allActiveMembersPaid ? (
+                <>
+                  <Badge tone="success" shape="square" size="xs">
+                    All paid
+                  </Badge>
+                  <span className="text-muted">
+                    All members contributed.{" "}
+                    {countdown
+                      ? `Next round opens in${countdown.days ? ` ${countdown.days}d` : ""} ${countdown.hours}h ${countdown.minutes}m${!countdown.days ? ` ${countdown.seconds}s` : ""}.`
+                      : "Next round opens soon."}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Badge tone="accent" shape="square" size="xs">
+                    Round {currentCircle.currentRoundIndex + 1} open
+                  </Badge>
+                  <span className="text-muted">
+                    {unpaidMembers.length === circleMembers.length
+                      ? `All members need to contribute ${currentCircle.contribution}.`
+                      : `${unpaidMembers.length} of ${circleMembers.length} members haven't contributed yet.`}
+                  </span>
+                </>
+              )}
+            </div>
+          </Panel>
+        )}
 
         <CircleActionDesk detail={data} />
 
@@ -320,8 +401,12 @@ function CircleDetailsInner({ data }: { data: CircleDetail }) {
   );
 }
 
-function circleStatusAction(circle: CircleSummary) {
+function circleStatusAction(
+  circle: CircleSummary,
+  myMembership?: { active: boolean; state: string },
+) {
   if (circle.status === "Forming" && circle.members >= circle.memberCap) return "Ready to start";
+  if (circle.status === "Active" && myMembership?.active && myMembership.state === "Paid") return "Paid";
   return circle.nextAction;
 }
 
@@ -520,24 +605,6 @@ function CircleDetailsSkeleton() {
       </Panel>
     </div>
   );
-}
-
-function getCountdownUnits(deadlineAt: string | null) {
-  if (!deadlineAt) return null;
-
-  const diffMs = new Date(deadlineAt).getTime() - Date.now();
-  if (diffMs <= 0) return null;
-
-  const totalMinutes = Math.ceil(diffMs / 60_000);
-  const days = Math.floor(totalMinutes / (24 * 60));
-  const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
-  const minutes = totalMinutes % 60;
-
-  return {
-    days: String(days).padStart(2, "0"),
-    hours: String(hours).padStart(2, "0"),
-    minutes: String(minutes).padStart(2, "0"),
-  };
 }
 
 function legendDotClassName(tone: "paid" | "pending" | "default") {

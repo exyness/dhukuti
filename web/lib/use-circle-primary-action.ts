@@ -24,7 +24,10 @@ export type PrimaryAction = {
   disabled?: boolean;
 };
 
-export function useCirclePrimaryAction(detail: CircleDetail) {
+export function useCirclePrimaryAction(
+  detail: CircleDetail,
+  options?: { justResolved?: boolean },
+) {
   const { connection } = useConnection();
   const { address } = useWalletIdentity();
   const transaction = useProgramTransaction();
@@ -169,7 +172,7 @@ export function useCirclePrimaryAction(detail: CircleDetail) {
       onClick: reviewContribution,
       tone: "accent",
     };
-  } else if (circle.status === "Active" && allActiveMembersPaid) {
+  } else if (circle.status === "Active" && isHost && allActiveMembersPaid && !options?.justResolved) {
     primaryAction = {
       label: "Resolve payout",
       onClick: () => void reviewResolveRound(),
