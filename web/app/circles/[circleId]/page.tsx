@@ -42,7 +42,7 @@ export default function CircleDetailsPage() {
 
   if (isLoading) {
     return (
-      <AppShell title="Circle" contentClassName="!max-w-7xl px-6 py-10 md:px-10">
+      <AppShell title="Circle" contentClassName="!max-w-none px-6 py-10 md:px-12">
         <StatePanel message="Loading the latest circle details." title="Loading circle" />
       </AppShell>
     );
@@ -50,7 +50,7 @@ export default function CircleDetailsPage() {
 
   if (!data || !currentCircle) {
     return (
-      <AppShell title="Circle" contentClassName="!max-w-7xl px-6 py-10 md:px-10">
+      <AppShell title="Circle" contentClassName="!max-w-none px-6 py-10 md:px-12">
         <StatePanel
           message={
             error
@@ -64,7 +64,7 @@ export default function CircleDetailsPage() {
   }
 
   return (
-    <AppShell title={currentCircle.name} contentClassName="!max-w-7xl px-6 py-10 md:px-10">
+    <AppShell title={currentCircle.name} contentClassName="!max-w-none px-6 py-10 md:px-12">
       <div className="space-y-8">
         <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <Panel className="flex min-h-[17rem] flex-col items-center justify-between gap-6 p-8 text-center">
