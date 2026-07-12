@@ -29,7 +29,7 @@ import type {
 
 const ZERO_BIGINT = BigInt(0);
 
-export async function getCircleSummaries(): Promise<CircleSummary[]> {
+export async function getCircleSummaries(viewerWallet?: string | null): Promise<CircleSummary[]> {
   if (!isSupabaseConfigured()) return [];
 
   const supabase = createSupabaseServerClient();
@@ -54,11 +54,15 @@ export async function getCircleSummaries(): Promise<CircleSummary[]> {
       memberships: memberships.filter((item) => item.circle === row.circle),
       row,
       rounds: rounds.filter((item) => item.circle === row.circle),
+      viewerWallet: viewerWallet ?? undefined,
     }),
   );
 }
 
-export async function getCircleDetail(circleAddress: string): Promise<CircleDetail | null> {
+export async function getCircleDetail(
+  circleAddress: string,
+  viewerWallet?: string | null,
+): Promise<CircleDetail | null> {
   if (!isSupabaseConfigured()) return null;
 
   const supabase = createSupabaseServerClient();
@@ -90,6 +94,7 @@ export async function getCircleDetail(circleAddress: string): Promise<CircleDeta
     reputations,
     row: circle as DhukutiCircleRow,
     rounds,
+    viewerWallet: viewerWallet ?? undefined,
     vouches,
   });
 }
@@ -149,7 +154,7 @@ export async function getProfileData(wallet: string | null): Promise<ProfileData
 
   if (reputationError) throw reputationError;
 
-  const allCircles = await getCircleSummaries();
+  const allCircles = await getCircleSummaries(wallet);
   const hostedCircles = allCircles.filter((circle) => circle.creator === wallet);
   const circleAddresses = Array.from(
     new Set([

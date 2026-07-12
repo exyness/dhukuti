@@ -41,6 +41,7 @@ type CircleMapInput = {
   reputations?: DhukutiReputationRow[];
   row: DhukutiCircleRow;
   rounds?: DhukutiRoundRow[];
+  viewerWallet?: string;
   vouches?: DhukutiVouchRow[];
 };
 
@@ -49,6 +50,7 @@ export function mapCircleSummary({
   memberships = [],
   row,
   rounds = [],
+  viewerWallet,
 }: CircleMapInput): CircleSummary {
   const contributionAmount = toBigIntString(row.contribution_amount);
   const activeMembers = memberships.filter((member) => member.active && !member.defaulted);
@@ -60,6 +62,9 @@ export function mapCircleSummary({
     ZERO_BIGINT,
   );
   const maxMembers = row.max_members;
+  const isViewerMember = viewerWallet
+    ? memberships.some((member) => member.member === viewerWallet)
+    : false;
 
   return {
     address: row.circle,
@@ -83,8 +88,12 @@ export function mapCircleSummary({
     mode: mapPayoutCurve(row.payout_curve),
     name: row.name || `Dhukuti #${row.circle_id}`,
     nextAction:
-      status === "Forming" && memberCount >= maxMembers
-        ? "Start circle"
+      status === "Forming"
+        ? memberCount >= maxMembers
+          ? "Start circle"
+          : isViewerMember
+            ? "Awaiting start"
+            : "Join Circle"
         : nextActionForStatus(status, row.payout_curve),
     nextPayout: currentRound
       ? `Round ${String(currentRound.round_index + 1).padStart(2, "0")}`

@@ -17,7 +17,7 @@ type WalletQueryOptions = {
 export const queryKeys = {
   activity: (wallet: string | null | undefined) => ["activity", wallet ?? "guest"] as const,
   circle: (circleId: string) => ["circle", circleId] as const,
-  circles: ["circles"] as const,
+  circles: (wallet: string | null | undefined) => ["circles", wallet ?? "guest"] as const,
   market: ["market"] as const,
   profile: (wallet: string | null | undefined) => ["profile", wallet ?? "guest"] as const,
 };
@@ -35,20 +35,24 @@ export function useActivityQuery(
   });
 }
 
-export function useCirclesQuery(options: WalletQueryOptions = {}) {
+export function useCirclesQuery(wallet?: string | null, options: WalletQueryOptions = {}) {
   return useQuery({
     enabled: options.enabled ?? true,
-    queryFn: fetchCircles,
-    queryKey: queryKeys.circles,
+    queryFn: () => fetchCircles(wallet),
+    queryKey: queryKeys.circles(wallet),
     staleTime: 30_000,
   });
 }
 
-export function useCircleDetailQuery(circleId: string, options: WalletQueryOptions = {}) {
+export function useCircleDetailQuery(
+  circleId: string,
+  wallet?: string | null,
+  options: WalletQueryOptions = {},
+) {
   return useQuery({
     enabled: Boolean(circleId) && (options.enabled ?? true),
-    queryFn: () => fetchCircleDetail(circleId),
-    queryKey: queryKeys.circle(circleId),
+    queryFn: () => fetchCircleDetail(circleId, wallet),
+    queryKey: [...queryKeys.circle(circleId), wallet ?? "guest"],
     staleTime: 30_000,
   });
 }

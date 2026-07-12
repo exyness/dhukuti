@@ -1,7 +1,9 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, Clock3 } from "lucide-react";
 import { useParams } from "next/navigation";
+import { useEffect } from "react";
 import { AppShell, Panel } from "@/components/app/app-shell";
 import { CircleMemberAvatar } from "@/components/app/circle-member-avatar";
 import { TransactionReviewModal } from "@/components/circles/TransactionReviewModal";
@@ -9,15 +11,16 @@ import { CircleActionDesk } from "@/components/program/circle-action-desk";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
-import { useCircleDetailQuery } from "@/lib/data/queries";
-import type { CircleDetail, CircleSummary, DefaultProposal } from "@/lib/data/types";
+import { queryKeys, useCircleDetailQuery } from "@/lib/data/queries";
+import type { CircleDetail, CircleSummary, DefaultProposal, ProfileData } from "@/lib/data/types";
 import { useCirclePrimaryAction } from "@/lib/use-circle-primary-action";
 import { useWalletIdentity } from "@/lib/use-wallet-identity";
 
 export default function CircleDetailsPage() {
   const params = useParams<{ circleId: string }>();
   const circleId = decodeURIComponent(params.circleId);
-  const { data, error, isLoading } = useCircleDetailQuery(circleId);
+  const { address } = useWalletIdentity();
+  const { data, error, isLoading } = useCircleDetailQuery(circleId, address);
 
   if (!data || !data.circle) {
     if (isLoading) {
@@ -51,7 +54,43 @@ function CircleDetailsInner({ data }: { data: CircleDetail }) {
   const circleMembers = data.members ?? [];
   const payoutSchedule = data.payoutSchedule ?? [];
   const { localError, primaryAction, transaction } = useCirclePrimaryAction(data);
+  const queryClient = useQueryClient();
   const openSlots = Math.max(currentCircle.memberCap - circleMembers.length, 0);
+
+  useEffect(() => {
+    const review = transaction.review;
+    if (review?.status !== "confirmed" || review.title !== "Join circle" || !address) return;
+
+    queryClient.setQueryData<CircleSummary[]>(queryKeys.circles(address), (circles = []) =>
+      circles.map((circle) =>
+        circle.address === currentCircle.address
+          ? {
+              ...circle,
+              members: circle.nextAction === "Awaiting start" ? circle.members : circle.members + 1,
+              progress:
+                circle.memberCap > 0
+                  ? Math.round(
+                      (Math.min(circle.members + 1, circle.memberCap) / circle.memberCap) * 100,
+                    )
+                  : circle.progress,
+              nextAction: "Awaiting start",
+            }
+          : circle,
+      ),
+    );
+
+    queryClient.setQueryData<ProfileData>(queryKeys.profile(address), (profile) => {
+      if (!profile) return profile;
+      return {
+        ...profile,
+        activeCircles: profile.activeCircles.map((circle) =>
+          circle.address === currentCircle.address
+            ? { ...circle, nextAction: "Awaiting start" }
+            : circle,
+        ),
+      };
+    });
+  }, [address, currentCircle.address, queryClient, transaction.review]);
   const openSlotMembers = Array.from({ length: openSlots }, (_, index) => {
     const slotNumber = circleMembers.length + index + 1;
 

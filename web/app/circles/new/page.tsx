@@ -178,14 +178,17 @@ export default function NewCirclePage() {
     const circle = toOptimisticCircleSummary(confirmedReview, publicKey?.toBase58() ?? "");
     const detail = toOptimisticCircleDetail(circle);
 
-    queryClient.setQueryData<CircleSummary[]>(queryKeys.circles, (currentCircles = []) => {
-      const existingIndex = currentCircles.findIndex((item) => item.address === circle.address);
-      if (existingIndex >= 0) {
-        return currentCircles.map((item, index) => (index === existingIndex ? circle : item));
-      }
+    queryClient.setQueryData<CircleSummary[]>(
+      queryKeys.circles(publicKey?.toBase58()),
+      (currentCircles = []) => {
+        const existingIndex = currentCircles.findIndex((item) => item.address === circle.address);
+        if (existingIndex >= 0) {
+          return currentCircles.map((item, index) => (index === existingIndex ? circle : item));
+        }
 
-      return [circle, ...currentCircles];
-    });
+        return [circle, ...currentCircles];
+      },
+    );
     queryClient.setQueryData<CircleDetail>(queryKeys.circle(circle.address), detail);
   }
 
@@ -215,7 +218,7 @@ export default function NewCirclePage() {
       }
 
       setIndexStatus("synced");
-      await queryClient.invalidateQueries({ queryKey: queryKeys.circles });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.circles(publicKey?.toBase58()) });
       await queryClient.invalidateQueries({ queryKey: queryKeys.activity(publicKey?.toBase58()) });
       await queryClient.invalidateQueries({ queryKey: queryKeys.profile(publicKey?.toBase58()) });
     } catch (syncError) {

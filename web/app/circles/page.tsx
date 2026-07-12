@@ -9,6 +9,7 @@ import { DropdownSelect } from "@/components/ui/dropdown-select";
 import { Pagination } from "@/components/ui/pagination";
 import { useCirclesQuery } from "@/lib/data/queries";
 import type { CircleSummary } from "@/lib/data/types";
+import { useWalletIdentity } from "@/lib/use-wallet-identity";
 
 type ContributionFilter = "all" | "gt-5" | "lt-1" | "one-five";
 type ModeFilter = "all" | "dutch" | "fixed";
@@ -42,7 +43,8 @@ export default function CirclesPage() {
   const [sortMode, setSortMode] = useState<SortMode>("newest");
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 9;
-  const { data, error, isLoading } = useCirclesQuery();
+  const { address } = useWalletIdentity();
+  const { data, error, isLoading } = useCirclesQuery(address);
   const circles = useMemo(() => data ?? [], [data]);
 
   const openCircles = circles.filter((circle) => circle.status === "Forming").length;

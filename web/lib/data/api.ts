@@ -6,14 +6,20 @@ import type {
   ProfileData,
 } from "@/lib/data/types";
 
-export async function fetchCircles() {
-  const response = await fetchJson<{ circles: CircleSummary[] }>("/api/circles");
+export async function fetchCircles(wallet?: string | null) {
+  const searchParams = new URLSearchParams();
+  if (wallet) searchParams.set("wallet", wallet);
+  const suffix = searchParams.toString() ? `?${searchParams}` : "";
+  const response = await fetchJson<{ circles: CircleSummary[] }>(`/api/circles${suffix}`);
   return response.circles;
 }
 
-export async function fetchCircleDetail(circleId: string) {
+export async function fetchCircleDetail(circleId: string, wallet?: string | null) {
+  const searchParams = new URLSearchParams();
+  if (wallet) searchParams.set("wallet", wallet);
+  const suffix = searchParams.toString() ? `?${searchParams}` : "";
   const response = await fetchJson<{ detail: CircleDetail }>(
-    `/api/circles/${encodeURIComponent(circleId)}`,
+    `/api/circles/${encodeURIComponent(circleId)}${suffix}`,
   );
   return response.detail;
 }

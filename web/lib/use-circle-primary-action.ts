@@ -157,17 +157,21 @@ export function useCirclePrimaryAction(detail: CircleDetail) {
   let primaryAction: PrimaryAction | null = null;
 
   if (circle.status === "Forming" && !myMembership) {
-    primaryAction = { label: "Review join", onClick: reviewJoin, tone: "accent" };
+    primaryAction = { label: "Join circle", onClick: reviewJoin, tone: "accent" };
   } else if (
     circle.status === "Forming" &&
     ((isHost && circle.members >= 2) || circle.members >= circle.memberCap)
   ) {
-    primaryAction = { label: "Review start", onClick: reviewStart, tone: "accent" };
+    primaryAction = { label: "Start circle", onClick: reviewStart, tone: "accent" };
   } else if (circle.status === "Active" && myMembership?.active && myMembership.state !== "Paid") {
-    primaryAction = { label: "Review contribution", onClick: reviewContribution, tone: "accent" };
+    primaryAction = {
+      label: `Contribute ${circle.contribution}`,
+      onClick: reviewContribution,
+      tone: "accent",
+    };
   } else if (circle.status === "Active" && allActiveMembersPaid) {
     primaryAction = {
-      label: "Review payout",
+      label: "Resolve payout",
       onClick: () => void reviewResolveRound(),
       tone: "accent",
     };

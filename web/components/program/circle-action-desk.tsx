@@ -2,12 +2,21 @@
 
 import { useConnection } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
-import { BadgeCheck, CircleDollarSign, Gavel, Landmark, UserCheck, Vote } from "lucide-react";
+import {
+  BadgeCheck,
+  Check,
+  CircleDollarSign,
+  Gavel,
+  Landmark,
+  UserCheck,
+  Vote,
+} from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { Panel } from "@/components/app/app-shell";
 import { TransactionReviewModal } from "@/components/circles/TransactionReviewModal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { InfoPopover } from "@/components/ui/info-popover";
 import { cn } from "@/lib/cn";
 import type { CircleDetail } from "@/lib/data/types";
 import {
@@ -338,6 +347,183 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
     );
   }
 
+  const lifecycle = (() => {
+    const isDutch = circle.mode === "Dutch bid";
+    const steps = [
+      {
+        copy: "Members join and lock collateral until the circle reaches its member cap.",
+        title: "Forming",
+      },
+      {
+        copy: "The host locks admissions and opens the first contribution round.",
+        title: "Start round",
+      },
+      {
+        copy: "Each active member funds the round; a slice routes to the insurance pool.",
+        title: "Contribute",
+      },
+      {
+        copy: isDutch
+          ? "The Dutch auction picks the recipient; the next round opens automatically."
+          : "The round recipient claims the pot; the next round opens automatically.",
+        title: "Settle payout",
+      },
+      {
+        copy: "Collateral returns to members and the outcome writes to on-chain reputation.",
+        title: "Complete",
+      },
+    ];
+
+    let current = 1;
+    if (circle.status === "Forming") {
+      current = circle.members >= circle.memberCap ? 2 : 1;
+    } else if (circle.status === "Active") {
+      if (allRoundsResolved) current = 5;
+      else if (allActiveMembersPaid) current = 4;
+      else current = 3;
+    } else if (circle.status === "Completed") {
+      current = 6;
+    }
+
+    return { current, steps };
+  })();
+
+  const circleControls = (
+    <div className="space-y-5">
+      <section className="space-y-2">
+        <h3 className="px-1 font-mono text-[0.58rem] uppercase tracking-[0.1em] text-muted">
+          Round lifecycle
+        </h3>
+        {circle.status === "Active" ? (
+          <div className="space-y-1">
+            {myMembership?.active && myMembership.state !== "Paid" ? (
+              <ControlListItem
+                copy={`Pay ${circle.contribution} into the current round.`}
+                icon={<CircleDollarSign className="h-4 w-4" aria-hidden="true" />}
+                label={`Contribute ${circle.contribution}`}
+                onClick={reviewContribution}
+              />
+            ) : null}
+            {circle.mode === "Dutch bid" && myMembership?.active ? (
+              <ControlListItem
+                copy="Accept the current Dutch clearing discount for an early payout."
+                icon={<Gavel className="h-4 w-4" aria-hidden="true" />}
+                label="Accept Dutch bid"
+                onClick={reviewDutchBid}
+              />
+            ) : null}
+            <ControlListItem
+              copy={
+                allActiveMembersPaid
+                  ? "Resolve the payout and open the next round."
+                  : `${unpaidMembers.length} contribution ${unpaidMembers.length === 1 ? "slot" : "slots"} unpaid.`
+              }
+              disabled={!allActiveMembersPaid}
+              icon={<Landmark className="h-4 w-4" aria-hidden="true" />}
+              label="Resolve payout"
+              onClick={() => void reviewResolveRound()}
+            />
+            {isHost ? (
+              <ControlListItem
+                copy={
+                  allRoundsResolved
+                    ? "Return collateral and close the circle."
+                    : `${circle.memberCap - circle.currentRoundIndex} payout ${circle.memberCap - circle.currentRoundIndex === 1 ? "round" : "rounds"} remain.`
+                }
+                disabled={!allRoundsResolved}
+                icon={<BadgeCheck className="h-4 w-4" aria-hidden="true" />}
+                label="Complete circle"
+                onClick={reviewCompleteCircle}
+              />
+            ) : null}
+          </div>
+        ) : (
+          <p className="px-1 text-xs leading-5 text-muted">
+            {circle.status === "Forming"
+              ? circle.members >= circle.memberCap
+                ? "This circle is full. Any wallet can start the first round."
+                : "Join until the host starts the first round."
+              : "This circle has completed its payout lifecycle."}
+          </p>
+        )}
+      </section>
+
+      <section className="space-y-2">
+        <h3 className="px-1 font-mono text-[0.58rem] uppercase tracking-[0.1em] text-muted">
+          Default governance
+        </h3>
+        {circle.status !== "Active" ? (
+          <p className="px-1 text-xs leading-5 text-muted">
+            Default controls unlock during an active round.
+          </p>
+        ) : defaultProposal ? (
+          <div className="space-y-2">
+            <p className="px-1 text-xs leading-5 text-muted">
+              {defaultProposal.candidateHandle} is under proposal for round{" "}
+              {defaultProposal.roundIndex + 1}.
+            </p>
+            {myMembership?.active && myMembership.member !== defaultProposal.candidate ? (
+              <div className="flex gap-2 px-1">
+                <Button type="button" size="sm" variant="primary" onClick={() => reviewVote(true)}>
+                  <Vote className="h-3.5 w-3.5" aria-hidden="true" />
+                  Approve
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => reviewVote(false)}
+                >
+                  Reject
+                </Button>
+              </div>
+            ) : null}
+            <ControlListItem
+              copy="Resolve the default through the insurance pool."
+              icon={<Landmark className="h-4 w-4" aria-hidden="true" />}
+              label="Handle default"
+              onClick={reviewHandleDefault}
+            />
+          </div>
+        ) : myMembership?.active ? (
+          <div className="space-y-2 px-1">
+            <label className="block">
+              <span className="mb-1.5 block font-mono text-[0.52rem] uppercase tracking-[0.08em] text-muted">
+                Missed contributor
+              </span>
+              <select
+                className="input-control font-mono text-[0.7rem]"
+                value={selectedDefaultCandidate}
+                onChange={(event) => setDefaultCandidate(event.target.value)}
+              >
+                {unpaidMembers.length === 0 ? (
+                  <option value="">No missed contributors</option>
+                ) : null}
+                {unpaidMembers.map((member) => (
+                  <option key={member.member} value={member.member}>
+                    {member.handle}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={!selectedDefaultCandidate}
+              onClick={reviewOpenDefault}
+            >
+              Propose default
+            </Button>
+          </div>
+        ) : (
+          <p className="px-1 text-xs leading-5 text-muted">
+            Only active members can open a default proposal.
+          </p>
+        )}
+      </section>
+    </div>
+  );
+
   return (
     <section id="circle-actions" className="scroll-mt-24 space-y-5" aria-label="Circle actions">
       <TransactionReviewModal
@@ -353,353 +539,196 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
       ) : null}
 
       <Panel className="p-5">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-[0.62rem] uppercase tracking-[0.1em] text-accent">
-                Protocol controls
-              </span>
-              <Badge
-                tone={circle.status === "Completed" ? "success" : "accent"}
-                shape="square"
-                size="xs"
-              >
-                {circle.status}
-              </Badge>
-            </div>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-              Every action is checked before wallet signing and includes a clear transaction review.
-            </p>
+        <div className="mb-5 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[0.62rem] uppercase tracking-[0.1em] text-accent">
+              Circle lifecycle
+            </span>
+            <Badge
+              tone={circle.status === "Completed" ? "success" : "accent"}
+              shape="square"
+              size="xs"
+            >
+              {circle.status}
+            </Badge>
           </div>
-          <Badge
-            tone={circle.status === "Completed" ? "success" : "accent"}
-            shape="square"
-            size="sm"
-          >
-            {circle.status}
-          </Badge>
+          <InfoPopover label="Circle controls">{circleControls}</InfoPopover>
         </div>
+        <p className="mb-6 max-w-2xl text-sm leading-6 text-muted">
+          Every action is checked before wallet signing and includes a clear transaction review.
+          Follow the phases below — your place in the circle is highlighted.
+        </p>
+        <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          {lifecycle.steps.map((step, index) => {
+            const ordinal = index + 1;
+            const state =
+              ordinal < lifecycle.current
+                ? "done"
+                : ordinal === lifecycle.current
+                  ? "current"
+                  : "upcoming";
+            return (
+              <li
+                key={step.title}
+                className={cn(
+                  "rounded-md border p-4",
+                  state === "current" && "border-accent/40 bg-accent/[0.06]",
+                  state === "done" && "border-success/30 bg-success/[0.04]",
+                  state === "upcoming" && "border-border bg-white/[0.02]",
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      "flex h-6 w-6 items-center justify-center rounded-full font-mono text-[0.65rem]",
+                      state === "current" && "bg-accent text-black",
+                      state === "done" && "bg-success/20 text-success",
+                      state === "upcoming" && "bg-white/[0.06] text-muted",
+                    )}
+                  >
+                    {state === "done" ? (
+                      <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                    ) : (
+                      ordinal
+                    )}
+                  </span>
+                  <span
+                    className={cn(
+                      "font-mono text-[0.6rem] uppercase tracking-[0.08em]",
+                      state === "current" ? "text-accent" : "text-muted",
+                    )}
+                  >
+                    {step.title}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-muted">{step.copy}</p>
+              </li>
+            );
+          })}
+        </ol>
       </Panel>
 
       <Panel className="p-5">
-        <div className="mb-6 flex items-center gap-2">
-          <CircleDollarSign className="h-4 w-4 text-accent" aria-hidden="true" />
-          <h2 className="font-mono text-[0.64rem] uppercase tracking-[0.1em] text-muted">
-            Circle controls
-          </h2>
-        </div>
-        <div className="grid gap-x-8 gap-y-8 lg:grid-cols-2">
-          <section className="space-y-4">
-            <h3 className="font-mono text-[0.6rem] uppercase tracking-[0.1em] text-muted">
-              Round lifecycle
-            </h3>
-            {circle.status === "Active" ? (
-              <div className="grid gap-3 md:grid-cols-2">
-                {myMembership?.active && myMembership.state !== "Paid" ? (
-                  <ActionButton
-                    copy={`Pay ${circle.contribution} into the current round.`}
-                    icon={<CircleDollarSign className="h-4 w-4" aria-hidden="true" />}
-                    label="Review contribution"
-                    onClick={reviewContribution}
-                    primary
-                  />
-                ) : null}
-                {circle.mode === "Dutch bid" && myMembership?.active ? (
-                  <ActionButton
-                    copy="Accept the current Dutch clearing discount for an early payout."
-                    icon={<Gavel className="h-4 w-4" aria-hidden="true" />}
-                    label="Review Dutch bid"
-                    onClick={reviewDutchBid}
-                  />
-                ) : null}
-                <ActionButton
-                  copy={
-                    allActiveMembersPaid
-                      ? "All active contribution slots are funded. Resolve the payout and open the next round."
-                      : `${unpaidMembers.length} active contribution ${unpaidMembers.length === 1 ? "slot remains" : "slots remain"}.`
-                  }
-                  disabled={!allActiveMembersPaid}
-                  icon={<Landmark className="h-4 w-4" aria-hidden="true" />}
-                  label="Review payout resolution"
-                  onClick={() => void reviewResolveRound()}
-                />
-                {isHost ? (
-                  <ActionButton
-                    copy={
-                      allRoundsResolved
-                        ? "Every payout is resolved. Return collateral and close the circle."
-                        : `${circle.memberCap - circle.currentRoundIndex} payout ${circle.memberCap - circle.currentRoundIndex === 1 ? "round remains" : "rounds remain"} before collateral can be returned.`
-                    }
-                    disabled={!allRoundsResolved}
-                    icon={<BadgeCheck className="h-4 w-4" aria-hidden="true" />}
-                    label="Review circle completion"
-                    onClick={reviewCompleteCircle}
-                  />
-                ) : null}
-              </div>
-            ) : (
-              <p className="text-sm leading-6 text-muted">
-                {circle.status === "Forming"
-                  ? circle.members >= circle.memberCap
-                    ? "This circle is full. Any connected wallet can start the first round."
-                    : "Join the circle until the host starts its first round."
-                  : "This circle has completed its payout lifecycle."}
-              </p>
-            )}
-          </section>
-
-          <section className="space-y-4">
-            <h3 className="font-mono text-[0.6rem] uppercase tracking-[0.1em] text-muted">
-              Default governance
-            </h3>
-            {circle.status !== "Active" ? (
-              <p className="text-sm leading-6 text-muted">
-                Default controls unlock only during an active round.
-              </p>
-            ) : defaultProposal ? (
-              <div className="space-y-3">
-                <p className="text-sm leading-6 text-muted">
-                  {defaultProposal.candidateHandle} is under proposal for round{" "}
-                  {defaultProposal.roundIndex + 1}.
-                </p>
-                {myMembership?.active && myMembership.member !== defaultProposal.candidate ? (
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="primary"
-                      onClick={() => reviewVote(true)}
-                    >
-                      <Vote className="h-3.5 w-3.5" aria-hidden="true" />
-                      Approve
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => reviewVote(false)}
-                    >
-                      Reject
-                    </Button>
-                  </div>
-                ) : null}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="w-full"
-                  onClick={reviewHandleDefault}
+        <h3 className="mb-4 font-mono text-[0.62rem] uppercase tracking-[0.1em] text-accent">
+          Social collateral
+        </h3>
+        {myMembership?.active && circle.status !== "Completed" ? (
+          <div className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem_auto] sm:items-end">
+              <label className="block">
+                <span className="mb-1.5 block font-mono text-[0.52rem] uppercase tracking-[0.08em] text-muted">
+                  Member
+                </span>
+                <select
+                  className="input-control font-mono text-[0.7rem]"
+                  value={selectedVouchCandidate}
+                  onChange={(event) => setVouchCandidate(event.target.value)}
                 >
-                  Review default handling
-                </Button>
-              </div>
-            ) : myMembership?.active ? (
-              <>
-                <label className="block">
-                  <span className="mb-2 block font-mono text-[0.58rem] uppercase tracking-[0.08em] text-muted">
-                    Missed contributor
-                  </span>
-                  <select
-                    className="input-control font-mono text-[0.75rem]"
-                    value={selectedDefaultCandidate}
-                    onChange={(event) => setDefaultCandidate(event.target.value)}
-                  >
-                    {unpaidMembers.length === 0 ? (
-                      <option value="">No missed contributors</option>
-                    ) : null}
-                    {unpaidMembers.map((member) => (
-                      <option key={member.member} value={member.member}>
-                        {member.handle}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="w-full"
-                  disabled={!selectedDefaultCandidate}
-                  onClick={reviewOpenDefault}
-                >
-                  Review default proposal
-                </Button>
-              </>
-            ) : (
-              <p className="text-sm leading-6 text-muted">
-                Only active members can open a default proposal.
-              </p>
-            )}
-          </section>
-
-          <section className="space-y-4">
-            <h3 className="font-mono text-[0.6rem] uppercase tracking-[0.1em] text-muted">
-              Social collateral
-            </h3>
-            {myMembership?.active && circle.status !== "Completed" ? (
-              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8.5rem_auto] sm:items-end">
-                <label className="block">
-                  <span className="mb-2 block font-mono text-[0.58rem] uppercase tracking-[0.08em] text-muted">
-                    Member
-                  </span>
-                  <select
-                    className="input-control font-mono text-[0.75rem]"
-                    value={selectedVouchCandidate}
-                    onChange={(event) => setVouchCandidate(event.target.value)}
-                  >
-                    {candidateOptions.map((member) => (
-                      <option key={member.member} value={member.member}>
-                        {member.handle} · rep {member.reputation}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="block">
-                  <span className="mb-2 block font-mono text-[0.58rem] uppercase tracking-[0.08em] text-muted">
-                    Stake (SOL)
-                  </span>
-                  <input
-                    className="input-control font-mono text-[0.75rem]"
-                    inputMode="decimal"
-                    type="text"
-                    value={vouchStake}
-                    onChange={(event) => setVouchStake(event.target.value)}
-                  />
-                </label>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={!selectedVouchCandidate}
-                  onClick={reviewVouch}
-                >
-                  Review vouch
-                </Button>
-              </div>
-            ) : null}
-            {circle.status === "Completed" && activeVouches.length > 0 ? (
-              <div className="space-y-2">
-                {activeVouches.map((vouch) => (
-                  <Button
-                    key={vouch.vouch}
-                    type="button"
-                    variant="secondary"
-                    className="w-full justify-between"
-                    onClick={() => reviewReleaseVouch(vouch.candidate)}
-                  >
-                    Release vouch for {shortAddress(vouch.candidate)}
-                    <span className="font-mono tabular-nums normal-case tracking-normal">
-                      {vouch.stake}
-                    </span>
-                  </Button>
-                ))}
-              </div>
-            ) : null}
-            {vouches.some(
-              (vouch) =>
-                vouch.active &&
-                members.some((member) => member.member === vouch.candidate && member.defaulted),
-            ) ? (
-              <div className="space-y-2 border-t border-border pt-4">
-                {vouches
-                  .filter(
-                    (vouch) =>
-                      vouch.active &&
-                      members.some(
-                        (member) => member.member === vouch.candidate && member.defaulted,
-                      ),
-                  )
-                  .map((vouch) => (
-                    <Button
-                      key={vouch.vouch}
-                      type="button"
-                      variant="secondary"
-                      className="w-full"
-                      onClick={() => reviewSlashVouch(vouch.voucher, vouch.candidate)}
-                    >
-                      Review vouch slash · {shortAddress(vouch.candidate)}
-                    </Button>
+                  {candidateOptions.map((member) => (
+                    <option key={member.member} value={member.member}>
+                      {member.handle} · rep {member.reputation}
+                    </option>
                   ))}
-              </div>
-            ) : null}
-            {!myMembership?.active && circle.status !== "Completed" ? (
-              <p className="text-sm leading-6 text-muted">
-                Join as an active member before creating a vouch.
-              </p>
-            ) : null}
-          </section>
-
-          <section className="space-y-4">
-            <h3 className="font-mono text-[0.6rem] uppercase tracking-[0.1em] text-muted">
-              Reputation settlement
-            </h3>
-            {(circle.status === "Completed" || myMembership?.defaulted) && myMembership ? (
-              <ActionButton
-                copy={
-                  myMembership.defaulted
-                    ? "Record the defaulted circle outcome in your reputation account."
-                    : "Claim your member completion score from the verified circle outcome."
-                }
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block font-mono text-[0.52rem] uppercase tracking-[0.08em] text-muted">
+                  Stake (SOL)
+                </span>
+                <input
+                  className="input-control font-mono text-[0.7rem]"
+                  inputMode="decimal"
+                  type="text"
+                  value={vouchStake}
+                  onChange={(event) => setVouchStake(event.target.value)}
+                />
+              </label>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={!selectedVouchCandidate}
+                onClick={reviewVouch}
+              >
+                Vouch
+              </Button>
+            </div>
+            <p className="text-xs leading-5 text-muted">
+              Lock social collateral behind another active member. The stake is released after clean
+              completion or slashed on default.
+            </p>
+          </div>
+        ) : null}
+        {circle.status === "Completed" && activeVouches.length > 0 ? (
+          <div className="space-y-1">
+            {activeVouches.map((vouch) => (
+              <ControlListItem
+                key={vouch.vouch}
+                copy={`Release your vouch for ${shortAddress(vouch.candidate)}.`}
                 icon={<UserCheck className="h-4 w-4" aria-hidden="true" />}
-                label={
-                  myMembership.defaulted ? "Review default reputation" : "Review member reputation"
-                }
-                onClick={reviewMemberReputation}
+                label={`Release vouch · ${vouch.stake} SOL`}
+                onClick={() => reviewReleaseVouch(vouch.candidate)}
               />
-            ) : null}
-            {circle.status === "Completed" && isHost ? (
-              <ActionButton
-                copy="Record the completed host outcome and any default history."
-                icon={<BadgeCheck className="h-4 w-4" aria-hidden="true" />}
-                label="Review host reputation"
-                onClick={reviewHostReputation}
-              />
-            ) : null}
-            {circle.status !== "Completed" && !myMembership?.defaulted ? (
-              <p className="text-sm leading-6 text-muted">
-                Reputation settlement becomes available after the full circle lifecycle completes.
-              </p>
-            ) : null}
-          </section>
-        </div>
+            ))}
+          </div>
+        ) : null}
+        {vouches.some(
+          (vouch) =>
+            vouch.active &&
+            members.some((member) => member.member === vouch.candidate && member.defaulted),
+        ) ? (
+          <div className="space-y-1 border-t border-white/10 pt-3">
+            {vouches
+              .filter(
+                (vouch) =>
+                  vouch.active &&
+                  members.some((member) => member.member === vouch.candidate && member.defaulted),
+              )
+              .map((vouch) => (
+                <ControlListItem
+                  key={vouch.vouch}
+                  copy={`${shortAddress(vouch.candidate)} defaulted.`}
+                  icon={<UserCheck className="h-4 w-4" aria-hidden="true" />}
+                  label="Slash vouch"
+                  onClick={() => reviewSlashVouch(vouch.voucher, vouch.candidate)}
+                />
+              ))}
+          </div>
+        ) : null}
+        {!myMembership?.active && circle.status !== "Completed" ? (
+          <p className="text-xs leading-5 text-muted">Join as an active member before vouching.</p>
+        ) : null}
       </Panel>
     </section>
   );
 }
 
-function ActionButton({
+function ControlListItem({
   copy,
   disabled,
   icon,
   label,
   onClick,
-  primary,
 }: {
   copy: string;
   disabled?: boolean;
   icon: ReactNode;
   label: string;
   onClick: () => void;
-  primary?: boolean;
 }) {
   return (
-    <div
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
       className={cn(
-        "rounded-md border border-border bg-white/[0.02] p-4",
-        disabled && "opacity-65",
+        "flex w-full items-start gap-3 rounded-md px-2 py-2 text-left transition-colors hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40",
       )}
     >
-      <div className="flex items-start gap-3">
-        <span className="mt-0.5 text-accent">{icon}</span>
-        <p className="text-sm leading-6 text-muted">{copy}</p>
-      </div>
-      <Button
-        type="button"
-        variant={primary ? "primary" : "secondary"}
-        size="sm"
-        className="mt-4"
-        disabled={disabled}
-        onClick={onClick}
-      >
-        {label}
-      </Button>
-    </div>
+      <span className="mt-0.5 text-accent">{icon}</span>
+      <span className="min-w-0">
+        <span className="block text-sm font-medium text-foreground">{label}</span>
+        <span className="mt-0.5 block text-xs leading-5 text-muted">{copy}</span>
+      </span>
+    </button>
   );
 }
