@@ -2,10 +2,11 @@
 
 import { Plus, Search } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppShell, Panel, StatTile, TokenScopeNotice } from "@/components/app/app-shell";
 import { Badge, BadgeButton } from "@/components/ui/badge";
 import { DropdownSelect } from "@/components/ui/dropdown-select";
+import { Pagination } from "@/components/ui/pagination";
 import { useCirclesQuery } from "@/lib/data/queries";
 import type { CircleSummary } from "@/lib/data/types";
 
@@ -39,6 +40,8 @@ export default function CirclesPage() {
   const [query, setQuery] = useState("");
   const [solOnly, setSolOnly] = useState(true);
   const [sortMode, setSortMode] = useState<SortMode>("newest");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 9;
   const { data, error, isLoading } = useCirclesQuery();
   const circles = useMemo(() => data ?? [], [data]);
 
@@ -81,58 +84,24 @@ export default function CirclesPage() {
       });
   }, [circles, contributionFilter, memberRangeOnly, modeFilter, query, sortMode]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredCircles.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageItems = filteredCircles.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const rangeStart = filteredCircles.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
+  const rangeEnd = Math.min(safePage * PAGE_SIZE, filteredCircles.length);
+
+  useEffect(() => {
+    setPage(1);
+  }, [contributionFilter, modeFilter, memberRangeOnly, solOnly, sortMode, query]);
+
   return (
     <AppShell title="Browse Circles" contentClassName="!max-w-none px-6 py-10 md:px-12">
-      <header className="mb-12 flex flex-col justify-between gap-6 md:flex-row md:items-end">
+      <header className="mb-12">
         <div>
           <span className="mb-2 block font-mono text-[0.68rem] uppercase tracking-widest text-accent">
             Marketplace
           </span>
           <h2 className="text-3xl font-semibold tracking-tight">Open Saving Circles</h2>
-        </div>
-
-        <div className="flex flex-col gap-3 md:items-end">
-          <Link
-            href="/circles/new"
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-accent px-4 font-mono text-[0.68rem] font-medium uppercase tracking-[0.08em] text-background transition-colors hover:bg-accent-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-            Create circle
-          </Link>
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="relative block">
-              <span className="sr-only">Search circles</span>
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/20"
-                aria-hidden="true"
-              />
-              <input
-                type="search"
-                placeholder="Search circles..."
-                className="search-input"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-              />
-            </label>
-            <DropdownSelect
-              label="Payout mode"
-              options={modeOptions}
-              value={modeFilter}
-              onChange={setModeFilter}
-            />
-            <DropdownSelect
-              label="Contribution range"
-              options={contributionOptions}
-              value={contributionFilter}
-              onChange={setContributionFilter}
-            />
-            <DropdownSelect
-              label="Sort listings"
-              options={sortOptions}
-              value={sortMode}
-              onChange={setSortMode}
-            />
-          </div>
         </div>
       </header>
 
@@ -144,6 +113,42 @@ export default function CirclesPage() {
         <StatTile label="Settlement" value="SOL only" />
         <StatTile label="Payout modes" value="Fixed + Dutch" />
       </Panel>
+
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <label className="relative block min-w-[12rem] flex-1">
+          <span className="sr-only">Search circles</span>
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/20"
+            aria-hidden="true"
+          />
+          <input
+            type="search"
+            placeholder="Search circles..."
+            className="search-input w-full"
+            style={{ width: "100%" }}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </label>
+        <DropdownSelect
+          label="Payout mode"
+          options={modeOptions}
+          value={modeFilter}
+          onChange={setModeFilter}
+        />
+        <DropdownSelect
+          label="Contribution range"
+          options={contributionOptions}
+          value={contributionFilter}
+          onChange={setContributionFilter}
+        />
+        <DropdownSelect
+          label="Sort listings"
+          options={sortOptions}
+          value={sortMode}
+          onChange={setSortMode}
+        />
+      </div>
 
       <div className="mb-8 flex flex-wrap items-center gap-2">
         <BadgeButton
@@ -185,9 +190,6 @@ export default function CirclesPage() {
       </div>
 
       {error ? <StatePanel message={error.message} title="Unable to load circles" /> : null}
-      {isLoading ? (
-        <StatePanel message="Loading available circles." title="Loading circles" />
-      ) : null}
       {!isLoading && !error && filteredCircles.length === 0 ? (
         <StatePanel
           message="Create a circle to get started, or check back when new circles are available."
@@ -196,9 +198,6 @@ export default function CirclesPage() {
       ) : null}
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {filteredCircles.map((circle) => (
-          <CircleCard key={circle.id} circle={circle} />
-        ))}
         <Link
           href="/circles/new"
           className="flex min-h-[21rem] flex-col items-center justify-center rounded-lg border border-dashed border-border bg-white/[0.02] p-6 text-left no-underline transition-[border-color,background,transform] duration-150 ease-out hover:-translate-y-0.5 hover:border-accent/30 hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -211,24 +210,28 @@ export default function CirclesPage() {
             Host your own pool and earn reputation for coordination.
           </p>
         </Link>
+        {isLoading
+          ? Array.from({ length: PAGE_SIZE }).map((_, index) => <CircleCardSkeleton key={index} />)
+          : pageItems.map((circle) => <CircleCard key={circle.id} circle={circle} />)}
       </div>
 
-      <footer className="mt-20 flex items-center justify-between border-t border-[var(--ink-faint)] pt-12">
-        <div className="flex items-center gap-6 font-mono text-[0.65rem] text-muted">
-          <span>Marketplace Status: devnet preview</span>
-          <span>Settlement: native SOL</span>
-        </div>
-        <div className="flex items-center gap-3 font-mono text-[0.7rem]">
-          <button
-            type="button"
-            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded bg-white/[0.05] text-muted transition-colors hover:bg-white/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            1
-          </button>
-          <span className="text-muted">of</span>
-          <span>1</span>
-        </div>
-      </footer>
+      {!isLoading && !error ? (
+        <Pagination
+          className="mt-12 border-t border-[var(--ink-faint)] pt-8"
+          currentPage={safePage}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          summary={
+            <span className="flex items-center gap-1.5">
+              Showing{" "}
+              <Badge size="xs">
+                {rangeStart}–{rangeEnd}
+              </Badge>{" "}
+              of <Badge size="xs">{filteredCircles.length}</Badge>
+            </span>
+          }
+        />
+      ) : null}
     </AppShell>
   );
 }
@@ -239,18 +242,18 @@ function parseSol(value: string) {
 
 function CircleCard({ circle }: { circle: CircleSummary }) {
   return (
-    <Panel className="p-6 transition-[border-color,background,transform] duration-150 ease-out hover:-translate-y-0.5 hover:border-accent/30 hover:bg-white/[0.04]">
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <h3 className="text-lg font-semibold tracking-tight">{circle.name}</h3>
-          <p className="mt-1 font-mono text-[0.65rem] text-muted">Host: {circle.creator}</p>
+    <Panel className="p-5 transition-[border-color,background,transform] duration-150 ease-out hover:-translate-y-0.5 hover:border-accent/30 hover:bg-white/[0.04]">
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h3 className="truncate text-base font-semibold tracking-tight">{circle.name}</h3>
+          <p className="mt-1 font-mono text-[0.62rem] text-muted">Host: {circle.creator}</p>
         </div>
         <Badge tone={circle.mode === "Fixed order" ? "fixed" : "accent"} shape="square" size="xs">
           {circle.mode === "Fixed order" ? "Fixed" : "Dutch"}
         </Badge>
       </div>
 
-      <div className="mb-6 flex flex-wrap gap-2">
+      <div className="mb-4 flex flex-wrap gap-2">
         <Badge tone="rep" shape="square" size="xs">
           Min Rep: {circle.minReputation}
         </Badge>
@@ -259,7 +262,7 @@ function CircleCard({ circle }: { circle: CircleSummary }) {
         </Badge>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-4">
         <div className="mb-2 flex justify-between font-mono text-[0.62rem] uppercase tracking-[0.08em] text-muted">
           <span>Capacity</span>
           <span>{circle.progress}% filled</span>
@@ -269,7 +272,7 @@ function CircleCard({ circle }: { circle: CircleSummary }) {
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-4 border-t border-border pt-5">
+      <div className="mt-5 grid grid-cols-2 gap-3 border-t border-border pt-4">
         <CircleCardStat label={`${circle.cycle} Contribution`} value={circle.contribution} />
         <CircleCardStat label="Projected Pot" value={circle.pot} />
         <CircleCardStat label="Round" value={circle.round} />
@@ -278,7 +281,7 @@ function CircleCard({ circle }: { circle: CircleSummary }) {
 
       <Link
         href={`/circles/${circle.id}`}
-        className="mt-8 inline-flex min-h-11 w-full items-center justify-center rounded-md border border-white/5 bg-white/5 px-4 font-mono text-[0.7rem] font-medium uppercase tracking-wider text-foreground transition-colors hover:border-white/10 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="mt-6 inline-flex min-h-10 w-full items-center justify-center rounded-md border border-white/5 bg-white/5 px-4 font-mono text-[0.68rem] font-medium uppercase tracking-wider text-foreground transition-colors hover:border-white/10 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {circle.nextAction}
       </Link>
@@ -291,6 +294,46 @@ function StatePanel({ message, title }: { message: string; title: string }) {
     <Panel className="mb-6 p-6">
       <h3 className="font-medium text-foreground">{title}</h3>
       <p className="mt-2 text-sm leading-6 text-muted">{message}</p>
+    </Panel>
+  );
+}
+
+function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse rounded-md bg-white/[0.06] ${className}`} />;
+}
+
+function CircleCardSkeleton() {
+  return (
+    <Panel className="flex flex-col p-5">
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-5 w-2/3" />
+          <Skeleton className="h-3 w-1/2" />
+        </div>
+        <Skeleton className="h-5 w-12" />
+      </div>
+
+      <div className="mb-4 flex gap-2">
+        <Skeleton className="h-5 w-20" />
+        <Skeleton className="h-5 w-20" />
+      </div>
+
+      <div className="mb-4 space-y-2">
+        <div className="flex justify-between">
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="h-3 w-12" />
+        </div>
+        <Skeleton className="h-2 w-full" />
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-3 border-t border-border pt-4">
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-full" />
+      </div>
+
+      <Skeleton className="mt-6 h-10 w-full" />
     </Panel>
   );
 }

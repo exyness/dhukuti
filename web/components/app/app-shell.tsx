@@ -54,7 +54,7 @@ export function AppShell({
   const mobileMenuTriggerRef = useRef<HTMLButtonElement>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [railCollapsed, setRailCollapsed] = useState(false);
-  const { address, isConnected } = useWalletIdentity();
+  const { address, connecting, isConnected } = useWalletIdentity();
   const reputationQuery = useProfileQuery(address);
 
   return (
@@ -236,7 +236,13 @@ export function AppShell({
           </div>
         </header>
         <div className={cn("mx-auto w-full max-w-[1120px] px-6 py-10 md:px-10", contentClassName)}>
-          {isConnected ? children : <WalletRequiredPanel />}
+          {isConnected ? (
+            children
+          ) : connecting ? (
+            <WalletConnectingPanel />
+          ) : (
+            <WalletRequiredPanel />
+          )}
         </div>
       </main>
       <MobileNavigation
@@ -450,6 +456,37 @@ function WalletRequiredPanel() {
               <p className="mt-3 max-w-md text-sm leading-6 text-muted">
                 Dhukuti actions are scoped to your Solana wallet. Connect a devnet wallet to load
                 indexed circles, reputation, positions, and transaction controls.
+              </p>
+            </div>
+          </div>
+        </div>
+        <WalletConnectCard />
+      </div>
+    </section>
+  );
+}
+
+function WalletConnectingPanel() {
+  return (
+    <section
+      id="wallet-access"
+      className="mx-auto flex min-h-[calc(100vh-152px)] w-full max-w-3xl items-center justify-center py-10"
+    >
+      <div className="grid w-full gap-6 lg:grid-cols-[1fr_22rem] lg:items-center">
+        <div>
+          <Badge tone="accent">Connecting</Badge>
+          <div className="mt-5 flex items-start gap-4">
+            <span
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-accent/20 bg-accent/10 text-accent"
+              aria-hidden="true"
+            >
+              <Loader2 className="h-5 w-5 animate-spin" />
+            </span>
+            <div>
+              <h2 className="text-2xl font-semibold tracking-tight">Connecting your wallet</h2>
+              <p className="mt-3 max-w-md text-sm leading-6 text-muted">
+                Reconnecting to your Solana wallet. This should finish in a moment if the wallet is
+                already authorized.
               </p>
             </div>
           </div>

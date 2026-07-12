@@ -11,7 +11,8 @@ const DEFAULT_SIBLING_COUNT = 1;
  * PAGINATION
  *
  * Controlled component — the parent owns page state.
- * Renders nothing if totalPages <= 1.
+ * Always renders so the pager is visible even for a single page
+ * (Prev/Next simply disable at the ends).
  *
  *   <Pagination
  *     currentPage={page}
@@ -24,7 +25,7 @@ const DEFAULT_SIBLING_COUNT = 1;
 export type PaginationProps = {
   /** 1-based current page. */
   currentPage: number;
-  /** Total number of pages. Component renders nothing if <= 1. */
+  /** Total number of pages. */
   totalPages: number;
   /** Called with the new 1-based page number. */
   onPageChange: (page: number) => void;
@@ -82,8 +83,6 @@ export function Pagination({
   siblingCount = DEFAULT_SIBLING_COUNT,
   className,
 }: PaginationProps) {
-  if (totalPages <= 1) return null;
-
   const pages = buildPageList(currentPage, totalPages, siblingCount);
   const canPrev = currentPage > 1;
   const canNext = currentPage < totalPages;

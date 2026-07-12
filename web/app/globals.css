@@ -112,7 +112,6 @@ body {
 
 .search-input {
   height: 2.5rem;
-  width: 15rem;
   border: 1px solid var(--faint);
   border-radius: 0.25rem;
   background: rgba(245, 245, 245, 0.03);

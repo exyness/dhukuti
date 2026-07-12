@@ -36,32 +36,29 @@ export function useActivityQuery(
 }
 
 export function useCirclesQuery(options: WalletQueryOptions = {}) {
-  const { isConnected } = useWalletIdentity();
-
   return useQuery({
-    enabled: isConnected && (options.enabled ?? true),
+    enabled: options.enabled ?? true,
     queryFn: fetchCircles,
     queryKey: queryKeys.circles,
+    staleTime: 30_000,
   });
 }
 
 export function useCircleDetailQuery(circleId: string, options: WalletQueryOptions = {}) {
-  const { isConnected } = useWalletIdentity();
-
   return useQuery({
-    enabled: isConnected && Boolean(circleId) && (options.enabled ?? true),
+    enabled: Boolean(circleId) && (options.enabled ?? true),
     queryFn: () => fetchCircleDetail(circleId),
     queryKey: queryKeys.circle(circleId),
+    staleTime: 30_000,
   });
 }
 
 export function useMarketListingsQuery(options: WalletQueryOptions = {}) {
-  const { isConnected } = useWalletIdentity();
-
   return useQuery({
-    enabled: isConnected && (options.enabled ?? true),
+    enabled: options.enabled ?? true,
     queryFn: fetchMarketListings,
     queryKey: queryKeys.market,
+    staleTime: 30_000,
   });
 }
 

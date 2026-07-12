@@ -19,15 +19,15 @@ export default function CircleDetailsPage() {
   const circleId = decodeURIComponent(params.circleId);
   const { data, error, isLoading } = useCircleDetailQuery(circleId);
 
-  if (isLoading) {
-    return (
-      <AppShell title="Circle" contentClassName="!max-w-none px-6 py-10 md:px-12">
-        <StatePanel message="Loading the latest circle details." title="Loading circle" />
-      </AppShell>
-    );
-  }
-
   if (!data || !data.circle) {
+    if (isLoading) {
+      return (
+        <AppShell title="Circle" contentClassName="!max-w-none px-6 py-10 md:px-12">
+          <CircleDetailsSkeleton />
+        </AppShell>
+      );
+    }
+
     return (
       <AppShell title="Circle" contentClassName="!max-w-none px-6 py-10 md:px-12">
         <StatePanel
@@ -405,6 +405,81 @@ function StatePanel({ message, title }: { message: string; title: string }) {
       <h2 className="font-medium text-foreground">{title}</h2>
       <p className="mt-2 text-sm leading-6 text-muted">{message}</p>
     </Panel>
+  );
+}
+
+function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse rounded-md bg-white/[0.06] ${className}`} />;
+}
+
+function CircleDetailsSkeleton() {
+  return (
+    <div className="space-y-8">
+      <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <Panel className="flex min-h-[17rem] flex-col items-center justify-between gap-6 p-8">
+          <div className="w-full space-y-4 text-center">
+            <Skeleton className="mx-auto h-3 w-40" />
+            <div className="flex items-start justify-center gap-3">
+              <Skeleton className="h-10 w-10" />
+              <Skeleton className="h-10 w-10" />
+              <Skeleton className="h-10 w-10" />
+            </div>
+          </div>
+          <Skeleton className="h-11 w-full" />
+        </Panel>
+
+        <Panel className="p-8 lg:col-span-2">
+          <div className="mb-6 flex items-center justify-between">
+            <Skeleton className="h-3 w-32" />
+            <Skeleton className="h-3 w-24" />
+          </div>
+          <div className="grid grid-cols-4 gap-6 md:grid-cols-6">
+            {Array.from({ length: 12 }).map((_, index) => (
+              <Skeleton key={index} className="mx-auto h-12 w-12 rounded-full" />
+            ))}
+          </div>
+        </Panel>
+      </section>
+
+      <Panel className="p-6">
+        <Skeleton className="mb-6 h-3 w-40" />
+        <div className="space-y-4">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+        </div>
+      </Panel>
+
+      <Panel className="p-6">
+        <Skeleton className="mb-6 h-3 w-40" />
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+          <div className="space-y-3 lg:col-span-2">
+            <Skeleton className="h-3 w-32" />
+            <div className="overflow-hidden rounded-lg border border-border">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="flex items-center gap-4 border-b border-border p-4 last:border-b-0"
+                >
+                  <Skeleton className="h-4 w-12" />
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="ml-auto h-4 w-16" />
+                  <Skeleton className="h-4 w-16" />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-6">
+            <Skeleton className="h-3 w-28" />
+            <Skeleton className="h-2 w-full" />
+            <div className="grid grid-cols-2 gap-4 border-t border-border pt-6">
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+            </div>
+          </div>
+        </div>
+      </Panel>
+    </div>
   );
 }
 
