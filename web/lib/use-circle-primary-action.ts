@@ -3,6 +3,7 @@
 import { useConnection } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { useMemo, useState } from "react";
+import type { CircleDetail } from "@/lib/data/types";
 import {
   buildContributeInstruction,
   buildJoinCircleInstruction,
@@ -15,7 +16,6 @@ import {
 import { useProgramTransaction } from "@/lib/use-program-transaction";
 import { useWalletIdentity } from "@/lib/use-wallet-identity";
 import { truncateAddress as shortAddress } from "@/lib/wallet";
-import type { CircleDetail } from "@/lib/data/types";
 
 export type PrimaryAction = {
   label: string;
@@ -115,7 +115,9 @@ export function useCirclePrimaryAction(detail: CircleDetail) {
 
     try {
       const context = getContext();
-      let recipient = members.find((member) => member.joinOrder === context.currentRoundIndex)?.member;
+      let recipient = members.find(
+        (member) => member.joinOrder === context.currentRoundIndex,
+      )?.member;
 
       if (circle.mode === "Dutch bid") {
         const round = await fetchRoundState(connection, context.circle, context.currentRoundIndex);

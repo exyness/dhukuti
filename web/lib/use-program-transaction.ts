@@ -3,8 +3,8 @@
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { Transaction } from "@solana/web3.js";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { useCallback, useState } from "react";
+import { toast } from "sonner";
 import type { ProgramInstructionBundle } from "@/lib/program";
 
 export type TransactionReviewDetail = {

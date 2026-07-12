@@ -2,16 +2,7 @@
 
 import { useConnection } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
-import {
-  BadgeCheck,
-  CircleDollarSign,
-  Gavel,
-  Landmark,
-  ShieldAlert,
-  ShieldCheck,
-  UserCheck,
-  Vote,
-} from "lucide-react";
+import { BadgeCheck, CircleDollarSign, Gavel, Landmark, UserCheck, Vote } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { Panel } from "@/components/app/app-shell";
 import { TransactionReviewModal } from "@/components/circles/TransactionReviewModal";
@@ -25,12 +16,10 @@ import {
   buildContributeInstruction,
   buildDutchBidInstruction,
   buildHandleDefaultInstruction,
-  buildJoinCircleInstruction,
   buildOpenDefaultProposalInstruction,
   buildReleaseVouchInstruction,
   buildResolveRoundInstruction,
   buildSlashVouchInstruction,
-  buildStartCircleInstruction,
   buildUpdateReputationInstruction,
   buildVoteDefaultInstruction,
   buildVouchMemberInstruction,
@@ -613,7 +602,9 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
                   .filter(
                     (vouch) =>
                       vouch.active &&
-                      members.some((member) => member.member === vouch.candidate && member.defaulted),
+                      members.some(
+                        (member) => member.member === vouch.candidate && member.defaulted,
+                      ),
                   )
                   .map((vouch) => (
                     <Button

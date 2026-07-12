@@ -7,16 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { explorerTransactionUrl } from "@/lib/constants";
-import { lamportsToSol, payoutCurveLabel, type PayoutCurveValue } from "@/lib/program";
+import { lamportsToSol, type PayoutCurveValue, payoutCurveLabel } from "@/lib/program";
 import { truncateAddress } from "@/lib/wallet";
 
-export type CreateStatus =
-  | "confirmed"
-  | "confirming"
-  | "idle"
-  | "ready"
-  | "signing"
-  | "simulating";
+export type CreateStatus = "confirmed" | "confirming" | "idle" | "ready" | "signing" | "simulating";
 
 export type IndexStatus = "failed" | "idle" | "syncing" | "synced";
 
@@ -144,7 +138,10 @@ export function CreateCircleModal({
           </div>
 
           <Section label="Circle terms">
-            <ReceiptRow label="Contribution" value={`${lamportsToSol(review.contributionLamports)} SOL`} />
+            <ReceiptRow
+              label="Contribution"
+              value={`${lamportsToSol(review.contributionLamports)} SOL`}
+            />
             <ReceiptRow label="Members" value={String(review.maxMembers)} />
             <ReceiptRow label="Cycle" value={cycleLabel} />
             <ReceiptRow label="Payout model" value={payoutCurveLabel(review.payoutCurve)} />
@@ -284,7 +281,12 @@ function CircleCreatedSuccess({
           <ArrowRight className="h-3 w-3" aria-hidden="true" />
         </Link>
         {indexStatus === "failed" ? (
-          <Button type="button" variant="secondary" className="min-h-9 px-3.5 font-mono text-[0.64rem] uppercase tracking-[0.08em]" onClick={onRetryIndex}>
+          <Button
+            type="button"
+            variant="secondary"
+            className="min-h-9 px-3.5 font-mono text-[0.64rem] uppercase tracking-[0.08em]"
+            onClick={onRetryIndex}
+          >
             Retry index
           </Button>
         ) : null}

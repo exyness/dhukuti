@@ -7,16 +7,16 @@ import { AlertCircle, ChevronDown, Loader2, LockKeyhole, WalletCards } from "luc
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { AppPageHeader, AppShell, Panel, TokenScopeNotice } from "@/components/app/app-shell";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   CreateCircleModal,
   type CreateCircleReview,
   type CreateStatus,
   type IndexStatus,
 } from "@/components/circles/CreateCircleModal";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
-import { DHUKUTI_PROGRAM, explorerTransactionUrl } from "@/lib/constants";
+import { DHUKUTI_PROGRAM } from "@/lib/constants";
 import { queryKeys } from "@/lib/data/queries";
 import type { CircleDetail, CircleSummary } from "@/lib/data/types";
 import {

@@ -1,8 +1,8 @@
 "use client";
 
 import { CheckCircle2, ExternalLink, Loader2 } from "lucide-react";
-import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 import { explorerTransactionUrl } from "@/lib/constants";
 import type {
   ProgramTransactionFailure,
@@ -28,7 +28,9 @@ export function TransactionReviewModal({
   return (
     <Modal
       description={description}
-      footer={review ? <ReviewActions onDismiss={onDismiss} onSign={onSign} review={review} /> : null}
+      footer={
+        review ? <ReviewActions onDismiss={onDismiss} onSign={onSign} review={review} /> : null
+      }
       onClose={onDismiss}
       open={open}
       title={title}

@@ -22,7 +22,7 @@ import { useWalletIdentity } from "@/lib/use-wallet-identity";
  *
  *    0ms   page header settles into place
  *  120ms   indexed activity list reveals in sequence
-*/
+ */
 const TIMING = {
   header: 0,
   list: 120,
