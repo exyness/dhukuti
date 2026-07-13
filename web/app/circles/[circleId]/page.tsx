@@ -70,6 +70,7 @@ function CircleDetailsInner({ data }: { data: CircleDetail }) {
   const allRoundsResolved =
     currentCircle.currentRoundIndex >= payoutRoundTarget || allPayoutRowsSettled;
   const [justResolved, setJustResolved] = useState(false);
+  const processedClaimReview = useRef("");
   const processedCompleteReview = useRef("");
   const processedResolveReview = useRef("");
   const { localError, primaryAction, transaction } = useCirclePrimaryAction(data, { justResolved });
@@ -253,6 +254,21 @@ function CircleDetailsInner({ data }: { data: CircleDetail }) {
       };
     });
   }, [address, currentCircle, queryClient, transaction.review]);
+
+  useEffect(() => {
+    const review = transaction.review;
+    if (review?.status !== "confirmed" || !isReputationClaimTitle(review.title) || !address) {
+      return;
+    }
+    const claimTitle = review.title;
+    const reviewKey = `${review.title}:${review.signature ?? "confirmed"}`;
+    if (processedClaimReview.current === reviewKey) return;
+    processedClaimReview.current = reviewKey;
+
+    queryClient.setQueryData<ProfileData>(queryKeys.profile(address), (profile) =>
+      profile ? applyConfirmedReputationClaim(profile, claimTitle) : profile,
+    );
+  }, [address, queryClient, transaction.review]);
 
   const openSlotMembers = Array.from({ length: openSlots }, (_, index) => {
     const slotNumber = circleMembers.length + index + 1;
@@ -535,6 +551,42 @@ function CircleDetailsInner({ data }: { data: CircleDetail }) {
 
 function isPayoutResolutionTitle(title: string) {
   return title === "Resolve payout" || title === "Settle auction payout";
+}
+
+type ReputationClaimTitle = "Claim member reputation" | "Claim host reputation";
+
+const MEMBER_COMPLETION_SCORE_DELTA = 100;
+const HOST_COMPLETION_SCORE_DELTA = 150;
+
+function isReputationClaimTitle(title: string): title is ReputationClaimTitle {
+  return title === "Claim member reputation" || title === "Claim host reputation";
+}
+
+function applyConfirmedReputationClaim(
+  profile: ProfileData,
+  title: ReputationClaimTitle,
+): ProfileData {
+  const isMemberClaim = title === "Claim member reputation";
+  const scoreDelta = isMemberClaim ? MEMBER_COMPLETION_SCORE_DELTA : HOST_COMPLETION_SCORE_DELTA;
+
+  return {
+    ...profile,
+    stats: {
+      ...profile.stats,
+      completedCircles: isMemberClaim
+        ? incrementIntegerString(profile.stats.completedCircles)
+        : profile.stats.completedCircles,
+      hostCompletions: isMemberClaim
+        ? profile.stats.hostCompletions
+        : incrementIntegerString(profile.stats.hostCompletions),
+      memberReputation: incrementIntegerString(profile.stats.memberReputation, scoreDelta),
+    },
+  };
+}
+
+function incrementIntegerString(value: string, increment = 1) {
+  const parsed = Number.parseInt(value, 10);
+  return String((Number.isFinite(parsed) ? parsed : 0) + increment);
 }
 
 function upsertCircleSummary(circles: CircleSummary[], nextCircle: CircleSummary) {

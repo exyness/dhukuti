@@ -2,17 +2,20 @@
 
 import { useConnection } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CircleDetail } from "@/lib/data/types";
 import {
+  buildClaimHostReputationInstruction,
   buildCompleteCircleInstruction,
   buildContributeInstruction,
   buildDutchBidInstruction,
   buildJoinCircleInstruction,
   buildResolveRoundInstruction,
   buildStartCircleInstruction,
+  buildUpdateReputationInstruction,
   deriveMembershipPda,
   fetchCircleState,
+  fetchMembershipState,
   fetchRoundState,
   type ProgramInstructionBundle,
 } from "@/lib/program";
@@ -27,11 +30,28 @@ export type PrimaryAction = {
   disabled?: boolean;
 };
 
+type ReputationClaimState = {
+  hostReputationClaimed: boolean;
+  isLoading: boolean;
+  key: string;
+  memberCompletionClaimed: boolean;
+};
+
+const EMPTY_REPUTATION_CLAIM_STATE: ReputationClaimState = {
+  hostReputationClaimed: false,
+  isLoading: false,
+  key: "",
+  memberCompletionClaimed: false,
+};
+
 export function useCirclePrimaryAction(detail: CircleDetail, options?: { justResolved?: boolean }) {
   const { connection } = useConnection();
   const { address } = useWalletIdentity();
   const transaction = useProgramTransaction();
   const [localError, setLocalError] = useState("");
+  const [reputationClaimState, setReputationClaimState] = useState<ReputationClaimState>(
+    EMPTY_REPUTATION_CLAIM_STATE,
+  );
   const { circle, members, payoutSchedule } = detail;
   const wallet = address ?? "";
   const walletKey = useMemo(() => (wallet ? new PublicKey(wallet) : null), [wallet]);
@@ -47,6 +67,89 @@ export function useCirclePrimaryAction(detail: CircleDetail, options?: { justRes
   const isHost = circle.creator === wallet;
   const isDutch = circle.mode === "Dutch bid";
   const resolvePayoutLabel = isDutch ? "Settle auction payout" : "Resolve payout";
+  const canClaimMemberReputation =
+    circle.status === "Completed" && Boolean(myMembership?.active && !myMembership.defaulted);
+  const canClaimHostReputation = circle.status === "Completed" && isHost;
+  const canCheckReputationClaim =
+    circle.status === "Completed" && Boolean(walletKey) && (canClaimMemberReputation || isHost);
+  const reputationClaimKey = canCheckReputationClaim ? `${circle.address}:${wallet}` : "";
+  const currentReputationClaimState =
+    reputationClaimState.key === reputationClaimKey
+      ? reputationClaimState
+      : {
+          ...EMPTY_REPUTATION_CLAIM_STATE,
+          isLoading: canCheckReputationClaim,
+          key: reputationClaimKey,
+        };
+  const hostReputationClaimed =
+    currentReputationClaimState.hostReputationClaimed ||
+    (transaction.review?.status === "confirmed" &&
+      transaction.review.title === "Claim host reputation");
+  const memberCompletionClaimed =
+    currentReputationClaimState.memberCompletionClaimed ||
+    (transaction.review?.status === "confirmed" &&
+      transaction.review.title === "Claim member reputation");
+
+  useEffect(() => {
+    if (!canCheckReputationClaim || !walletKey) return;
+
+    const circleKey = new PublicKey(circle.address);
+    let cancelled = false;
+
+    Promise.all([
+      canClaimMemberReputation
+        ? fetchMembershipState(connection, circleKey, walletKey)
+        : Promise.resolve(null),
+      isHost ? fetchCircleState(connection, circleKey) : Promise.resolve(null),
+    ])
+      .then(([membershipState, circleState]) => {
+        if (cancelled) return;
+        setReputationClaimState({
+          hostReputationClaimed: circleState?.hostReputationClaimed ?? false,
+          isLoading: false,
+          key: reputationClaimKey,
+          memberCompletionClaimed: membershipState?.completionReputationClaimed ?? false,
+        });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setReputationClaimState({
+          ...EMPTY_REPUTATION_CLAIM_STATE,
+          key: reputationClaimKey,
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    canClaimMemberReputation,
+    canCheckReputationClaim,
+    circle.address,
+    connection,
+    isHost,
+    reputationClaimKey,
+    walletKey,
+  ]);
+
+  useEffect(() => {
+    const review = transaction.review;
+    if (review?.status !== "confirmed") return;
+    if (review.title === "Claim host reputation") {
+      Promise.resolve().then(() => {
+        setReputationClaimState((state) =>
+          state.key === reputationClaimKey ? { ...state, hostReputationClaimed: true } : state,
+        );
+      });
+    }
+    if (review.title === "Claim member reputation") {
+      Promise.resolve().then(() => {
+        setReputationClaimState((state) =>
+          state.key === reputationClaimKey ? { ...state, memberCompletionClaimed: true } : state,
+        );
+      });
+    }
+  }, [reputationClaimKey, transaction.review]);
 
   function getContext() {
     return {
@@ -250,6 +353,76 @@ export function useCirclePrimaryAction(detail: CircleDetail, options?: { justRes
     }
   }
 
+  async function reviewClaimMemberReputation() {
+    if (!walletKey) return;
+    setLocalError("");
+
+    try {
+      const context = getContext();
+      const membershipState = await fetchMembershipState(connection, context.circle, walletKey);
+      if (!membershipState.active || membershipState.roundsMissed > 0) {
+        throw new Error(
+          "Only active members without missed rounds can claim completion reputation.",
+        );
+      }
+      if (membershipState.completionReputationClaimed) {
+        setReputationClaimState((state) => ({ ...state, memberCompletionClaimed: true }));
+        throw new Error("Member reputation was already claimed for this circle.");
+      }
+
+      requestReview(
+        "Claim member reputation",
+        "Record this completed circle on your protocol reputation account.",
+        [
+          { label: "Circle", value: circle.name },
+          { label: "Wallet", value: shortAddress(walletKey.toBase58()) },
+          { label: "Reward", value: "+100 member reputation" },
+        ],
+        buildUpdateReputationInstruction({
+          circle: context.circle,
+          cranker: walletKey,
+          event: "CircleCompleted",
+          wallet: walletKey,
+        }),
+      );
+    } catch (error) {
+      setLocalError(error instanceof Error ? error.message : "Unable to prepare reputation claim.");
+    }
+  }
+
+  async function reviewClaimHostReputation() {
+    if (!walletKey) return;
+    setLocalError("");
+
+    try {
+      const context = getContext();
+      const onChainCircle = await fetchCircleState(connection, context.circle);
+      if (onChainCircle.hostReputationClaimed) {
+        setReputationClaimState((state) => ({ ...state, hostReputationClaimed: true }));
+        throw new Error("Host reputation was already claimed for this circle.");
+      }
+
+      requestReview(
+        "Claim host reputation",
+        "Record host completion credit for closing this circle successfully.",
+        [
+          { label: "Circle", value: circle.name },
+          { label: "Host", value: shortAddress(circle.creator) },
+          { label: "Reward", value: "+150 host reputation, plus no-default bonus if eligible" },
+        ],
+        buildClaimHostReputationInstruction({
+          circle: context.circle,
+          cranker: walletKey,
+          host: new PublicKey(circle.creator),
+        }),
+      );
+    } catch (error) {
+      setLocalError(
+        error instanceof Error ? error.message : "Unable to prepare host reputation claim.",
+      );
+    }
+  }
+
   let primaryAction: PrimaryAction | null = null;
 
   if (circle.status === "Forming" && !myMembership) {
@@ -263,6 +436,40 @@ export function useCirclePrimaryAction(detail: CircleDetail, options?: { justRes
     primaryAction = {
       label: "Complete circle",
       onClick: () => void reviewCompleteCircle(),
+      tone: "accent",
+    };
+  } else if (
+    canClaimHostReputation &&
+    currentReputationClaimState.isLoading &&
+    !hostReputationClaimed
+  ) {
+    primaryAction = {
+      disabled: true,
+      label: "Checking reputation",
+      onClick: () => undefined,
+      tone: "muted",
+    };
+  } else if (canClaimHostReputation && !hostReputationClaimed) {
+    primaryAction = {
+      label: "Claim host reputation",
+      onClick: () => void reviewClaimHostReputation(),
+      tone: "accent",
+    };
+  } else if (
+    canClaimMemberReputation &&
+    currentReputationClaimState.isLoading &&
+    !memberCompletionClaimed
+  ) {
+    primaryAction = {
+      disabled: true,
+      label: "Checking reputation",
+      onClick: () => undefined,
+      tone: "muted",
+    };
+  } else if (canClaimMemberReputation && !memberCompletionClaimed) {
+    primaryAction = {
+      label: "Claim member reputation",
+      onClick: () => void reviewClaimMemberReputation(),
       tone: "accent",
     };
   } else if (circle.status === "Active" && myMembership?.active && myMembership.state !== "Paid") {

@@ -1,7 +1,7 @@
 import { BorshAccountsCoder, type Idl } from "@coral-xyz/anchor";
 import type { Connection, PublicKey } from "@solana/web3.js";
 import idl from "@/lib/program/dhukuti_program.idl.json";
-import { deriveRoundPda } from "./pdas";
+import { deriveMembershipPda, deriveRoundPda } from "./pdas";
 
 const accountCoder = new BorshAccountsCoder(idl as Idl);
 
@@ -19,6 +19,14 @@ export type DecodedCircleState = {
   activeMembersBitmap: bigint;
   currentMembers: number;
   currentRoundIndex: number;
+  hostReputationClaimed: boolean;
+};
+
+export type DecodedMembershipState = {
+  active: boolean;
+  completionReputationClaimed: boolean;
+  defaultReputationClaimed: boolean;
+  roundsMissed: number;
 };
 
 export async function fetchCircleState(
@@ -34,12 +42,39 @@ export async function fetchCircleState(
     active_members_bitmap: AnchorInteger;
     current_members: AnchorInteger;
     current_round: AnchorInteger;
+    host_reputation_claimed: boolean;
   };
 
   return {
     activeMembersBitmap: toBigInt(decoded.active_members_bitmap),
     currentMembers: toNumber(decoded.current_members),
     currentRoundIndex: toNumber(decoded.current_round),
+    hostReputationClaimed: decoded.host_reputation_claimed,
+  };
+}
+
+export async function fetchMembershipState(
+  connection: Connection,
+  circle: PublicKey,
+  wallet: PublicKey,
+): Promise<DecodedMembershipState> {
+  const account = await connection.getAccountInfo(deriveMembershipPda(circle, wallet), "confirmed");
+  if (!account) {
+    throw new Error("This wallet does not have a membership account for the circle.");
+  }
+
+  const decoded = (await accountCoder.decode("Membership", account.data)) as {
+    active: boolean;
+    completion_reputation_claimed: boolean;
+    default_reputation_claimed: boolean;
+    rounds_missed: AnchorInteger;
+  };
+
+  return {
+    active: decoded.active,
+    completionReputationClaimed: decoded.completion_reputation_claimed,
+    defaultReputationClaimed: decoded.default_reputation_claimed,
+    roundsMissed: toNumber(decoded.rounds_missed),
   };
 }
 

@@ -7,6 +7,7 @@ import { AppShell, Panel } from "@/components/app/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { useProfileQuery } from "@/lib/data/queries";
 import type { CircleSummary, MarketListing, ProfileData } from "@/lib/data/types";
+import { getReputationClaimTasks } from "@/lib/reputation-claims";
 import { useWalletIdentity } from "@/lib/use-wallet-identity";
 
 type CircleCardData = CircleSummary;
@@ -42,6 +43,7 @@ export default function ProfilePage() {
   const profileStats = profile.stats;
   const reputationScore = Number.parseInt(profileStats.memberReputation, 10) || 0;
   const reputationProgress = getReputationProgress(reputationScore);
+  const reputationClaimTasks = getReputationClaimTasks(profile);
 
   return (
     <AppShell title="Profile & Assets" contentClassName="!max-w-none px-6 py-10 md:px-12">
@@ -120,6 +122,45 @@ export default function ProfilePage() {
             </Link>
           </Panel>
         </section>
+
+        {reputationClaimTasks.length > 0 ? (
+          <section id="settlement-claims" className="scroll-mt-24">
+            <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <span className="font-mono text-[0.62rem] uppercase tracking-[0.1em] text-accent">
+                  Reputation claims
+                </span>
+                <h2 className="mt-2 text-xl font-semibold">Pending settlement credit</h2>
+              </div>
+              <Badge tone="warning" shape="square" size="xs">
+                {reputationClaimTasks.reduce((total, task) => total + task.count, 0)} pending
+              </Badge>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              {reputationClaimTasks.map((task) => (
+                <Link
+                  key={task.id}
+                  href={task.href}
+                  className="group flex min-h-[8rem] items-center justify-between gap-5 rounded-lg border border-warning/20 bg-warning/8 p-5 transition-colors hover:border-warning/35 hover:bg-warning/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <div className="min-w-0">
+                    <Badge tone={task.id === "host" ? "accent" : "rep"} shape="square" size="xs">
+                      {task.id === "host" ? "Host" : "Member"}
+                    </Badge>
+                    <h3 className="mt-3 font-mono text-[0.95rem] font-medium uppercase tracking-[0.06em]">
+                      {task.label}
+                    </h3>
+                    <p className="mt-2 text-sm leading-6 text-muted">{task.detail}</p>
+                  </div>
+                  <ArrowRight
+                    className="h-4 w-4 shrink-0 text-warning transition-transform group-hover:translate-x-0.5"
+                    aria-hidden="true"
+                  />
+                </Link>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <section id="circles" className="scroll-mt-24">
           <div className="mb-8 flex items-baseline justify-between">

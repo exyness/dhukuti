@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ArrowRight,
   Award,
   BadgeDollarSign,
   Check,
@@ -30,6 +31,7 @@ import { explorerAddressUrl } from "@/lib/constants";
 import { useProfileQuery } from "@/lib/data/queries";
 import type { ProfileData } from "@/lib/data/types";
 import { appNavItems } from "@/lib/navigation";
+import { getReputationClaimCount } from "@/lib/reputation-claims";
 import { useSupabaseAuth } from "@/lib/supabase/auth-context";
 import { useWalletIdentity } from "@/lib/use-wallet-identity";
 import { truncateAddress } from "@/lib/wallet";
@@ -387,6 +389,7 @@ function SidebarReputation({
   const score = Number.parseInt(profile?.stats.memberReputation ?? "0", 10) || 0;
   const tier = Number.parseInt(profile?.stats.discountTier ?? "0", 10) || 0;
   const tierProgress = getTierProgress(score);
+  const claimCount = getReputationClaimCount(profile);
 
   return (
     <div className="mx-10 mb-8 rounded-lg border border-[rgba(240,236,230,0.08)] bg-[rgba(20,22,22,0.74)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
@@ -425,6 +428,17 @@ function SidebarReputation({
               ? `${score} points · next tier at ${tierProgress.next}`
               : `${score} points · top tier`}
           </p>
+          {claimCount > 0 ? (
+            <Link
+              href="/profile#settlement-claims"
+              className="mt-4 flex min-h-10 items-center justify-between gap-3 rounded-md border border-warning/20 bg-warning/8 px-3 font-mono text-[0.58rem] uppercase tracking-[0.08em] text-warning transition-colors hover:border-warning/35 hover:bg-warning/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span>
+                {claimCount} pending {claimCount === 1 ? "claim" : "claims"}
+              </span>
+              <ArrowRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            </Link>
+          ) : null}
         </>
       )}
     </div>
