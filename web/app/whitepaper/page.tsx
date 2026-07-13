@@ -66,7 +66,7 @@ const lifecycle = [
     label: "Contribute",
   },
   {
-    copy: "Fixed-order circles pay the scheduled recipient. Dutch-auction circles pay the accepted bidder after all active members fund the round.",
+    copy: "Fixed-order circles pay the scheduled recipient. Dutch-auction circles pay the accepted bidder after all active members fund the round, with prior recipients ineligible for later auction payouts.",
     label: "Settle",
   },
   {

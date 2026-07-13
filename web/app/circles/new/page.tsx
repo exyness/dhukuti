@@ -733,7 +733,8 @@ export default function NewCirclePage() {
               </li>
               <li>
                 <strong className="font-medium text-foreground">Settle</strong> pays each funded
-                round by fixed order or an accepted Dutch bid.
+                round by fixed order or an accepted Dutch bid. Dutch recipients cannot receive twice
+                in the same circle.
               </li>
               <li>
                 <strong className="font-medium text-foreground">Complete</strong> returns collateral

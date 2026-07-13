@@ -2,12 +2,13 @@
 
 import { useConnection } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
+import { useQueryClient } from "@tanstack/react-query";
 import { Filter, ListPlus, ShieldAlert, ShieldCheck, ShoppingCart, X } from "lucide-react";
-import { type FormEvent, type ReactNode, useMemo, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { AppPageHeader, AppShell, Panel } from "@/components/app/app-shell";
 import { TransactionReviewModal } from "@/components/circles/TransactionReviewModal";
 import { Button } from "@/components/ui/button";
-import { useMarketListingsQuery, useProfileQuery } from "@/lib/data/queries";
+import { queryKeys, useMarketListingsQuery, useProfileQuery } from "@/lib/data/queries";
 import type { CircleSummary, MarketListing, ProfilePosition } from "@/lib/data/types";
 import {
   buildBuyPositionInstruction,
@@ -29,6 +30,7 @@ const EMPTY_POSITIONS: ProfilePosition[] = [];
 export default function MarketPage() {
   const { connection } = useConnection();
   const { address } = useWalletIdentity();
+  const queryClient = useQueryClient();
   const transaction = useProgramTransaction();
   const marketQuery = useMarketListingsQuery();
   const profileQuery = useProfileQuery(address);
@@ -37,6 +39,7 @@ export default function MarketPage() {
   const [listPrice, setListPrice] = useState("");
   const [listingFormOpen, setListingFormOpen] = useState(false);
   const [localError, setLocalError] = useState("");
+  const processedMarketReview = useRef("");
   const marketListings = marketQuery.data ?? EMPTY_LISTINGS;
   const profileListings = profileQuery.data?.listings ?? EMPTY_LISTINGS;
   const activeCircles = profileQuery.data?.activeCircles ?? EMPTY_CIRCLES;
@@ -61,6 +64,45 @@ export default function MarketPage() {
     if (activeTab === "mine") return profileListings.filter((listing) => listing.active);
     return profileListings.filter((listing) => listing.cancelled || listing.sold);
   }, [activeTab, marketListings, profileListings]);
+
+  useEffect(() => {
+    const review = transaction.review;
+    if (review?.status !== "confirmed" || !isMarketTransactionTitle(review.title)) return;
+
+    const reviewKey = `${review.title}:${review.signature ?? "confirmed"}`;
+    if (processedMarketReview.current === reviewKey) return;
+    processedMarketReview.current = reviewKey;
+
+    const cleanupTimer = window.setTimeout(() => {
+      setLocalError("");
+
+      if (review.title === "List position") {
+        setListingFormOpen(false);
+        setListPrice("");
+        setActiveTab("mine");
+      } else if (review.title === "Cancel listing") {
+        setActiveTab("history");
+      }
+    }, 0);
+
+    void queryClient.invalidateQueries({ queryKey: queryKeys.market });
+    if (address) {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.profile(address) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.activity(address) });
+    }
+
+    const refreshTimer = window.setTimeout(() => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.market });
+      if (address) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.profile(address) });
+      }
+    }, 1500);
+
+    return () => {
+      window.clearTimeout(cleanupTimer);
+      window.clearTimeout(refreshTimer);
+    };
+  }, [address, queryClient, transaction.review]);
 
   function requestReview(
     title: string,
@@ -387,6 +429,10 @@ function ListingForm({
       </p>
     </Panel>
   );
+}
+
+function isMarketTransactionTitle(title: string) {
+  return title === "List position" || title === "Buy position" || title === "Cancel listing";
 }
 
 function MarketRow({

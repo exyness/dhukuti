@@ -126,7 +126,7 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
       const context = await getCurrentRoundContext();
       requestReview(
         "Accept Dutch bid",
-        "Accept the current clearing discount for this round. If no earlier bid exists, your wallet becomes the payout recipient.",
+        "Accept the current clearing discount for this round. Prior payout recipients are ineligible, so each active member can receive at most once.",
         [
           { label: "Circle", value: circle.name },
           { label: "Round", value: String(context.currentRoundIndex + 1) },
@@ -433,7 +433,7 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
             ) : null}
             {circle.mode === "Dutch bid" && myMembership?.active ? (
               <ControlListItem
-                copy="Accept the current Dutch clearing discount for an early payout."
+                copy="Accept the current Dutch clearing discount. Prior payout recipients cannot win again."
                 icon={<Gavel className="h-4 w-4" aria-hidden="true" />}
                 label="Accept Dutch bid"
                 onClick={() => void reviewDutchBid()}
@@ -445,7 +445,7 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
                   ? "All payout rounds are already settled."
                   : allActiveMembersPaid
                     ? isDutch
-                      ? "Settle the accepted bid and open the next auction round."
+                      ? "Settle the accepted bid and open the next auction round. Prior recipients stay ineligible."
                       : "Resolve the payout and open the next round."
                     : `${unpaidMembers.length} contribution ${unpaidMembers.length === 1 ? "slot" : "slots"} unpaid.`
               }

@@ -27,7 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { WalletConnectCard } from "@/components/wallet/wallet-connect";
 import { cn } from "@/lib/cn";
-import { explorerAddressUrl } from "@/lib/constants";
+import { DHUKUTI_PROGRAM, explorerAddressUrl } from "@/lib/constants";
 import { useProfileQuery } from "@/lib/data/queries";
 import type { ProfileData } from "@/lib/data/types";
 import { appNavItems } from "@/lib/navigation";
@@ -234,6 +234,7 @@ export function AppShell({
               <Menu className="h-4 w-4" aria-hidden="true" />
               <span className="sr-only">Open navigation</span>
             </button>
+            <ProgramStatusPill />
             <WalletSummary />
           </div>
         </header>
@@ -256,6 +257,30 @@ export function AppShell({
         pathname={pathname}
       />
     </div>
+  );
+}
+
+function ProgramStatusPill() {
+  const clusterLabel = formatCluster(DHUKUTI_PROGRAM.cluster);
+
+  return (
+    <a
+      href={explorerAddressUrl(DHUKUTI_PROGRAM.programId)}
+      target="_blank"
+      rel="noreferrer"
+      aria-label={`View ${clusterLabel} program ${DHUKUTI_PROGRAM.programId} on Solana Explorer`}
+      className="hidden min-h-10 items-center gap-2 rounded-md border border-warning/20 bg-warning/8 px-3 font-mono text-[0.62rem] uppercase tracking-[0.08em] text-warning transition-colors hover:border-warning/35 hover:bg-warning/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:inline-flex"
+    >
+      <span className="h-2 w-2 rounded-full bg-warning" aria-hidden="true" />
+      <span>{clusterLabel}</span>
+      <span className="hidden text-muted md:inline" aria-hidden="true">
+        /
+      </span>
+      <span className="hidden tabular-nums text-foreground/80 md:inline">
+        {truncateAddress(DHUKUTI_PROGRAM.programId)}
+      </span>
+      <ExternalLink className="hidden h-3.5 w-3.5 md:block" aria-hidden="true" />
+    </a>
   );
 }
 
@@ -528,6 +553,11 @@ function isActiveNavItem(pathname: string, item: (typeof appNavItems)[number]) {
   }
 
   return pathname === item.href;
+}
+
+function formatCluster(cluster: string) {
+  if (cluster === "mainnet-beta") return "Mainnet";
+  return cluster.charAt(0).toUpperCase() + cluster.slice(1);
 }
 
 function WalletSummary() {

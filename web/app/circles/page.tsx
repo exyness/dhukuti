@@ -46,7 +46,6 @@ export default function CirclesPage() {
   const [memberRangeOnly, setMemberRangeOnly] = useState(true);
   const [modeFilter, setModeFilter] = useState<ModeFilter>("all");
   const [query, setQuery] = useState("");
-  const [solOnly, setSolOnly] = useState(true);
   const [sortMode, setSortMode] = useState<SortMode>("newest");
   const [page, setPage] = useState(1);
   const { address } = useWalletIdentity();
@@ -192,18 +191,14 @@ export default function CirclesPage() {
         >
           Dutch bid
         </BadgeButton>
-        <BadgeButton
-          tone={solOnly ? "filterActive" : "filter"}
+        <Badge
+          tone="filterActive"
           shape="pill"
           size="xs"
-          aria-pressed={solOnly}
-          onClick={() => {
-            setSolOnly((current) => !current);
-            setPage(1);
-          }}
+          title="Dhukuti V1 settles all circles in native SOL."
         >
           Native SOL
-        </BadgeButton>
+        </Badge>
         <BadgeButton
           tone={memberRangeOnly ? "filterActive" : "filter"}
           shape="pill"

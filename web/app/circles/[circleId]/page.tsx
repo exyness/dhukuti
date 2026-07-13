@@ -409,7 +409,7 @@ function CircleDetailsInner({ data }: { data: CircleDetail }) {
                   </Badge>
                   <span className="text-muted">
                     {currentCircle.mode === "Dutch bid"
-                      ? "The round is funded. A member can accept the Dutch bid, then the host settles the auction payout."
+                      ? "The round is funded. A member can accept the Dutch bid, then the host settles the auction payout. Prior recipients are ineligible."
                       : "All members contributed. The host can resolve the payout and open the next round."}
                   </span>
                 </>
