@@ -1,0 +1,17 @@
+{
+  "name": "Dhukuti Protocol",
+  "logo": "https://raw.githubusercontent.com/exyness/dhukuti/main/web/public/logo.png",
+  "description": "Dhukuti is a devnet Solana protocol for collateralized rotating savings circles with contribution enforcement, default backstops, reputation history, and tradeable payout positions.",
+  "notification": "Dhukuti is currently a devnet protocol surface and is not ready for mainnet or production value.",
+  "sdk": "https://github.com/exyness/dhukuti/tree/main/web/lib/program",
+  "project_url": "https://github.com/exyness/dhukuti",
+  "contacts": ["https://github.com/exyness/dhukuti/issues"],
+  "policy": "https://github.com/exyness/dhukuti/issues",
+  "preferred_languages": ["en"],
+  "source_code": "https://github.com/exyness/dhukuti",
+  "source_release": "0.1.0",
+  "source_revision": "62fb361",
+  "auditors": [],
+  "expiry": "2027-07-12",
+  "version": "0.1.0"
+}
