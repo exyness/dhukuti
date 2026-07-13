@@ -7,7 +7,6 @@ import {
   Copy,
   ExternalLink,
   KeyRound,
-  Layers,
   LayoutGrid,
   Loader2,
   LockKeyhole,
@@ -21,6 +20,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type HTMLAttributes, type ReactNode, useEffect, useRef, useState } from "react";
+import { BrandMark } from "@/components/brand/brand-mark";
 import { NoiseCanvas } from "@/components/layout/noise-canvas";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -80,7 +80,7 @@ export function AppShell({
             aria-label="Dhukuti home"
             className="grid h-10 w-[420px] grid-cols-[88px_1fr] items-center overflow-hidden text-[#f0ece6] [text-shadow:0_1px_0_rgba(0,0,0,0.45)]"
           >
-            <Layers className="mx-auto h-5 w-5" aria-hidden="true" />
+            <BrandMark className="mx-auto h-8 w-8" priority />
             <span
               className={cn(
                 "-ml-4 text-[0.95rem] font-semibold tracking-tight transition-[opacity,transform] duration-200 ease-out",
@@ -333,9 +333,12 @@ function MobileNavigation({
         className="absolute inset-x-4 top-4 rounded-lg border border-border bg-popover p-4 shadow-[0_18px_44px_rgba(0,0,0,0.45)]"
       >
         <div className="mb-4 flex items-center justify-between">
-          <span className="font-mono text-[0.62rem] uppercase tracking-[0.1em] text-muted">
-            Dhukuti
-          </span>
+          <div className="flex items-center gap-2">
+            <BrandMark className="h-7 w-7" priority />
+            <span className="font-mono text-[0.62rem] uppercase tracking-[0.1em] text-muted">
+              Dhukuti
+            </span>
+          </div>
           <button
             type="button"
             aria-label="Close navigation"

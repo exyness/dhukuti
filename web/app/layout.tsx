@@ -19,6 +19,13 @@ export const metadata: Metadata = {
   title: "Dhukuti Protocol - Community Savings on Solana",
   description:
     "A Solana-native dhukuti protocol with program-owned vaults, reputation, insurance backstops, and tradeable payout positions.",
+  icons: {
+    icon: [
+      { url: "/light-favicon.ico", media: "(prefers-color-scheme: light)" },
+      { url: "/favicon.ico", media: "(prefers-color-scheme: dark)" },
+    ],
+    shortcut: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({

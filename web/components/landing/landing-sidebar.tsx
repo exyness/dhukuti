@@ -1,6 +1,7 @@
 "use client";
 
-import { Layers, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { BrandMark } from "@/components/brand/brand-mark";
 import { NoiseCanvas } from "@/components/layout/noise-canvas";
 import { cn } from "@/lib/cn";
 import { SidebarWalletFlow } from "./sidebar-wallet-flow";
@@ -24,8 +25,8 @@ export function LandingSidebar({ collapsed, onToggle }: LandingSidebarProps) {
         <div className="pointer-events-none absolute inset-0 z-0 bg-[linear-gradient(180deg,rgba(245,245,245,0.045),rgba(245,245,245,0)_34%),radial-gradient(120%_78%_at_50%_112%,rgba(255,107,74,0.18),rgba(255,107,74,0.055)_28%,rgba(255,107,74,0)_62%),linear-gradient(180deg,rgba(22,24,25,0),rgba(5,6,7,0.24))]" />
         <div className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,#1A1C1E_0%,#2D3436_45%,#1E272E_50%,#121417_100%)]" />
 
-        <div className="relative z-10 flex items-center gap-2">
-          <Layers className="h-5 w-5 text-white/90" aria-hidden="true" />
+        <div className="relative z-10 flex items-center gap-2.5">
+          <BrandMark className="h-8 w-8" priority />
           <span className="font-geist text-[0.95rem] font-semibold tracking-tight">Dhukuti</span>
         </div>
 

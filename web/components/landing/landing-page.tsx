@@ -5,7 +5,6 @@ import {
   ChevronRight,
   Code2,
   Globe,
-  Layers,
   ShieldCheck,
   UserCheck,
   Verified,
@@ -13,6 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useState } from "react";
+import { BrandMark } from "@/components/brand/brand-mark";
 import { cn } from "@/lib/cn";
 import { DHUKUTI_PROGRAM, explorerAddressUrl } from "@/lib/constants";
 import { useWalletIdentity } from "@/lib/use-wallet-identity";
@@ -83,6 +83,12 @@ function MainNav({
           className="cursor-pointer transition-colors duration-100 ease-out hover:text-[var(--ink)]"
         >
           Market
+        </Link>
+        <Link
+          href="/whitepaper"
+          className="cursor-pointer transition-colors duration-100 ease-out hover:text-[var(--ink)]"
+        >
+          Whitepaper
         </Link>
       </div>
 
@@ -536,7 +542,7 @@ function LandingFooter() {
       <div className="grid grid-cols-[minmax(220px,1.15fr)_minmax(360px,1.85fr)] items-start gap-20">
         <div>
           <div className="mb-4 flex items-center gap-2">
-            <Layers className="h-4 w-4 text-[var(--accent)]" aria-hidden="true" />
+            <BrandMark className="h-6 w-6" />
             <span className="font-geist text-[1.1rem] font-semibold tracking-tight">Dhukuti</span>
           </div>
           <p className="max-w-[26rem] text-[0.86rem] leading-[1.7] text-[var(--ink-dim)]">
@@ -556,7 +562,8 @@ function LandingFooter() {
           <FooterColumn
             title="Resources"
             links={[
-              { label: "Protocol overview", href: "#program-surface" },
+              { label: "Whitepaper", href: "/whitepaper" },
+              { label: "Protocol overview", href: "/#program-surface" },
               {
                 label: "Devnet Explorer",
                 href: explorerAddressUrl(DHUKUTI_PROGRAM.programId),

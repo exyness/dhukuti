@@ -3,6 +3,7 @@
 import type { WalletName } from "@solana/wallet-adapter-base";
 import type { Wallet as AdapterWallet } from "@solana/wallet-adapter-react";
 import { ArrowLeft, ChevronDown, ChevronRight, Wallet } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
@@ -339,12 +340,12 @@ export function SidebarWalletFlow() {
             ) : null}
           </div>
 
-          <button
-            type="button"
+          <Link
+            href="/whitepaper"
             className="cursor-pointer border-b border-white/20 bg-transparent pb-0.5 font-mono text-[0.7rem] font-medium uppercase tracking-wide text-white transition-colors duration-100 ease-out hover:border-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(255,210,196,0.85)]"
           >
             Read Whitepaper
-          </button>
+          </Link>
         </div>
       </div>
 
