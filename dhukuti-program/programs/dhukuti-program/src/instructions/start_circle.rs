@@ -21,7 +21,8 @@ pub fn handler(ctx: Context<StartCircle>) -> Result<()> {
     );
     require!(circle.current_members >= 2, DhukutiError::NotEnoughMembers);
     require!(
-        ctx.accounts.starter.key() == circle.creator || circle.current_members == circle.max_members,
+        ctx.accounts.starter.key() == circle.creator
+            || circle.current_members == circle.max_members,
         DhukutiError::UnauthorizedStart
     );
 

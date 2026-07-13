@@ -366,6 +366,7 @@ const DHUKUTI_ERROR_MESSAGES = [
   "The round deadline has not been reached yet.",
   "This payout curve does not support that action.",
   "A Dutch auction winner has already been selected.",
+  "This member already received a Dutch auction payout in this circle.",
   "A Dutch auction winner must be selected before resolving this round.",
   "The required distribution accounts are missing or invalid.",
   "A remaining member account is invalid.",

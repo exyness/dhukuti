@@ -64,6 +64,8 @@ pub enum DhukutiError {
     UnsupportedPayoutCurve,
     #[msg("A Dutch auction bid has already been accepted for this round")]
     AuctionAlreadyAccepted,
+    #[msg("This member has already received a Dutch auction payout in this circle")]
+    AuctionWinnerAlreadyPaid,
     #[msg("No Dutch auction bid has been accepted for this round")]
     NoDutchAuctionBid,
     #[msg("Dutch auction discount distribution accounts are invalid")]

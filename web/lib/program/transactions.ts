@@ -118,12 +118,17 @@ export function buildDutchBidInstruction({
 }: Pick<CircleInstructionContext, "circle" | "currentRoundIndex"> & {
   bidder: PublicKey;
 }): ProgramInstructionBundle {
+  const previousRoundAccounts = Array.from({ length: currentRoundIndex }, (_, roundIndex) =>
+    readonly(deriveRoundPda(circle, roundIndex)),
+  );
+
   return {
     instruction: buildInstruction("place_dutch_bid", {}, [
       writableSigner(bidder),
       readonly(circle),
       readonly(deriveMembershipPda(circle, bidder)),
       writable(deriveRoundPda(circle, currentRoundIndex)),
+      ...previousRoundAccounts,
     ]),
   };
 }

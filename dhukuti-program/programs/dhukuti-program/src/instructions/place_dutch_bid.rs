@@ -42,6 +42,13 @@ pub fn handler(ctx: Context<PlaceDutchBid>) -> Result<()> {
         DhukutiError::MembershipCircleMismatch
     );
 
+    validate_bidder_has_no_previous_payout(
+        ctx.remaining_accounts,
+        circle.key(),
+        circle.current_round,
+        ctx.accounts.bidder.key(),
+    )?;
+
     round.auction_winner = Some(ctx.accounts.bidder.key());
     round.auction_discount_bps = current_discount_bps(circle, round, clock.unix_timestamp)?;
 
@@ -61,6 +68,70 @@ pub fn handler(ctx: Context<PlaceDutchBid>) -> Result<()> {
     });
 
     Ok(())
+}
+
+fn validate_bidder_has_no_previous_payout<'info>(
+    previous_round_infos: &'info [AccountInfo<'info>],
+    circle: Pubkey,
+    current_round: u16,
+    bidder: Pubkey,
+) -> Result<()> {
+    require!(
+        previous_round_infos.len() == current_round as usize,
+        DhukutiError::InvalidRemainingAccounts
+    );
+
+    let mut seen_rounds = 0u64;
+    for round_info in previous_round_infos {
+        let previous_round: Account<Round> = Account::try_from(round_info)?;
+        require!(
+            previous_round.circle == circle,
+            DhukutiError::InvalidRemainingAccounts
+        );
+        require!(
+            previous_round.index < current_round,
+            DhukutiError::RoundIndexMismatch
+        );
+        require!(
+            previous_round.resolved,
+            DhukutiError::InvalidRemainingAccounts
+        );
+        require!(
+            previous_round.recipient != Some(bidder),
+            DhukutiError::AuctionWinnerAlreadyPaid
+        );
+
+        let bit = 1u64
+            .checked_shl(previous_round.index as u32)
+            .ok_or(DhukutiError::Overflow)?;
+        require!(
+            seen_rounds & bit == 0,
+            DhukutiError::InvalidRemainingAccounts
+        );
+        seen_rounds |= bit;
+    }
+
+    require!(
+        seen_rounds == previous_rounds_bitmap(current_round)?,
+        DhukutiError::InvalidRemainingAccounts
+    );
+
+    Ok(())
+}
+
+fn previous_rounds_bitmap(current_round: u16) -> Result<u64> {
+    if current_round == 0 {
+        return Ok(0);
+    }
+    if current_round >= MAX_MEMBERS as u16 {
+        return Ok(u64::MAX);
+    }
+
+    Ok((1u64
+        .checked_shl(current_round as u32)
+        .ok_or(DhukutiError::Overflow)?)
+    .checked_sub(1)
+    .ok_or(DhukutiError::Underflow)?)
 }
 
 fn current_discount_bps(circle: &Circle, round: &Round, now: i64) -> Result<u16> {

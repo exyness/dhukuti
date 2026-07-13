@@ -541,16 +541,27 @@ fn ix_slash_vouch(
     }
 }
 
-fn ix_place_dutch_bid(bidder: &Pubkey, creator: &Pubkey, circle_id: u64) -> Instruction {
+fn ix_place_dutch_bid(
+    bidder: &Pubkey,
+    creator: &Pubkey,
+    circle_id: u64,
+    current_round: u16,
+) -> Instruction {
     let circle = circle_pda(creator, circle_id);
+    let mut accounts = vec![
+        AccountMeta::new(*bidder, true),
+        AccountMeta::new_readonly(circle, false),
+        AccountMeta::new_readonly(membership_pda(&circle, bidder), false),
+        AccountMeta::new(round_pda(&circle, current_round), false),
+    ];
+    accounts.extend(
+        (0..current_round)
+            .map(|round_index| AccountMeta::new_readonly(round_pda(&circle, round_index), false)),
+    );
+
     Instruction {
         program_id: dhukuti_program::ID,
-        accounts: vec![
-            AccountMeta::new(*bidder, true),
-            AccountMeta::new_readonly(circle, false),
-            AccountMeta::new_readonly(membership_pda(&circle, bidder), false),
-            AccountMeta::new(round_pda(&circle, 0), false),
-        ],
+        accounts,
         data: ix_data::PlaceDutchBid {}.data(),
     }
 }
@@ -1833,6 +1844,7 @@ fn test_dutch_auction_resolves_winner_and_splits_discount() {
             &member_b.pubkey(),
             &creator.pubkey(),
             circle_id,
+            0,
         )],
         &[&member_b],
     )
@@ -1886,4 +1898,83 @@ fn test_dutch_auction_resolves_winner_and_splits_discount() {
         env.lamports(&member_a.pubkey()) - member_a_before,
         expected_rebate_per_member
     );
+}
+
+#[test]
+fn test_dutch_auction_winner_cannot_win_again() {
+    let mut env = Env::new();
+    let creator = env.funded(sol(100.0));
+    let member_a = env.funded(sol(50.0));
+    let member_b = env.funded(sol(50.0));
+    let circle_id = 14;
+    let mut params = default_params(circle_id, 3);
+    params.payout_curve = PayoutCurve::DutchAuction;
+    let wallets = [&creator, &member_a, &member_b];
+
+    create_join_start(&mut env, &creator, &wallets, params);
+    env.send(
+        &[ix_place_dutch_bid(
+            &member_b.pubkey(),
+            &creator.pubkey(),
+            circle_id,
+            0,
+        )],
+        &[&member_b],
+    )
+    .expect("place first dutch bid");
+
+    for wallet in &wallets {
+        env.send(
+            &[ix_contribute(
+                &wallet.pubkey(),
+                &creator.pubkey(),
+                circle_id,
+                0,
+            )],
+            &[wallet],
+        )
+        .expect("contribute");
+    }
+
+    env.send(
+        &[ix_resolve_round(
+            &creator.pubkey(),
+            &creator.pubkey(),
+            circle_id,
+            0,
+            &member_b.pubkey(),
+            &[&creator.pubkey(), &member_a.pubkey()],
+        )],
+        &[&creator],
+    )
+    .expect("resolve first dutch auction");
+
+    let repeat_bid = env.send(
+        &[ix_place_dutch_bid(
+            &member_b.pubkey(),
+            &creator.pubkey(),
+            circle_id,
+            1,
+        )],
+        &[&member_b],
+    );
+    assert!(
+        repeat_bid.is_err(),
+        "prior Dutch auction recipient must not be able to win again"
+    );
+
+    env.send(
+        &[ix_place_dutch_bid(
+            &member_a.pubkey(),
+            &creator.pubkey(),
+            circle_id,
+            1,
+        )],
+        &[&member_a],
+    )
+    .expect("unpaid member can accept next dutch bid");
+
+    let circle = circle_pda(&creator.pubkey(), circle_id);
+    let round: Round = env.get(&round_pda(&circle, 1));
+    assert_eq!(round.auction_winner, Some(member_a.pubkey()));
 }
