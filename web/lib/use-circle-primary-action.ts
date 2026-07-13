@@ -5,11 +5,14 @@ import { PublicKey } from "@solana/web3.js";
 import { useMemo, useState } from "react";
 import type { CircleDetail } from "@/lib/data/types";
 import {
+  buildCompleteCircleInstruction,
   buildContributeInstruction,
+  buildDutchBidInstruction,
   buildJoinCircleInstruction,
   buildResolveRoundInstruction,
   buildStartCircleInstruction,
   deriveMembershipPda,
+  fetchCircleState,
   fetchRoundState,
   type ProgramInstructionBundle,
 } from "@/lib/program";
@@ -24,22 +27,26 @@ export type PrimaryAction = {
   disabled?: boolean;
 };
 
-export function useCirclePrimaryAction(
-  detail: CircleDetail,
-  options?: { justResolved?: boolean },
-) {
+export function useCirclePrimaryAction(detail: CircleDetail, options?: { justResolved?: boolean }) {
   const { connection } = useConnection();
   const { address } = useWalletIdentity();
   const transaction = useProgramTransaction();
   const [localError, setLocalError] = useState("");
-  const { circle, members } = detail;
+  const { circle, members, payoutSchedule } = detail;
   const wallet = address ?? "";
   const walletKey = useMemo(() => (wallet ? new PublicKey(wallet) : null), [wallet]);
   const myMembership = members.find((member) => member.member === wallet);
   const activeMembers = members.filter((member) => member.active);
   const unpaidMembers = activeMembers.filter((member) => member.state !== "Paid");
   const allActiveMembersPaid = activeMembers.length > 0 && unpaidMembers.length === 0;
+  const payoutRoundTarget = Math.max(members.length, circle.members, 1);
+  const allPayoutRowsSettled =
+    payoutSchedule.length >= payoutRoundTarget &&
+    payoutSchedule.every((row) => row.status === "Completed" || row.status === "Auction settled");
+  const allRoundsResolved = circle.currentRoundIndex >= payoutRoundTarget || allPayoutRowsSettled;
   const isHost = circle.creator === wallet;
+  const isDutch = circle.mode === "Dutch bid";
+  const resolvePayoutLabel = isDutch ? "Settle auction payout" : "Resolve payout";
 
   function getContext() {
     return {
@@ -48,6 +55,12 @@ export function useCirclePrimaryAction(
       creator: new PublicKey(circle.creator),
       currentRoundIndex: circle.currentRoundIndex,
     };
+  }
+
+  async function getCurrentRoundContext() {
+    const context = getContext();
+    const onChainCircle = await fetchCircleState(connection, context.circle);
+    return { ...context, ...onChainCircle };
   }
 
   function requestReview(
@@ -96,20 +109,26 @@ export function useCirclePrimaryAction(
     );
   }
 
-  function reviewContribution() {
+  async function reviewContribution() {
     if (!walletKey) return;
-    const context = getContext();
-    requestReview(
-      "Contribute",
-      "Transfer this round's SOL contribution into the program vault. The insurance fee is routed automatically.",
-      [
-        { label: "Circle", value: circle.name },
-        { label: "Round", value: String(context.currentRoundIndex + 1) },
-        { label: "Contribution", value: circle.contribution },
-        { label: "Insurance fee", value: `${circle.insuranceFeeBps / 100}%` },
-      ],
-      buildContributeInstruction({ ...context, member: walletKey }),
-    );
+    try {
+      const context = await getCurrentRoundContext();
+      requestReview(
+        "Contribute",
+        "Transfer this round's SOL contribution into the program vault. The insurance fee is routed automatically.",
+        [
+          { label: "Circle", value: circle.name },
+          { label: "Round", value: String(context.currentRoundIndex + 1) },
+          { label: "Contribution", value: circle.contribution },
+          { label: "Insurance fee", value: `${circle.insuranceFeeBps / 100}%` },
+        ],
+        buildContributeInstruction({ ...context, member: walletKey }),
+      );
+    } catch (error) {
+      setLocalError(
+        error instanceof Error ? error.message : "Unable to prepare this contribution.",
+      );
+    }
   }
 
   async function reviewResolveRound() {
@@ -117,13 +136,30 @@ export function useCirclePrimaryAction(
     setLocalError("");
 
     try {
-      const context = getContext();
+      const context = await getCurrentRoundContext();
+      if (context.currentRoundIndex >= context.currentMembers) {
+        throw new Error("Every payout round has already been resolved on-chain.");
+      }
+
+      const round = await fetchRoundState(connection, context.circle, context.currentRoundIndex);
+      if (round.resolved) {
+        throw new Error("This payout round has already been resolved. Refresh and continue.");
+      }
+
+      if (
+        (round.contributionsBitmap & context.activeMembersBitmap) !==
+        context.activeMembersBitmap
+      ) {
+        throw new Error(
+          `Round ${context.currentRoundIndex + 1} is not fully funded on-chain yet. Refresh the circle and collect this round's contributions first.`,
+        );
+      }
+
       let recipient = members.find(
         (member) => member.joinOrder === context.currentRoundIndex,
       )?.member;
 
       if (circle.mode === "Dutch bid") {
-        const round = await fetchRoundState(connection, context.circle, context.currentRoundIndex);
         recipient = round.auctionWinner ?? undefined;
       }
 
@@ -132,8 +168,10 @@ export function useCirclePrimaryAction(
       }
 
       requestReview(
-        "Resolve payout",
-        "Pay the funded round from the program vault and atomically open the next round.",
+        resolvePayoutLabel,
+        isDutch
+          ? "Pay the accepted Dutch bid from the program vault and atomically open the next round."
+          : "Pay the funded round from the program vault and atomically open the next round.",
         [
           { label: "Circle", value: circle.name },
           { label: "Round", value: String(context.currentRoundIndex + 1) },
@@ -157,6 +195,61 @@ export function useCirclePrimaryAction(
     }
   }
 
+  async function reviewDutchBid() {
+    if (!walletKey) return;
+    try {
+      const context = await getCurrentRoundContext();
+      requestReview(
+        "Accept Dutch bid",
+        "Accept the current clearing discount for this round. If no earlier bid exists, your wallet becomes the payout recipient.",
+        [
+          { label: "Circle", value: circle.name },
+          { label: "Round", value: String(context.currentRoundIndex + 1) },
+          { label: "Payout model", value: "Dutch auction" },
+        ],
+        buildDutchBidInstruction({ ...context, bidder: walletKey }),
+      );
+    } catch (error) {
+      setLocalError(error instanceof Error ? error.message : "Unable to prepare this Dutch bid.");
+    }
+  }
+
+  async function reviewCompleteCircle() {
+    if (!walletKey) return;
+    setLocalError("");
+
+    try {
+      const context = await getCurrentRoundContext();
+      if (context.currentRoundIndex < context.currentMembers) {
+        throw new Error(
+          "Every payout round must be resolved on-chain before the circle can be completed.",
+        );
+      }
+
+      requestReview(
+        "Complete circle",
+        "Return verified collateral to every active position holder and mark the circle complete.",
+        [
+          { label: "Circle", value: circle.name },
+          { label: "Active members", value: String(activeMembers.length) },
+          { label: "Collateral return", value: `${circle.collateral} each` },
+        ],
+        buildCompleteCircleInstruction({
+          activeMemberships: activeMembers.map((member) => ({
+            member: new PublicKey(member.member),
+            membership: deriveMembershipPda(context.circle, new PublicKey(member.member)),
+          })),
+          circle: context.circle,
+          creator: walletKey,
+        }),
+      );
+    } catch (error) {
+      setLocalError(
+        error instanceof Error ? error.message : "Unable to prepare circle completion.",
+      );
+    }
+  }
+
   let primaryAction: PrimaryAction | null = null;
 
   if (circle.status === "Forming" && !myMembership) {
@@ -166,16 +259,40 @@ export function useCirclePrimaryAction(
     ((isHost && circle.members >= 2) || circle.members >= circle.memberCap)
   ) {
     primaryAction = { label: "Start circle", onClick: reviewStart, tone: "accent" };
+  } else if (circle.status === "Active" && isHost && allRoundsResolved) {
+    primaryAction = {
+      label: "Complete circle",
+      onClick: () => void reviewCompleteCircle(),
+      tone: "accent",
+    };
   } else if (circle.status === "Active" && myMembership?.active && myMembership.state !== "Paid") {
     primaryAction = {
       label: `Contribute ${circle.contribution}`,
-      onClick: reviewContribution,
+      onClick: () => void reviewContribution(),
       tone: "accent",
     };
-  } else if (circle.status === "Active" && isHost && allActiveMembersPaid && !options?.justResolved) {
+  } else if (
+    circle.status === "Active" &&
+    isHost &&
+    allActiveMembersPaid &&
+    !allRoundsResolved &&
+    !options?.justResolved
+  ) {
     primaryAction = {
-      label: "Resolve payout",
+      label: resolvePayoutLabel,
       onClick: () => void reviewResolveRound(),
+      tone: "accent",
+    };
+  } else if (
+    circle.status === "Active" &&
+    isDutch &&
+    myMembership?.active &&
+    !allRoundsResolved &&
+    !options?.justResolved
+  ) {
+    primaryAction = {
+      label: "Accept Dutch bid",
+      onClick: () => void reviewDutchBid(),
       tone: "accent",
     };
   }

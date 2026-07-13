@@ -18,15 +18,29 @@ export function formatBasisPoints(bps: number) {
 
 export function formatCollateral(contributionAmount: string, collateralBps: number) {
   const collateral = (BigInt(contributionAmount) * BigInt(collateralBps)) / BPS_DENOMINATOR;
-  return formatLamports(collateral.toString());
+  return formatLamports(collateral.toString(), 6);
 }
 
 export function formatPot(contributionAmount: string, members: number) {
-  return formatLamports((BigInt(contributionAmount) * BigInt(members)).toString());
+  return formatLamports((BigInt(contributionAmount) * BigInt(members)).toString(), 6);
 }
 
 export function formatCycle(seconds: number) {
   const day = 24 * 60 * 60;
+  const hour = 60 * 60;
+  const minute = 60;
+
+  if (seconds > 0 && seconds < hour) {
+    const minutes = Math.max(1, Math.round(seconds / minute));
+    return `${minutes} min`;
+  }
+
+  if (seconds > 0 && seconds < day) {
+    const hours = seconds / hour;
+    if (hours === 1) return "Hourly";
+    return Number.isInteger(hours) ? `${hours} hours` : `${Math.round(seconds / minute)} min`;
+  }
+
   if (seconds === 7 * day) return "Weekly";
   if (seconds === 30 * day) return "Monthly";
   if (seconds === 90 * day) return "Quarterly";

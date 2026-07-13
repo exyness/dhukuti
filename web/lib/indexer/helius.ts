@@ -14,6 +14,15 @@ export type SolanaRpcTransaction = {
   };
 };
 
+export type SolanaRpcAccountInfo = {
+  data: [string, string];
+  executable: boolean;
+  lamports: number;
+  owner: string;
+  rentEpoch: number;
+  space?: number;
+};
+
 export type SignatureInfo = {
   blockTime: number | null;
   err: unknown;
@@ -49,6 +58,21 @@ export async function fetchSolanaTransaction(signature: string) {
       maxSupportedTransactionVersion: 0,
     },
   ]);
+}
+
+export async function fetchSolanaAccountInfo(address: string) {
+  const response = await heliusRpc<{
+    context: { slot: number };
+    value: SolanaRpcAccountInfo | null;
+  }>("getAccountInfo", [
+    address,
+    {
+      commitment: "confirmed",
+      encoding: "base64",
+    },
+  ]);
+
+  return response?.value ?? null;
 }
 
 export async function fetchSignaturesForAddress({

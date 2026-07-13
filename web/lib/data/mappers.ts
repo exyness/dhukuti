@@ -55,16 +55,23 @@ export function mapCircleSummary({
   const contributionAmount = toBigIntString(row.contribution_amount);
   const activeMembers = memberships.filter((member) => member.active && !member.defaulted);
   const memberCount = activeMembers.length;
-  const currentRound = latestRound(rounds);
   const status = mapCircleStatus(row.status);
+  const maxMembers = row.max_members;
+  const payoutRoundTarget = status === "Forming" ? maxMembers : Math.max(memberships.length, 1);
+  const roundState = getCurrentRoundState(rounds, payoutRoundTarget, status);
+  const { allRoundsResolved, currentRound, currentRoundIndex } = roundState;
   const insuranceLamports = contributions.reduce(
     (total, contribution) => total + BigInt(toBigIntString(contribution.insurance_fee)),
     ZERO_BIGINT,
   );
-  const maxMembers = row.max_members;
   const isViewerMember = viewerWallet
     ? memberships.some((member) => member.member === viewerWallet)
     : false;
+  const isViewerHost = Boolean(viewerWallet && viewerWallet === row.creator);
+  const displayRoundNumber =
+    payoutRoundTarget > 0
+      ? Math.min(currentRoundIndex + 1, payoutRoundTarget)
+      : currentRoundIndex + 1;
 
   return {
     address: row.circle,
@@ -74,10 +81,10 @@ export function mapCircleSummary({
     contribution: formatSolValue(contributionAmount),
     contributionLamports: contributionAmount,
     creator: row.creator,
-    currentRoundIndex: currentRound?.round_index ?? 0,
+    currentRoundIndex,
     cycle: formatCycle(toInteger(row.cycle_duration_seconds)),
     cycleDurationSeconds: toInteger(row.cycle_duration_seconds),
-    deadline: formatDeadline(currentRound?.deadline_ts),
+    deadline: allRoundsResolved ? "All settled" : formatDeadline(currentRound?.deadline_ts),
     deadlineAt: currentRound?.deadline_ts ?? null,
     id: row.circle,
     insurance: formatSolValue(insuranceLamports.toString()),
@@ -94,14 +101,19 @@ export function mapCircleSummary({
           : isViewerMember
             ? "Awaiting start"
             : "Join Circle"
-        : nextActionForStatus(status, row.payout_curve),
-    nextPayout: currentRound
-      ? `Round ${String(currentRound.round_index + 1).padStart(2, "0")}`
-      : "Start circle",
+        : nextActionForStatus(status, row.payout_curve, allRoundsResolved, isViewerHost),
+    nextPayout: allRoundsResolved
+      ? "Settlement"
+      : currentRound
+        ? `Round ${String(currentRound.round_index + 1).padStart(2, "0")}`
+        : "Start circle",
     pot: formatPot(contributionAmount, maxMembers),
     progress: maxMembers > 0 ? Math.round((memberCount / maxMembers) * 100) : 0,
     reserveRatioBps: row.reserve_ratio_bps,
-    round: currentRound ? `${currentRound.round_index + 1} / ${maxMembers}` : `0 / ${maxMembers}`,
+    round:
+      currentRound || allRoundsResolved
+        ? `${displayRoundNumber} / ${payoutRoundTarget}`
+        : `0 / ${payoutRoundTarget}`,
     status,
     updatedAt: row.updated_at,
   };
@@ -109,6 +121,7 @@ export function mapCircleSummary({
 
 export function mapCircleDetail(input: CircleMapInput): CircleDetail {
   const circle = mapCircleSummary(input);
+  const allRoundsResolved = circle.currentRoundIndex >= circle.memberCap;
   const reputationByWallet = new Map(
     (input.reputations ?? []).map((reputation) => [reputation.wallet, reputation]),
   );
@@ -126,7 +139,7 @@ export function mapCircleDetail(input: CircleMapInput): CircleDetail {
       const state = membership.defaulted
         ? "Default risk"
         : membership.active
-          ? currentRoundContributors.has(member)
+          ? allRoundsResolved || currentRoundContributors.has(member)
             ? "Paid"
             : "Pending"
           : "Inactive";
@@ -281,7 +294,13 @@ function buildPayoutSchedule(
         amount: round.payout ? formatSolValue(round.payout) : circle.pot,
         recipient: round.recipient ? shortAddress(round.recipient) : "Unassigned",
         round: String(round.round_index + 1).padStart(2, "0"),
-        status: round.resolved ? "Completed" : round.deadline_ts ? "Open" : "Pending",
+        status: round.resolved
+          ? circle.mode === "Dutch bid"
+            ? "Auction settled"
+            : "Completed"
+          : round.deadline_ts
+            ? "Open"
+            : "Pending",
       }),
     );
 
@@ -295,8 +314,31 @@ function buildPayoutSchedule(
   }));
 }
 
-function latestRound(rounds: DhukutiRoundRow[]) {
-  return [...rounds].sort((a, b) => b.round_index - a.round_index)[0];
+function getCurrentRoundState(rounds: DhukutiRoundRow[], maxMembers: number, status: CircleStatus) {
+  if (status === "Completed") {
+    return { allRoundsResolved: true, currentRound: null, currentRoundIndex: maxMembers };
+  }
+
+  const orderedRounds = [...rounds].sort((a, b) => a.round_index - b.round_index);
+  const currentRound = orderedRounds.find((round) => !round.resolved) ?? null;
+  if (currentRound) {
+    return {
+      allRoundsResolved: false,
+      currentRound,
+      currentRoundIndex: currentRound.round_index,
+    };
+  }
+
+  const latestResolvedRound = [...orderedRounds].reverse().find((round) => round.resolved);
+  const currentRoundIndex = latestResolvedRound
+    ? Math.min(latestResolvedRound.round_index + 1, maxMembers)
+    : 0;
+
+  return {
+    allRoundsResolved: maxMembers > 0 && currentRoundIndex >= maxMembers,
+    currentRound: null,
+    currentRoundIndex,
+  };
 }
 
 function mapPayoutCurve(value: string): CircleMode {
@@ -312,9 +354,15 @@ function mapCircleStatus(value: string): CircleStatus {
   return "Forming";
 }
 
-function nextActionForStatus(status: CircleStatus, payoutCurve: string) {
+function nextActionForStatus(
+  status: CircleStatus,
+  payoutCurve: string,
+  allRoundsResolved: boolean,
+  isViewerHost: boolean,
+) {
   if (status === "Forming") return "Join Circle";
-  if (status === "Completed") return "View Settlement";
+  if (status === "Completed") return "View settlement";
   if (status === "Default vote") return "Vote Default";
-  return payoutCurve === "DutchAuction" ? "Place Bid" : "Contribute";
+  if (allRoundsResolved) return isViewerHost ? "Complete circle" : "View settlement";
+  return payoutCurve === "DutchAuction" ? "Accept Dutch bid" : "Contribute";
 }

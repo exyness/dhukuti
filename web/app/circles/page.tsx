@@ -2,11 +2,12 @@
 
 import { Plus, Search } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { AppShell, Panel, StatTile, TokenScopeNotice } from "@/components/app/app-shell";
 import { Badge, BadgeButton } from "@/components/ui/badge";
 import { DropdownSelect } from "@/components/ui/dropdown-select";
 import { Pagination } from "@/components/ui/pagination";
+import { cn } from "@/lib/cn";
 import { useCirclesQuery } from "@/lib/data/queries";
 import type { CircleSummary } from "@/lib/data/types";
 import { useWalletIdentity } from "@/lib/use-wallet-identity";
@@ -14,6 +15,12 @@ import { useWalletIdentity } from "@/lib/use-wallet-identity";
 type ContributionFilter = "all" | "gt-5" | "lt-1" | "one-five";
 type ModeFilter = "all" | "dutch" | "fixed";
 type SortMode = "newest" | "pot-high" | "rep-low";
+
+const PAGE_SIZE = 9;
+const CIRCLE_CARD_SKELETON_KEYS = Array.from(
+  { length: PAGE_SIZE },
+  (_, index) => `circle-card-skeleton-${index}`,
+);
 
 const modeOptions: { label: string; value: ModeFilter }[] = [
   { label: "Payout Mode: All", value: "all" },
@@ -42,13 +49,13 @@ export default function CirclesPage() {
   const [solOnly, setSolOnly] = useState(true);
   const [sortMode, setSortMode] = useState<SortMode>("newest");
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 9;
   const { address } = useWalletIdentity();
   const { data, error, isLoading } = useCirclesQuery(address);
   const circles = useMemo(() => data ?? [], [data]);
 
   const openCircles = circles.filter((circle) => circle.status === "Forming").length;
   const activeCircles = circles.filter((circle) => circle.status === "Active").length;
+  const settlementReadyCircles = circles.filter(isSettlementReadyCircle).length;
   const filteredCircles = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
@@ -92,10 +99,6 @@ export default function CirclesPage() {
   const rangeStart = filteredCircles.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
   const rangeEnd = Math.min(safePage * PAGE_SIZE, filteredCircles.length);
 
-  useEffect(() => {
-    setPage(1);
-  }, [contributionFilter, modeFilter, memberRangeOnly, solOnly, sortMode, query]);
-
   return (
     <AppShell title="Browse Circles" contentClassName="!max-w-none px-6 py-10 md:px-12">
       <header className="mb-12">
@@ -112,7 +115,7 @@ export default function CirclesPage() {
       <Panel className="mb-4 grid grid-cols-1 overflow-hidden md:grid-cols-4">
         <StatTile label="Open circles" value={String(openCircles)} />
         <StatTile label="Active circles" value={String(activeCircles)} />
-        <StatTile label="Settlement" value="SOL only" />
+        <StatTile label="Ready to close" value={String(settlementReadyCircles)} />
         <StatTile label="Payout modes" value="Fixed + Dutch" />
       </Panel>
 
@@ -129,26 +132,38 @@ export default function CirclesPage() {
             className="search-input w-full"
             style={{ width: "100%" }}
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setPage(1);
+            }}
           />
         </label>
         <DropdownSelect
           label="Payout mode"
           options={modeOptions}
           value={modeFilter}
-          onChange={setModeFilter}
+          onChange={(value) => {
+            setModeFilter(value);
+            setPage(1);
+          }}
         />
         <DropdownSelect
           label="Contribution range"
           options={contributionOptions}
           value={contributionFilter}
-          onChange={setContributionFilter}
+          onChange={(value) => {
+            setContributionFilter(value);
+            setPage(1);
+          }}
         />
         <DropdownSelect
           label="Sort listings"
           options={sortOptions}
           value={sortMode}
-          onChange={setSortMode}
+          onChange={(value) => {
+            setSortMode(value);
+            setPage(1);
+          }}
         />
       </div>
 
@@ -158,7 +173,10 @@ export default function CirclesPage() {
           shape="pill"
           size="xs"
           aria-pressed={modeFilter === "fixed"}
-          onClick={() => setModeFilter((current) => (current === "fixed" ? "all" : "fixed"))}
+          onClick={() => {
+            setModeFilter((current) => (current === "fixed" ? "all" : "fixed"));
+            setPage(1);
+          }}
         >
           Fixed order
         </BadgeButton>
@@ -167,7 +185,10 @@ export default function CirclesPage() {
           shape="pill"
           size="xs"
           aria-pressed={modeFilter === "dutch"}
-          onClick={() => setModeFilter((current) => (current === "dutch" ? "all" : "dutch"))}
+          onClick={() => {
+            setModeFilter((current) => (current === "dutch" ? "all" : "dutch"));
+            setPage(1);
+          }}
         >
           Dutch bid
         </BadgeButton>
@@ -176,7 +197,10 @@ export default function CirclesPage() {
           shape="pill"
           size="xs"
           aria-pressed={solOnly}
-          onClick={() => setSolOnly((current) => !current)}
+          onClick={() => {
+            setSolOnly((current) => !current);
+            setPage(1);
+          }}
         >
           Native SOL
         </BadgeButton>
@@ -185,7 +209,10 @@ export default function CirclesPage() {
           shape="pill"
           size="xs"
           aria-pressed={memberRangeOnly}
-          onClick={() => setMemberRangeOnly((current) => !current)}
+          onClick={() => {
+            setMemberRangeOnly((current) => !current);
+            setPage(1);
+          }}
         >
           2-64 members
         </BadgeButton>
@@ -213,7 +240,7 @@ export default function CirclesPage() {
           </p>
         </Link>
         {isLoading
-          ? Array.from({ length: PAGE_SIZE }).map((_, index) => <CircleCardSkeleton key={index} />)
+          ? CIRCLE_CARD_SKELETON_KEYS.map((key) => <CircleCardSkeleton key={key} />)
           : pageItems.map((circle) => <CircleCard key={circle.id} circle={circle} />)}
       </div>
 
@@ -243,16 +270,25 @@ function parseSol(value: string) {
 }
 
 function CircleCard({ circle }: { circle: CircleSummary }) {
+  const state = circleCardState(circle);
+
   return (
     <Panel className="p-5 transition-[border-color,background,transform] duration-150 ease-out hover:-translate-y-0.5 hover:border-accent/30 hover:bg-white/[0.04]">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h3 className="truncate text-base font-semibold tracking-tight">{circle.name}</h3>
-          <p className="mt-1 font-mono text-[0.62rem] text-muted">Host: {circle.creator}</p>
+          <p className="mt-1 truncate font-mono text-[0.62rem] text-muted">
+            Host: {circle.creator}
+          </p>
         </div>
-        <Badge tone={circle.mode === "Fixed order" ? "fixed" : "accent"} shape="square" size="xs">
-          {circle.mode === "Fixed order" ? "Fixed" : "Dutch"}
-        </Badge>
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          <Badge tone={circle.mode === "Fixed order" ? "fixed" : "accent"} shape="square" size="xs">
+            {circle.mode === "Fixed order" ? "Fixed" : "Dutch"}
+          </Badge>
+          <Badge tone={state.tone} shape="square" size="xs">
+            {state.label}
+          </Badge>
+        </div>
       </div>
 
       <div className="mb-4 flex flex-wrap gap-2">
@@ -263,6 +299,8 @@ function CircleCard({ circle }: { circle: CircleSummary }) {
           {circle.members}/{circle.memberCap} Slots
         </Badge>
       </div>
+
+      <p className="mb-4 min-h-10 text-sm leading-5 text-muted">{state.copy}</p>
 
       <div className="mb-4">
         <div className="mb-2 flex justify-between font-mono text-[0.62rem] uppercase tracking-[0.08em] text-muted">
@@ -283,11 +321,85 @@ function CircleCard({ circle }: { circle: CircleSummary }) {
 
       <Link
         href={`/circles/${circle.id}`}
-        className="mt-6 inline-flex min-h-10 w-full items-center justify-center rounded-md border border-white/5 bg-white/5 px-4 font-mono text-[0.68rem] font-medium uppercase tracking-wider text-foreground transition-colors hover:border-white/10 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className={cn(
+          "mt-6 inline-flex min-h-10 w-full items-center justify-center rounded-md border px-4 font-mono text-[0.68rem] font-medium uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          state.intent === "complete"
+            ? "border-accent/35 bg-accent/12 text-accent hover:border-accent/50 hover:bg-accent/18"
+            : "border-white/5 bg-white/5 text-foreground hover:border-white/10 hover:bg-white/10",
+        )}
       >
         {circle.nextAction}
       </Link>
     </Panel>
+  );
+}
+
+function circleCardState(circle: CircleSummary): {
+  copy: string;
+  intent: "complete" | "default";
+  label: string;
+  tone: "accent" | "info" | "muted" | "success" | "warning";
+} {
+  if (circle.status === "Completed") {
+    return {
+      copy: "Collateral has been returned and the circle is closed.",
+      intent: "default",
+      label: "Completed",
+      tone: "success",
+    };
+  }
+
+  if (isSettlementReadyCircle(circle)) {
+    return {
+      copy:
+        circle.nextAction === "Complete circle"
+          ? "All payout rounds are settled. Complete the circle to return collateral."
+          : "All payout rounds are settled. Waiting for the host to return collateral.",
+      intent: "complete",
+      label: "Settlement ready",
+      tone: "success",
+    };
+  }
+
+  if (circle.status === "Default vote") {
+    return {
+      copy: "A missed contribution is in default governance.",
+      intent: "default",
+      label: "Default vote",
+      tone: "warning",
+    };
+  }
+
+  if (circle.status === "Forming") {
+    const full = circle.members >= circle.memberCap;
+    return {
+      copy: full
+        ? "Member cap reached. The host can open the first round."
+        : "Members can join and lock collateral before the first round starts.",
+      intent: "default",
+      label: full ? "Ready to start" : "Forming",
+      tone: full ? "accent" : "muted",
+    };
+  }
+
+  return {
+    copy:
+      circle.mode === "Dutch bid"
+        ? "Members fund the round, then an accepted Dutch bid settles the payout."
+        : "Members fund the round before the host resolves the payout.",
+    intent: "default",
+    label: circle.mode === "Dutch bid" ? "Auction round" : "Active round",
+    tone: circle.mode === "Dutch bid" ? "info" : "accent",
+  };
+}
+
+function isSettlementReadyCircle(circle: CircleSummary) {
+  const payoutRoundTarget = Math.max(circle.members, 1);
+  return (
+    circle.status === "Active" &&
+    (circle.currentRoundIndex >= payoutRoundTarget ||
+      circle.deadline === "All settled" ||
+      circle.nextPayout === "Settlement")
   );
 }
 

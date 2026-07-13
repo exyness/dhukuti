@@ -69,14 +69,7 @@ export function CreateCircleModal({
   if (!review) return null;
 
   const cycleSeconds = Number(review.cycleDurationSeconds);
-  const cycleLabel =
-    cycleSeconds === 7 * 86_400
-      ? "Weekly"
-      : cycleSeconds === 30 * 86_400
-        ? "Monthly"
-        : cycleSeconds === 90 * 86_400
-          ? "Quarterly"
-          : `${Math.round(cycleSeconds / 86_400)} days`;
+  const cycleLabel = formatCycleDuration(cycleSeconds);
   const securityBondLamports =
     (review.contributionLamports * BigInt(review.collateralBps)) / BPS_DENOMINATOR;
   const networkCostLamports = BigInt(review.estimatedRentLamports + review.estimatedFeeLamports);
@@ -356,6 +349,20 @@ function reviewStatusCopy(status: CreateStatus) {
   if (status === "confirming") return "Waiting for confirmation";
   if (status === "signing") return "Wallet signature requested";
   return "Ready for your wallet";
+}
+
+function formatCycleDuration(seconds: number) {
+  if (seconds > 0 && seconds < 60 * 60) return `${Math.round(seconds / 60)} min`;
+  if (seconds > 0 && seconds < 24 * 60 * 60) {
+    const hours = seconds / (60 * 60);
+    if (hours === 1) return "Hourly";
+    return Number.isInteger(hours) ? `${hours} hours` : `${Math.round(seconds / 60)} min`;
+  }
+
+  if (seconds === 7 * 86_400) return "Weekly";
+  if (seconds === 30 * 86_400) return "Monthly";
+  if (seconds === 90 * 86_400) return "Quarterly";
+  return `${Math.round(seconds / 86_400)} days`;
 }
 
 function indexStatusCopy(status: IndexStatus) {

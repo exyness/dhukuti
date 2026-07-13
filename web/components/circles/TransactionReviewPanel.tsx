@@ -21,7 +21,7 @@ export function TransactionReviewPanel({
   const confirmed = review.status === "confirmed";
 
   return (
-    <div aria-live="polite" className="flex flex-col gap-4" role="region">
+    <section aria-live="polite" className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <Badge tone={confirmed ? "success" : "accent"} shape="square" size="xs">
           {confirmed ? "Confirmed" : "Ready to sign"}
@@ -53,7 +53,7 @@ export function TransactionReviewPanel({
           ? "The transaction is confirmed. Your activity and balances will update shortly."
           : "Nothing is sent until you explicitly sign this reviewed transaction in your wallet."}
       </p>
-    </div>
+    </section>
   );
 }
 

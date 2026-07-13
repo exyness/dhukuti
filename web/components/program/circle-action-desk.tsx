@@ -16,11 +16,9 @@ import { Panel } from "@/components/app/app-shell";
 import { TransactionReviewModal } from "@/components/circles/TransactionReviewModal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { InfoPopover } from "@/components/ui/info-popover";
 import { cn } from "@/lib/cn";
 import type { CircleDetail } from "@/lib/data/types";
 import {
-  buildClaimHostReputationInstruction,
   buildCompleteCircleInstruction,
   buildContributeInstruction,
   buildDutchBidInstruction,
@@ -29,10 +27,10 @@ import {
   buildReleaseVouchInstruction,
   buildResolveRoundInstruction,
   buildSlashVouchInstruction,
-  buildUpdateReputationInstruction,
   buildVoteDefaultInstruction,
   buildVouchMemberInstruction,
   deriveMembershipPda,
+  fetchCircleState,
   fetchRoundState,
   type ProgramInstructionBundle,
   solToLamports,
@@ -49,14 +47,20 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
   const [localError, setLocalError] = useState("");
   const [vouchCandidate, setVouchCandidate] = useState("");
   const [vouchStake, setVouchStake] = useState("0.25");
-  const { circle, defaultProposal, members, vouches } = detail;
+  const { circle, defaultProposal, members, payoutSchedule, vouches } = detail;
   const wallet = address ?? "";
   const myMembership = members.find((member) => member.member === wallet);
   const activeMembers = members.filter((member) => member.active);
   const unpaidMembers = activeMembers.filter((member) => member.state !== "Paid");
   const allActiveMembersPaid = activeMembers.length > 0 && unpaidMembers.length === 0;
-  const allRoundsResolved = circle.currentRoundIndex >= circle.memberCap;
+  const payoutRoundTarget = Math.max(members.length, circle.members, 1);
+  const allPayoutRowsSettled =
+    payoutSchedule.length >= payoutRoundTarget &&
+    payoutSchedule.every((row) => row.status === "Completed" || row.status === "Auction settled");
+  const allRoundsResolved = circle.currentRoundIndex >= payoutRoundTarget || allPayoutRowsSettled;
   const isHost = circle.creator === wallet;
+  const isDutch = circle.mode === "Dutch bid";
+  const resolvePayoutLabel = isDutch ? "Settle auction payout" : "Resolve payout";
   const walletKey = useMemo(() => (wallet ? new PublicKey(wallet) : null), [wallet]);
   const candidateOptions = activeMembers.filter((member) => member.member !== wallet);
   const activeVouches = vouches.filter((vouch) => vouch.active && vouch.voucher === wallet);
@@ -88,35 +92,51 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
     };
   }
 
-  function reviewContribution() {
-    if (!walletKey) return;
+  async function getCurrentRoundContext() {
     const context = getContext();
-    requestReview(
-      "Contribute",
-      "Transfer this round's SOL contribution into the program vault. The insurance fee is routed automatically.",
-      [
-        { label: "Circle", value: circle.name },
-        { label: "Round", value: String(context.currentRoundIndex + 1) },
-        { label: "Contribution", value: circle.contribution },
-        { label: "Insurance fee", value: `${circle.insuranceFeeBps / 100}%` },
-      ],
-      buildContributeInstruction({ ...context, member: walletKey }),
-    );
+    const onChainCircle = await fetchCircleState(connection, context.circle);
+    return { ...context, ...onChainCircle };
   }
 
-  function reviewDutchBid() {
+  async function reviewContribution() {
     if (!walletKey) return;
-    const context = getContext();
-    requestReview(
-      "Accept Dutch bid",
-      "Accept the current clearing discount for this round. If no earlier bid exists, your wallet becomes the payout recipient.",
-      [
-        { label: "Circle", value: circle.name },
-        { label: "Round", value: String(context.currentRoundIndex + 1) },
-        { label: "Payout model", value: "Dutch auction" },
-      ],
-      buildDutchBidInstruction({ ...context, bidder: walletKey }),
-    );
+    try {
+      const context = await getCurrentRoundContext();
+      requestReview(
+        "Contribute",
+        "Transfer this round's SOL contribution into the program vault. The insurance fee is routed automatically.",
+        [
+          { label: "Circle", value: circle.name },
+          { label: "Round", value: String(context.currentRoundIndex + 1) },
+          { label: "Contribution", value: circle.contribution },
+          { label: "Insurance fee", value: `${circle.insuranceFeeBps / 100}%` },
+        ],
+        buildContributeInstruction({ ...context, member: walletKey }),
+      );
+    } catch (error) {
+      setLocalError(
+        error instanceof Error ? error.message : "Unable to prepare this contribution.",
+      );
+    }
+  }
+
+  async function reviewDutchBid() {
+    if (!walletKey) return;
+    try {
+      const context = await getCurrentRoundContext();
+      requestReview(
+        "Accept Dutch bid",
+        "Accept the current clearing discount for this round. If no earlier bid exists, your wallet becomes the payout recipient.",
+        [
+          { label: "Circle", value: circle.name },
+          { label: "Round", value: String(context.currentRoundIndex + 1) },
+          { label: "Payout model", value: "Dutch auction" },
+        ],
+        buildDutchBidInstruction({ ...context, bidder: walletKey }),
+      );
+    } catch (error) {
+      setLocalError(error instanceof Error ? error.message : "Unable to prepare this Dutch bid.");
+    }
   }
 
   async function reviewResolveRound() {
@@ -124,13 +144,30 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
     setLocalError("");
 
     try {
-      const context = getContext();
+      const context = await getCurrentRoundContext();
+      if (context.currentRoundIndex >= context.currentMembers) {
+        throw new Error("Every payout round has already been resolved on-chain.");
+      }
+
+      const round = await fetchRoundState(connection, context.circle, context.currentRoundIndex);
+      if (round.resolved) {
+        throw new Error("This payout round has already been resolved. Refresh and continue.");
+      }
+
+      if (
+        (round.contributionsBitmap & context.activeMembersBitmap) !==
+        context.activeMembersBitmap
+      ) {
+        throw new Error(
+          `Round ${context.currentRoundIndex + 1} is not fully funded on-chain yet. Refresh the circle and collect this round's contributions first.`,
+        );
+      }
+
       let recipient = members.find(
         (member) => member.joinOrder === context.currentRoundIndex,
       )?.member;
 
       if (circle.mode === "Dutch bid") {
-        const round = await fetchRoundState(connection, context.circle, context.currentRoundIndex);
         recipient = round.auctionWinner ?? undefined;
       }
 
@@ -139,8 +176,10 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
       }
 
       requestReview(
-        "Resolve payout",
-        "Pay the funded round from the program vault and atomically open the next round.",
+        resolvePayoutLabel,
+        isDutch
+          ? "Pay the accepted Dutch bid from the program vault and atomically open the next round."
+          : "Pay the funded round from the program vault and atomically open the next round.",
         [
           { label: "Circle", value: circle.name },
           { label: "Round", value: String(context.currentRoundIndex + 1) },
@@ -164,26 +203,40 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
     }
   }
 
-  function reviewCompleteCircle() {
+  async function reviewCompleteCircle() {
     if (!walletKey) return;
-    const context = getContext();
-    requestReview(
-      "Complete circle",
-      "Return verified collateral to every active position holder and mark the circle complete.",
-      [
-        { label: "Circle", value: circle.name },
-        { label: "Active members", value: String(activeMembers.length) },
-        { label: "Collateral return", value: circle.collateral },
-      ],
-      buildCompleteCircleInstruction({
-        activeMemberships: activeMembers.map((member) => ({
-          member: new PublicKey(member.member),
-          membership: deriveMembershipPda(context.circle, new PublicKey(member.member)),
-        })),
-        circle: context.circle,
-        creator: walletKey,
-      }),
-    );
+    setLocalError("");
+
+    try {
+      const context = await getCurrentRoundContext();
+      if (context.currentRoundIndex < context.currentMembers) {
+        throw new Error(
+          "Every payout round must be resolved on-chain before the circle can be completed.",
+        );
+      }
+
+      requestReview(
+        "Complete circle",
+        "Return verified collateral to every active position holder and mark the circle complete.",
+        [
+          { label: "Circle", value: circle.name },
+          { label: "Active members", value: String(activeMembers.length) },
+          { label: "Collateral return", value: `${circle.collateral} each` },
+        ],
+        buildCompleteCircleInstruction({
+          activeMemberships: activeMembers.map((member) => ({
+            member: new PublicKey(member.member),
+            membership: deriveMembershipPda(context.circle, new PublicKey(member.member)),
+          })),
+          circle: context.circle,
+          creator: walletKey,
+        }),
+      );
+    } catch (error) {
+      setLocalError(
+        error instanceof Error ? error.message : "Unable to prepare circle completion.",
+      );
+    }
   }
 
   function reviewOpenDefault() {
@@ -309,49 +362,10 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
     );
   }
 
-  function reviewMemberReputation() {
-    if (!walletKey || !myMembership) return;
-    const context = getContext();
-    const event = myMembership.defaulted ? "CircleDefaulted" : "CircleCompleted";
-    requestReview(
-      myMembership.defaulted ? "Record default reputation" : "Claim member reputation",
-      "Write the verified circle outcome into your portable on-chain reputation account.",
-      [
-        { label: "Circle", value: circle.name },
-        { label: "Outcome", value: myMembership.defaulted ? "Defaulted" : "Completed" },
-      ],
-      buildUpdateReputationInstruction({
-        circle: context.circle,
-        cranker: walletKey,
-        event,
-        wallet: walletKey,
-      }),
-    );
-  }
-
-  function reviewHostReputation() {
-    if (!walletKey) return;
-    const context = getContext();
-    requestReview(
-      "Claim host reputation",
-      "Record the completed hosting outcome in your portable reputation account.",
-      [
-        { label: "Circle", value: circle.name },
-        { label: "Defaults handled", value: "Verified on-chain" },
-      ],
-      buildClaimHostReputationInstruction({
-        circle: context.circle,
-        cranker: walletKey,
-        host: walletKey,
-      }),
-    );
-  }
-
   const lifecycle = (() => {
-    const isDutch = circle.mode === "Dutch bid";
     const steps = [
       {
-        copy: "Members join and lock collateral until the circle reaches its member cap.",
+        copy: "Members join and lock collateral until the circle is ready to start.",
         title: "Forming",
       },
       {
@@ -364,9 +378,9 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
       },
       {
         copy: isDutch
-          ? "The Dutch auction picks the recipient; the next round opens automatically."
+          ? "An accepted Dutch bid settles the payout; the next round opens automatically."
           : "The round recipient claims the pot; the next round opens automatically.",
-        title: "Settle payout",
+        title: isDutch ? "Settle auction" : "Settle payout",
       },
       {
         copy: "Collateral returns to members and the outcome writes to on-chain reputation.",
@@ -389,19 +403,32 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
   })();
 
   const circleControls = (
-    <div className="space-y-5">
+    <div className="grid gap-5 lg:grid-cols-2">
       <section className="space-y-2">
         <h3 className="px-1 font-mono text-[0.58rem] uppercase tracking-[0.1em] text-muted">
           Round lifecycle
         </h3>
-        {circle.status === "Active" ? (
+        {circle.status === "Active" && allRoundsResolved ? (
+          isHost ? (
+            <ControlListItem
+              copy="All payouts are settled. Return collateral and close the circle."
+              icon={<BadgeCheck className="h-4 w-4" aria-hidden="true" />}
+              label="Complete circle"
+              onClick={() => void reviewCompleteCircle()}
+            />
+          ) : (
+            <p className="px-1 text-xs leading-5 text-muted">
+              All payout rounds are settled. The host can close the circle.
+            </p>
+          )
+        ) : circle.status === "Active" ? (
           <div className="space-y-1">
             {myMembership?.active && myMembership.state !== "Paid" ? (
               <ControlListItem
                 copy={`Pay ${circle.contribution} into the current round.`}
                 icon={<CircleDollarSign className="h-4 w-4" aria-hidden="true" />}
                 label={`Contribute ${circle.contribution}`}
-                onClick={reviewContribution}
+                onClick={() => void reviewContribution()}
               />
             ) : null}
             {circle.mode === "Dutch bid" && myMembership?.active ? (
@@ -409,18 +436,22 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
                 copy="Accept the current Dutch clearing discount for an early payout."
                 icon={<Gavel className="h-4 w-4" aria-hidden="true" />}
                 label="Accept Dutch bid"
-                onClick={reviewDutchBid}
+                onClick={() => void reviewDutchBid()}
               />
             ) : null}
             <ControlListItem
               copy={
-                allActiveMembersPaid
-                  ? "Resolve the payout and open the next round."
-                  : `${unpaidMembers.length} contribution ${unpaidMembers.length === 1 ? "slot" : "slots"} unpaid.`
+                allRoundsResolved
+                  ? "All payout rounds are already settled."
+                  : allActiveMembersPaid
+                    ? isDutch
+                      ? "Settle the accepted bid and open the next auction round."
+                      : "Resolve the payout and open the next round."
+                    : `${unpaidMembers.length} contribution ${unpaidMembers.length === 1 ? "slot" : "slots"} unpaid.`
               }
-              disabled={!allActiveMembersPaid || !isHost}
+              disabled={!allActiveMembersPaid || !isHost || allRoundsResolved}
               icon={<Landmark className="h-4 w-4" aria-hidden="true" />}
-              label="Resolve payout"
+              label={resolvePayoutLabel}
               onClick={() => void reviewResolveRound()}
             />
             {isHost ? (
@@ -428,12 +459,12 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
                 copy={
                   allRoundsResolved
                     ? "Return collateral and close the circle."
-                    : `${circle.memberCap - circle.currentRoundIndex} payout ${circle.memberCap - circle.currentRoundIndex === 1 ? "round" : "rounds"} remain.`
+                    : `${Math.max(payoutRoundTarget - circle.currentRoundIndex, 0)} payout ${Math.max(payoutRoundTarget - circle.currentRoundIndex, 0) === 1 ? "round" : "rounds"} remain.`
                 }
                 disabled={!allRoundsResolved}
                 icon={<BadgeCheck className="h-4 w-4" aria-hidden="true" />}
                 label="Complete circle"
-                onClick={reviewCompleteCircle}
+                onClick={() => void reviewCompleteCircle()}
               />
             ) : null}
           </div>
@@ -452,7 +483,11 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
         <h3 className="px-1 font-mono text-[0.58rem] uppercase tracking-[0.1em] text-muted">
           Default governance
         </h3>
-        {circle.status !== "Active" ? (
+        {allRoundsResolved ? (
+          <p className="px-1 text-xs leading-5 text-muted">
+            Default controls are closed after every payout round has settled.
+          </p>
+        ) : circle.status !== "Active" ? (
           <p className="px-1 text-xs leading-5 text-muted">
             Default controls unlock during an active round.
           </p>
@@ -552,7 +587,6 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
               {circle.status}
             </Badge>
           </div>
-          <InfoPopover label="Circle controls">{circleControls}</InfoPopover>
         </div>
         <p className="mb-6 max-w-2xl text-sm leading-6 text-muted">
           Every action is checked before wallet signing and includes a clear transaction review.
@@ -606,13 +640,19 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
             );
           })}
         </ol>
+        <div className="mt-5 border-t border-border pt-5">{circleControls}</div>
       </Panel>
 
       <Panel className="p-5">
         <h3 className="mb-4 font-mono text-[0.62rem] uppercase tracking-[0.1em] text-accent">
           Social collateral
         </h3>
-        {myMembership?.active && circle.status !== "Completed" ? (
+        {allRoundsResolved && circle.status !== "Completed" ? (
+          <p className="text-xs leading-5 text-muted">
+            Vouch release unlocks after the host completes the circle.
+          </p>
+        ) : null}
+        {myMembership?.active && circle.status !== "Completed" && !allRoundsResolved ? (
           <div className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem_auto] sm:items-end">
               <label className="block">
@@ -694,7 +734,7 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
               ))}
           </div>
         ) : null}
-        {!myMembership?.active && circle.status !== "Completed" ? (
+        {!myMembership?.active && circle.status !== "Completed" && !allRoundsResolved ? (
           <p className="text-xs leading-5 text-muted">Join as an active member before vouching.</p>
         ) : null}
       </Panel>

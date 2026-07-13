@@ -118,9 +118,15 @@ export function useProgramTransaction() {
       toast.success("Transaction confirmed", {
         description: `${request.title} was submitted to the network.`,
       });
-      void syncConfirmedTransaction(signature).finally(() => {
-        void queryClient.invalidateQueries();
-      });
+      void syncConfirmedTransaction(signature)
+        .catch(() => {
+          toast.warning("Indexer sync delayed", {
+            description: "The transaction is confirmed. Refresh if the UI has not caught up.",
+          });
+        })
+        .finally(() => {
+          void queryClient.invalidateQueries();
+        });
     } catch (nextError) {
       const failure = decodeProgramError(nextError);
       setError(
@@ -336,7 +342,7 @@ function getLogs(error: unknown) {
 const DHUKUTI_ERROR_MESSAGES = [
   "Max members must be between 2 and 64.",
   "Contribution amount must be greater than zero.",
-  "Cycle duration must be between one hour and one year.",
+  "Cycle duration must be between one minute and one year.",
   "Collateral must be at least 5% of the contribution amount.",
   "The insurance fee is above the protocol maximum.",
   "The reserve ratio cannot exceed 100%.",

@@ -5,6 +5,7 @@ import { DHUKUTI_PROGRAM } from "@/lib/constants";
 import type { DecodedDhukutiEvent } from "@/lib/program/types";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import type { DhukutiEventLogInsert, Json } from "@/lib/supabase/types";
+import { fetchRoundAccountSnapshot } from "./on-chain";
 
 type ProjectionContext = {
   blockTime: string | null;
@@ -165,24 +166,30 @@ async function projectEvent(context: ProjectionContext, event: DecodedDhukutiEve
       break;
 
     case "RoundResolvedEvent":
-      await upsert(
-        context,
-        "dhukuti_rounds",
-        {
-          circle: getRequiredString(data.circle),
-          insurance_share: getRequiredNumeric(data.insurance_share),
-          last_signature: context.signature,
-          last_slot: context.slot,
-          member_discount_share: getRequiredNumeric(data.member_discount_share),
-          payout: getRequiredNumeric(data.payout),
-          recipient: getRequiredString(data.recipient),
-          resolved: true,
-          round: getRequiredString(data.round),
-          round_index: getRequiredNumber(data.round_index),
-          updated_at: nowIso(),
-        },
-        "circle,round_index",
-      );
+      {
+        const circle = getRequiredString(data.circle);
+        const roundIndex = getRequiredNumber(data.round_index);
+
+        await upsert(
+          context,
+          "dhukuti_rounds",
+          {
+            circle,
+            insurance_share: getRequiredNumeric(data.insurance_share),
+            last_signature: context.signature,
+            last_slot: context.slot,
+            member_discount_share: getRequiredNumeric(data.member_discount_share),
+            payout: getRequiredNumeric(data.payout),
+            recipient: getRequiredString(data.recipient),
+            resolved: true,
+            round: getRequiredString(data.round),
+            round_index: roundIndex,
+            updated_at: nowIso(),
+          },
+          "circle,round_index",
+        );
+        await projectNextRoundAfterResolve(context, circle, roundIndex);
+      }
       break;
 
     case "CircleCompletedEvent":
@@ -419,6 +426,37 @@ async function projectEvent(context: ProjectionContext, event: DecodedDhukutiEve
       }
       break;
   }
+}
+
+async function projectNextRoundAfterResolve(
+  context: ProjectionContext,
+  circle: string,
+  resolvedRoundIndex: number,
+) {
+  const nextRound = await fetchRoundAccountSnapshot(circle, resolvedRoundIndex + 1);
+  if (!nextRound || nextRound.resolved || nextRound.deadlineTs <= 0) {
+    return;
+  }
+
+  await upsert(
+    context,
+    "dhukuti_rounds",
+    {
+      circle,
+      deadline_ts: unixToIso(nextRound.deadlineTs),
+      insurance_share: "0",
+      last_signature: context.signature,
+      last_slot: context.slot,
+      member_discount_share: "0",
+      payout: null,
+      recipient: null,
+      resolved: false,
+      round: nextRound.round,
+      round_index: nextRound.index,
+      updated_at: nowIso(),
+    },
+    "circle,round_index",
+  );
 }
 
 async function upsert(

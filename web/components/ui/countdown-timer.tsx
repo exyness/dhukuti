@@ -9,6 +9,11 @@ type CountdownUnits = {
   seconds: string;
 };
 
+type CountdownState = {
+  deadlineAt: string;
+  units: CountdownUnits | null;
+};
+
 function computeUnits(deadlineAt: string): CountdownUnits | null {
   const diffMs = new Date(deadlineAt).getTime() - Date.now();
   if (diffMs <= 0) return null;
@@ -29,24 +34,23 @@ function computeUnits(deadlineAt: string): CountdownUnits | null {
 }
 
 export function useCountdown(deadlineAt: string | null): CountdownUnits | null {
-  const [units, setUnits] = useState(() => (deadlineAt ? computeUnits(deadlineAt) : null));
+  const [state, setState] = useState<CountdownState | null>(null);
 
   useEffect(() => {
     if (!deadlineAt) {
-      setUnits(null);
       return;
     }
 
-    setUnits(computeUnits(deadlineAt));
-
     const id = setInterval(() => {
       const next = computeUnits(deadlineAt);
-      setUnits(next);
+      setState({ deadlineAt, units: next });
       if (!next) clearInterval(id);
     }, 1000);
 
     return () => clearInterval(id);
   }, [deadlineAt]);
 
-  return units;
+  if (!deadlineAt) return null;
+  if (state?.deadlineAt === deadlineAt) return state.units;
+  return computeUnits(deadlineAt);
 }

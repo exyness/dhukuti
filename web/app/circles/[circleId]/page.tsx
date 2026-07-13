@@ -3,7 +3,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, Clock3 } from "lucide-react";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppShell, Panel } from "@/components/app/app-shell";
 import { CircleMemberAvatar } from "@/components/app/circle-member-avatar";
 import { TransactionReviewModal } from "@/components/circles/TransactionReviewModal";
@@ -23,7 +23,7 @@ export default function CircleDetailsPage() {
   const { address } = useWalletIdentity();
   const { data, error, isLoading } = useCircleDetailQuery(circleId, address);
 
-  if (!data || !data.circle) {
+  if (!data?.circle) {
     if (isLoading) {
       return (
         <AppShell title="Circle" contentClassName="!max-w-none px-6 py-10 md:px-12">
@@ -55,13 +55,23 @@ function CircleDetailsInner({ data }: { data: CircleDetail }) {
   const circleMembers = data.members ?? [];
   const payoutSchedule = data.payoutSchedule ?? [];
   const queryClient = useQueryClient();
-  const openSlots = Math.max(currentCircle.memberCap - circleMembers.length, 0);
+  const openSlots =
+    currentCircle.status === "Forming"
+      ? Math.max(currentCircle.memberCap - circleMembers.length, 0)
+      : 0;
   const myMembership = circleMembers.find((member) => member.member === address);
   const activeMembers = circleMembers.filter((member) => member.active);
   const unpaidMembers = activeMembers.filter((member) => member.state !== "Paid");
   const allActiveMembersPaid = activeMembers.length > 0 && unpaidMembers.length === 0;
-  const isHost = currentCircle.creator === address;
+  const payoutRoundTarget = Math.max(circleMembers.length, currentCircle.members, 1);
+  const allPayoutRowsSettled =
+    payoutSchedule.length >= payoutRoundTarget &&
+    payoutSchedule.every((row) => row.status === "Completed" || row.status === "Auction settled");
+  const allRoundsResolved =
+    currentCircle.currentRoundIndex >= payoutRoundTarget || allPayoutRowsSettled;
   const [justResolved, setJustResolved] = useState(false);
+  const processedCompleteReview = useRef("");
+  const processedResolveReview = useRef("");
   const { localError, primaryAction, transaction } = useCirclePrimaryAction(data, { justResolved });
 
   useEffect(() => {
@@ -101,35 +111,148 @@ function CircleDetailsInner({ data }: { data: CircleDetail }) {
 
   useEffect(() => {
     const review = transaction.review;
-    if (review?.status !== "confirmed" || review.title !== "Resolve payout") return;
+    if (review?.status !== "confirmed" || !isPayoutResolutionTitle(review.title)) return;
+    const reviewKey = `${review.title}:${review.signature ?? "confirmed"}`;
+    if (processedResolveReview.current === reviewKey) return;
+    processedResolveReview.current = reviewKey;
 
     setJustResolved(true);
+    const nextRoundIndex = currentCircle.currentRoundIndex + 1;
+    const isLastRound = nextRoundIndex >= payoutRoundTarget;
+    const displayRoundNumber = Math.min(nextRoundIndex + 1, payoutRoundTarget);
+    const nextCircleSummary: CircleSummary = {
+      ...currentCircle,
+      currentRoundIndex: nextRoundIndex,
+      deadline: isLastRound ? "All settled" : currentCircle.deadline,
+      deadlineAt: isLastRound ? null : currentCircle.deadlineAt,
+      nextAction: isLastRound
+        ? currentCircle.creator === address
+          ? "Complete circle"
+          : "View settlement"
+        : currentCircle.mode === "Dutch bid"
+          ? "Accept Dutch bid"
+          : "Contribute",
+      nextPayout: isLastRound
+        ? "Settlement"
+        : `Round ${String(displayRoundNumber).padStart(2, "0")}`,
+      round: `${displayRoundNumber} / ${payoutRoundTarget}`,
+    };
+
     queryClient.setQueryData<CircleDetail>(
       [...queryKeys.circle(currentCircle.address), address ?? "guest"],
       (detail) => {
         if (!detail) return detail;
         const nextRoundIndex = detail.circle.currentRoundIndex + 1;
-        const isLastRound = nextRoundIndex >= detail.circle.memberCap;
+        const detailRoundTarget = Math.max(detail.members.length, detail.circle.members, 1);
+        const isLastRound = nextRoundIndex >= detailRoundTarget;
+        const displayRoundNumber = Math.min(nextRoundIndex + 1, detailRoundTarget);
         return {
           ...detail,
           circle: {
             ...detail.circle,
             currentRoundIndex: nextRoundIndex,
-            round: `${nextRoundIndex + 1} / ${detail.circle.memberCap}`,
+            deadline: isLastRound ? "All settled" : detail.circle.deadline,
+            deadlineAt: isLastRound ? null : detail.circle.deadlineAt,
+            round: `${displayRoundNumber} / ${detailRoundTarget}`,
             nextAction: isLastRound
-              ? "View Settlement"
+              ? "Complete circle"
               : detail.circle.mode === "Dutch bid"
-                ? "Place bid"
+                ? "Accept Dutch bid"
                 : "Contribute",
           },
           members: detail.members.map((member) => ({
             ...member,
-            state: isLastRound ? member.state : "Unpaid",
+            state: isLastRound ? "Paid" : "Pending",
           })),
+          payoutSchedule: detail.payoutSchedule.map((row) =>
+            Number.parseInt(row.round, 10) === detail.circle.currentRoundIndex + 1
+              ? {
+                  ...row,
+                  status: detail.circle.mode === "Dutch bid" ? "Auction settled" : "Completed",
+                }
+              : row,
+          ),
         };
       },
     );
-  }, [address, currentCircle.address, queryClient, transaction.review]);
+
+    queryClient.setQueryData<CircleSummary[]>(queryKeys.circles(address), (circles = []) =>
+      circles.map((circle) =>
+        circle.address === currentCircle.address ? { ...circle, ...nextCircleSummary } : circle,
+      ),
+    );
+
+    queryClient.setQueryData<ProfileData>(queryKeys.profile(address), (profile) => {
+      if (!profile) return profile;
+      return {
+        ...profile,
+        activeCircles: profile.activeCircles.map((circle) =>
+          circle.address === currentCircle.address ? { ...circle, ...nextCircleSummary } : circle,
+        ),
+        hostedCircles: profile.hostedCircles.map((circle) =>
+          circle.address === currentCircle.address ? { ...circle, ...nextCircleSummary } : circle,
+        ),
+      };
+    });
+  }, [address, currentCircle, payoutRoundTarget, queryClient, transaction.review]);
+
+  useEffect(() => {
+    const review = transaction.review;
+    if (review?.status !== "confirmed" || review.title !== "Complete circle") return;
+    const reviewKey = `${review.title}:${review.signature ?? "confirmed"}`;
+    if (processedCompleteReview.current === reviewKey) return;
+    processedCompleteReview.current = reviewKey;
+    if (currentCircle.status === "Completed") return;
+
+    const completedCircle = {
+      ...currentCircle,
+      deadline: "Completed",
+      deadlineAt: null,
+      nextAction: "View settlement",
+      nextPayout: "Completed",
+      status: "Completed" as const,
+    };
+
+    queryClient.setQueryData<CircleDetail>(
+      [...queryKeys.circle(currentCircle.address), address ?? "guest"],
+      (detail) =>
+        detail
+          ? {
+              ...detail,
+              circle: {
+                ...detail.circle,
+                deadline: "Completed",
+                deadlineAt: null,
+                nextAction: "View settlement",
+                nextPayout: "Completed",
+                status: "Completed",
+              },
+            }
+          : detail,
+    );
+
+    queryClient.setQueryData<CircleSummary[]>(queryKeys.circles(address), (circles = []) =>
+      circles.map((circle) =>
+        circle.address === currentCircle.address ? { ...circle, ...completedCircle } : circle,
+      ),
+    );
+
+    queryClient.setQueryData<ProfileData>(queryKeys.profile(address), (profile) => {
+      if (!profile) return profile;
+      return {
+        ...profile,
+        activeCircles: profile.activeCircles
+          .map((circle) =>
+            circle.address === currentCircle.address ? { ...circle, ...completedCircle } : circle,
+          )
+          .filter((circle) => circle.status !== "Completed"),
+        circleHistory: upsertCircleSummary(profile.circleHistory, completedCircle),
+        hostedCircles: profile.hostedCircles.map((circle) =>
+          circle.address === currentCircle.address ? { ...circle, ...completedCircle } : circle,
+        ),
+      };
+    });
+  }, [address, currentCircle, queryClient, transaction.review]);
 
   const openSlotMembers = Array.from({ length: openSlots }, (_, index) => {
     const slotNumber = circleMembers.length + index + 1;
@@ -254,16 +377,24 @@ function CircleDetailsInner({ data }: { data: CircleDetail }) {
         {currentCircle.status === "Active" && (
           <Panel className="p-5">
             <div className="flex flex-wrap items-center gap-3 text-sm leading-6">
-              {allActiveMembersPaid ? (
+              {allRoundsResolved ? (
+                <>
+                  <Badge tone="success" shape="square" size="xs">
+                    Payouts settled
+                  </Badge>
+                  <span className="text-muted">
+                    All payout rounds are complete. The host can close the circle.
+                  </span>
+                </>
+              ) : allActiveMembersPaid ? (
                 <>
                   <Badge tone="success" shape="square" size="xs">
                     All paid
                   </Badge>
                   <span className="text-muted">
-                    All members contributed.{" "}
-                    {countdown
-                      ? `Next round opens in${countdown.days ? ` ${countdown.days}d` : ""} ${countdown.hours}h ${countdown.minutes}m${!countdown.days ? ` ${countdown.seconds}s` : ""}.`
-                      : "Next round opens soon."}
+                    {currentCircle.mode === "Dutch bid"
+                      ? "The round is funded. A member can accept the Dutch bid, then the host settles the auction payout."
+                      : "All members contributed. The host can resolve the payout and open the next round."}
                   </span>
                 </>
               ) : (
@@ -311,7 +442,8 @@ function CircleDetailsInner({ data }: { data: CircleDetail }) {
                     <tbody>
                       {payoutSchedule.map((row) => {
                         const isCurrent = row.round === currentCircle.round;
-                        const isCompleted = row.status === "Completed";
+                        const isCompleted =
+                          row.status === "Completed" || row.status === "Auction settled";
                         const isDefault = row.status === "Default vote";
                         return (
                           <tr
@@ -329,7 +461,7 @@ function CircleDetailsInner({ data }: { data: CircleDetail }) {
                                 isCurrent && "font-medium text-accent",
                               )}
                             >
-                              {row.round}/{currentCircle.memberCap}
+                              {row.round}/{payoutRoundTarget}
                             </td>
                             <td className="p-4">
                               <div className="flex items-center gap-2">
@@ -401,12 +533,32 @@ function CircleDetailsInner({ data }: { data: CircleDetail }) {
   );
 }
 
+function isPayoutResolutionTitle(title: string) {
+  return title === "Resolve payout" || title === "Settle auction payout";
+}
+
+function upsertCircleSummary(circles: CircleSummary[], nextCircle: CircleSummary) {
+  const existingIndex = circles.findIndex((circle) => circle.address === nextCircle.address);
+  if (existingIndex < 0) return [nextCircle, ...circles];
+
+  return circles.map((circle, index) => (index === existingIndex ? nextCircle : circle));
+}
+
 function circleStatusAction(
   circle: CircleSummary,
   myMembership?: { active: boolean; state: string },
 ) {
   if (circle.status === "Forming" && circle.members >= circle.memberCap) return "Ready to start";
-  if (circle.status === "Active" && myMembership?.active && myMembership.state === "Paid") return "Paid";
+  if (
+    circle.status === "Active" &&
+    (circle.currentRoundIndex >= circle.memberCap ||
+      circle.deadline === "All settled" ||
+      circle.nextPayout === "Settlement")
+  ) {
+    return "Ready to complete";
+  }
+  if (circle.status === "Active" && myMembership?.active && myMembership.state === "Paid")
+    return "Paid";
   return circle.nextAction;
 }
 
@@ -508,10 +660,10 @@ function PayoutStatus({ status }: { status: string }) {
     );
   }
 
-  if (status === "Dutch bid settled") {
+  if (status === "Auction settled") {
     return (
-      <Badge tone="info" shape="square" size="xs">
-        Settled
+      <Badge tone="success" shape="square" size="xs">
+        Auction settled
       </Badge>
     );
   }
@@ -536,6 +688,9 @@ function Skeleton({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse rounded-md bg-white/[0.06] ${className}`} />;
 }
 
+const MEMBER_SKELETON_KEYS = Array.from({ length: 12 }, (_, index) => `member-${index}`);
+const TABLE_SKELETON_KEYS = Array.from({ length: 5 }, (_, index) => `row-${index}`);
+
 function CircleDetailsSkeleton() {
   return (
     <div className="space-y-8">
@@ -558,8 +713,8 @@ function CircleDetailsSkeleton() {
             <Skeleton className="h-3 w-24" />
           </div>
           <div className="grid grid-cols-4 gap-6 md:grid-cols-6">
-            {Array.from({ length: 12 }).map((_, index) => (
-              <Skeleton key={index} className="mx-auto h-12 w-12 rounded-full" />
+            {MEMBER_SKELETON_KEYS.map((key) => (
+              <Skeleton key={key} className="mx-auto h-12 w-12 rounded-full" />
             ))}
           </div>
         </Panel>
@@ -580,9 +735,9 @@ function CircleDetailsSkeleton() {
           <div className="space-y-3 lg:col-span-2">
             <Skeleton className="h-3 w-32" />
             <div className="overflow-hidden rounded-lg border border-border">
-              {Array.from({ length: 5 }).map((_, index) => (
+              {TABLE_SKELETON_KEYS.map((key) => (
                 <div
-                  key={index}
+                  key={key}
                   className="flex items-center gap-4 border-b border-border p-4 last:border-b-0"
                 >
                   <Skeleton className="h-4 w-12" />

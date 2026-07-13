@@ -3,7 +3,7 @@
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { Transaction } from "@solana/web3.js";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, ChevronDown, Loader2, LockKeyhole, WalletCards } from "lucide-react";
+import { AlertCircle, Loader2, LockKeyhole, WalletCards } from "lucide-react";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -69,9 +69,9 @@ export default function NewCirclePage() {
     : ZERO_BIGINT;
   const cycleDurationHours =
     cyclePreset === "custom"
-      ? (Number.parseInt(customDays || "0", 10) * 24 +
-          Number.parseInt(customHours || "0", 10) +
-          Number.parseInt(customMinutes || "0", 10) / 60)
+      ? Number.parseInt(customDays || "0", 10) * 24 +
+        Number.parseInt(customHours || "0", 10) +
+        Number.parseInt(customMinutes || "0", 10) / 60
       : Number.parseInt(cyclePreset, 10) / 60;
   const cycleLabel =
     cyclePreset === "custom"
@@ -677,6 +677,11 @@ export default function NewCirclePage() {
               <PreviewStat label="Length" value={lengthLabel} />
               <PreviewStat label="Model" value={payoutCurveLabel(payoutCurve)} />
               <PreviewStat label="Gate" value={`${minReputation || "0"} Rep`} />
+              <PreviewStat
+                label="Payout action"
+                value={payoutCurve === "auction" ? "Settle auction payout" : "Resolve payout"}
+              />
+              <PreviewStat label="Close action" value="Complete circle" />
             </div>
 
             <div className="mt-7 border-t border-border pt-6">
@@ -726,6 +731,14 @@ export default function NewCirclePage() {
                 <strong className="font-medium text-foreground">Start</strong> opens the first
                 contribution round when the host is ready.
               </li>
+              <li>
+                <strong className="font-medium text-foreground">Settle</strong> pays each funded
+                round by fixed order or an accepted Dutch bid.
+              </li>
+              <li>
+                <strong className="font-medium text-foreground">Complete</strong> returns collateral
+                after every payout round is settled.
+              </li>
             </ul>
           </Panel>
 
@@ -768,18 +781,6 @@ function Field({
       </label>
       {children}
       {hint ? <p className="m-0 text-[0.76rem] leading-5 text-muted">{hint}</p> : null}
-    </div>
-  );
-}
-
-function SelectShell({ children }: { children: ReactNode }) {
-  return (
-    <div className="relative">
-      {children}
-      <ChevronDown
-        className="pointer-events-none absolute top-1/2 right-3.5 h-4 w-4 -translate-y-1/2 text-muted"
-        aria-hidden="true"
-      />
     </div>
   );
 }
@@ -951,6 +952,13 @@ function toOptimisticCircleDetail(circle: CircleSummary): CircleDetail {
 }
 
 function cycleLabelFromSeconds(seconds: number) {
+  if (seconds > 0 && seconds < 60 * 60) return `${Math.round(seconds / 60)} min`;
+  if (seconds > 0 && seconds < 24 * 60 * 60) {
+    const hours = seconds / (60 * 60);
+    if (hours === 1) return "Hourly";
+    return Number.isInteger(hours) ? `${hours} hours` : `${Math.round(seconds / 60)} min`;
+  }
+
   const days = Math.round(seconds / (24 * 60 * 60));
   if (days === 7) return "Weekly";
   if (days === 30) return "Monthly";
