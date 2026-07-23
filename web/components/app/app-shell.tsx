@@ -5,6 +5,7 @@ import {
   Award,
   BadgeDollarSign,
   Check,
+  CircleHelp,
   Copy,
   ExternalLink,
   KeyRound,
@@ -42,6 +43,13 @@ const navIcons = {
   "Activity Log": ScrollText,
   Profile: Award,
 };
+
+const REPUTATION_TIERS = [
+  { discount: "0% discount", range: "0–999 points", tier: 0 },
+  { discount: "5% discount", range: "1,000–4,999 points", tier: 1 },
+  { discount: "10% discount", range: "5,000–9,999 points", tier: 2 },
+  { discount: "15% discount", range: "10,000+ points", tier: 3 },
+] as const;
 
 export function AppShell({
   children,
@@ -422,9 +430,29 @@ function SidebarReputation({
         <span className="font-mono text-[0.6rem] uppercase tracking-[0.08em] text-[#8d877f]">
           Your Reputation
         </span>
-        <span className="font-mono text-[0.7rem] text-accent">
-          {isConnected ? `Tier ${tier}` : "Wallet required"}
-        </span>
+        {isConnected ? (
+          <Tooltip
+            className="shrink-0"
+            content={<ReputationTierTooltip currentTier={tier} score={score} />}
+            contentClassName="w-[20rem] p-4 text-left"
+            label={`Tier ${tier} reputation benefits`}
+            side="top"
+          >
+            <button
+              type="button"
+              aria-label={`Tier ${tier}. View reputation tier benefits.`}
+              className="group -m-2 inline-flex items-center gap-1.5 rounded-md p-2 font-mono text-[0.7rem] text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              Tier {tier}
+              <CircleHelp
+                className="h-3 w-3 text-accent/60 transition-colors group-hover:text-accent"
+                aria-hidden="true"
+              />
+            </button>
+          </Tooltip>
+        ) : (
+          <span className="font-mono text-[0.7rem] text-accent">Wallet required</span>
+        )}
       </div>
       {isLoading ? (
         <div className="space-y-3" role="status">
@@ -475,6 +503,72 @@ function getTierProgress(score: number) {
   if (score >= 5_000) return { next: 10_000, percent: Math.round(((score - 5_000) / 5_000) * 100) };
   if (score >= 1_000) return { next: 5_000, percent: Math.round(((score - 1_000) / 4_000) * 100) };
   return { next: 1_000, percent: Math.round((score / 1_000) * 100) };
+}
+
+function ReputationTierTooltip({ currentTier, score }: { currentTier: number; score: number }) {
+  const nextTier = REPUTATION_TIERS.find((reputationTier) => reputationTier.tier > currentTier);
+
+  return (
+    <div className="font-sans text-foreground">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold tracking-tight text-foreground">Reputation tiers</p>
+          <p className="mt-1 text-xs leading-5 text-white/55">
+            Your score determines your planned collateral discount tier.
+          </p>
+        </div>
+        <span className="shrink-0 rounded-full bg-accent/10 px-2 py-1 text-[0.65rem] font-medium text-accent">
+          {score} pts
+        </span>
+      </div>
+
+      <ul className="mt-4 space-y-1.5" aria-label="Reputation tier benefits">
+        {REPUTATION_TIERS.map((reputationTier) => {
+          const isCurrent = reputationTier.tier === currentTier;
+
+          return (
+            <li
+              key={reputationTier.tier}
+              aria-current={isCurrent ? "true" : undefined}
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-xs",
+                isCurrent
+                  ? "border border-accent/25 bg-accent/10 text-foreground"
+                  : "text-white/50",
+              )}
+            >
+              <span className={cn("w-12 font-medium", isCurrent && "text-accent")}>
+                Tier {reputationTier.tier}
+              </span>
+              <span className="text-white/60">{reputationTier.range}</span>
+              <span className="ml-auto font-medium text-white/75">{reputationTier.discount}</span>
+            </li>
+          );
+        })}
+      </ul>
+
+      <div className="mt-4 rounded-lg border border-warning/20 bg-warning/8 px-3 py-2.5">
+        <p className="text-xs font-semibold text-warning">Planned benefit</p>
+        <p className="mt-1 text-xs leading-5 text-white/60">
+          These collateral discounts are not active on-chain yet. They do not currently reduce your
+          join collateral or scheduled contributions.
+        </p>
+      </div>
+
+      <div className="mt-4 border-t border-white/[0.08] pt-3">
+        <p className="text-xs leading-5 text-white/55">
+          Earn points through completed circles, hosting, and honored vouches.
+        </p>
+        {nextTier ? (
+          <p className="mt-2 text-xs font-medium text-accent/85">
+            Next unlock: Tier {nextTier.tier} at {nextTier.range.split("–")[0].trim()} points
+          </p>
+        ) : (
+          <p className="mt-2 text-xs font-medium text-accent/85">You’re at the highest tier.</p>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function WalletRequiredPanel() {

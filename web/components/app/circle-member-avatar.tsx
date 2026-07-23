@@ -38,14 +38,36 @@ export function CircleMemberAvatar({
     placement: "top",
     top: 0,
   });
+  const [, setHideTimeout] = useState<number | null>(null);
   const isYou = member.role.startsWith("You");
   const isDefault = member.state === "Default risk";
   const isOpen = member.role === "Open";
   const isPaid = member.state === "Paid";
 
-  const hide = useCallback(() => setOpen(false), []);
+  const cancelScheduledHide = useCallback(() => {
+    setHideTimeout((currentTimeout) => {
+      if (currentTimeout === null) return null;
+      window.clearTimeout(currentTimeout);
+      return null;
+    });
+  }, []);
+
+  const scheduleHide = useCallback(() => {
+    cancelScheduledHide();
+    const timeout = window.setTimeout(() => {
+      setHideTimeout(null);
+      setOpen(false);
+    }, 220);
+    setHideTimeout(timeout);
+  }, [cancelScheduledHide]);
+
+  const hide = useCallback(() => {
+    cancelScheduledHide();
+    setOpen(false);
+  }, [cancelScheduledHide]);
 
   const show = useCallback(() => {
+    cancelScheduledHide();
     const rect = triggerRef.current?.getBoundingClientRect();
     if (!rect) return;
 
@@ -65,7 +87,7 @@ export function CircleMemberAvatar({
       top: placement === "top" ? rect.top - gap : rect.bottom + gap,
     });
     setOpen(true);
-  }, []);
+  }, [cancelScheduledHide]);
 
   useEffect(() => {
     if (!open) return;
@@ -81,11 +103,12 @@ export function CircleMemberAvatar({
     window.addEventListener("scroll", hide, true);
 
     return () => {
+      cancelScheduledHide();
       document.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("resize", hide);
       window.removeEventListener("scroll", hide, true);
     };
-  }, [hide, open]);
+  }, [cancelScheduledHide, hide, open]);
 
   return (
     <div className="relative isolate">
@@ -100,7 +123,7 @@ export function CircleMemberAvatar({
         onFocus={show}
         onPointerCancel={hide}
         onPointerEnter={show}
-        onPointerLeave={hide}
+        onPointerLeave={scheduleHide}
       >
         <div className={avatarRingClassName({ isDefault, isOpen, isYou })}>
           {isDefault ? (
@@ -138,6 +161,8 @@ export function CircleMemberAvatar({
               id={id}
               member={member}
               minReputation={minReputation}
+              onPointerEnter={cancelScheduledHide}
+              onPointerLeave={scheduleHide}
               position={position}
             />,
             document.body,
@@ -152,12 +177,16 @@ function MemberSummaryCard({
   id,
   member,
   minReputation,
+  onPointerEnter,
+  onPointerLeave,
   position,
 }: {
   fallbackCollateral: string;
   id: string;
   member: CircleMemberAvatarData;
   minReputation: number;
+  onPointerEnter: () => void;
+  onPointerLeave: () => void;
   position: { left: number; placement: "bottom" | "top"; top: number };
 }) {
   const isOpen = member.role === "Open";
@@ -168,9 +197,11 @@ function MemberSummaryCard({
       id={id}
       role="tooltip"
       className={cn(
-        "pointer-events-none fixed z-[100] w-64 -translate-x-1/2 rounded-lg border border-white/10 bg-[#151719] p-4 text-left opacity-100 shadow-[0_18px_44px_rgba(0,0,0,0.45)]",
+        "pointer-events-auto fixed z-[100] w-64 -translate-x-1/2 select-text rounded-lg border border-white/10 bg-[#151719] p-4 text-left opacity-100 shadow-[0_18px_44px_rgba(0,0,0,0.45)]",
         isBelow ? "translate-y-0" : "-translate-y-full",
       )}
+      onPointerEnter={onPointerEnter}
+      onPointerLeave={onPointerLeave}
       style={{ left: position.left, top: position.top }}
     >
       <div className="mb-3 flex items-start justify-between gap-3">
