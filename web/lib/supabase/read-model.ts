@@ -229,6 +229,35 @@ export async function getProfileData(wallet: string | null): Promise<ProfileData
   };
 }
 
+export async function getCircleActivityLog(circleAddress: string): Promise<ActivityLogEntry[]> {
+  if (!circleAddress || !isSupabaseConfigured()) return [];
+
+  const supabase = createSupabaseServerClient();
+  const [{ data: events, error: eventsError }, { data: circle, error: circleError }] =
+    await Promise.all([
+      supabase
+        .from("dhukuti_event_log")
+        .select("*")
+        .eq("circle", circleAddress)
+        .order("slot", { ascending: false })
+        .limit(100),
+      supabase
+        .from("dhukuti_circles")
+        .select("circle, name")
+        .eq("circle", circleAddress)
+        .maybeSingle(),
+    ]);
+
+  if (eventsError) throw eventsError;
+  if (circleError) throw circleError;
+
+  const circleNames = new Map([[circleAddress, circle?.name ?? shortAddress(circleAddress)]]);
+
+  return ((events ?? []) as DhukutiEventLogRow[])
+    .filter((event) => event.event_name !== "CircleNamedEvent")
+    .map((event) => mapActivityLogEntry(event, circleNames));
+}
+
 export async function getActivityLog(wallet: string | null): Promise<ActivityLogEntry[]> {
   if (!wallet || !isSupabaseConfigured()) return [];
 

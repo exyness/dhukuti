@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useWalletIdentity } from "@/lib/use-wallet-identity";
 import {
   fetchActivity,
+  fetchCircleActivity,
   fetchCircleDetail,
   fetchCircles,
   fetchMarketListings,
@@ -16,6 +17,7 @@ type WalletQueryOptions = {
 
 export const queryKeys = {
   activity: (wallet: string | null | undefined) => ["activity", wallet ?? "guest"] as const,
+  circleActivity: (circleAddress: string) => ["circle-activity", circleAddress] as const,
   circle: (circleId: string) => ["circle", circleId] as const,
   circles: (wallet: string | null | undefined) => ["circles", wallet ?? "guest"] as const,
   market: ["market"] as const,
@@ -40,6 +42,15 @@ export function useCirclesQuery(wallet?: string | null, options: WalletQueryOpti
     enabled: options.enabled ?? true,
     queryFn: () => fetchCircles(wallet),
     queryKey: queryKeys.circles(wallet),
+    staleTime: 30_000,
+  });
+}
+
+export function useCircleActivityQuery(circleAddress: string, options: WalletQueryOptions = {}) {
+  return useQuery({
+    enabled: Boolean(circleAddress) && (options.enabled ?? true),
+    queryFn: () => fetchCircleActivity(circleAddress),
+    queryKey: queryKeys.circleActivity(circleAddress),
     staleTime: 30_000,
   });
 }

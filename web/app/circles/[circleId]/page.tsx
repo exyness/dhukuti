@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { AppShell, Panel } from "@/components/app/app-shell";
 import { CircleMemberAvatar } from "@/components/app/circle-member-avatar";
+import { CircleActivity } from "@/components/circles/circle-activity";
 import { TransactionReviewModal } from "@/components/circles/TransactionReviewModal";
 import { CircleActionDesk } from "@/components/program/circle-action-desk";
 import { Badge } from "@/components/ui/badge";
@@ -565,6 +566,8 @@ function CircleDetailsInner({ data }: { data: CircleDetail }) {
             </div>
           </div>
         </Panel>
+
+        <CircleActivity circleAddress={currentCircle.address} />
       </div>
     </AppShell>
   );

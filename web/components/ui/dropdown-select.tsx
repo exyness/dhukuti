@@ -10,6 +10,7 @@ type DropdownOption<T extends string> = {
 };
 
 type DropdownSelectProps<T extends string> = {
+  disabled?: boolean;
   label: string;
   onChange: (value: T) => void;
   options: DropdownOption<T>[];
@@ -17,6 +18,7 @@ type DropdownSelectProps<T extends string> = {
 };
 
 export function DropdownSelect<T extends string>({
+  disabled = false,
   label,
   onChange,
   options,
@@ -56,7 +58,8 @@ export function DropdownSelect<T extends string>({
         aria-controls={id}
         aria-expanded={open}
         aria-haspopup="listbox"
-        className="filter-control inline-flex items-center gap-2"
+        className="filter-control inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+        disabled={disabled}
         onClick={() => setOpen((current) => !current)}
       >
         <span className="sr-only">{label}</span>

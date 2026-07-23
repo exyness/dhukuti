@@ -45,6 +45,14 @@ export async function fetchActivity(wallet: string | null | undefined) {
   return response.activity;
 }
 
+export async function fetchCircleActivity(circleAddress: string) {
+  const searchParams = new URLSearchParams({ circle: circleAddress });
+  const response = await fetchJson<{ activity: ActivityLogEntry[] }>(
+    `/api/activity?${searchParams}`,
+  );
+  return response.activity;
+}
+
 async function fetchJson<T>(url: string) {
   const response = await fetch(url, {
     headers: {

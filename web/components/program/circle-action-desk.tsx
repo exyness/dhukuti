@@ -16,6 +16,7 @@ import { Panel } from "@/components/app/app-shell";
 import { TransactionReviewModal } from "@/components/circles/TransactionReviewModal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DropdownSelect } from "@/components/ui/dropdown-select";
 import { cn } from "@/lib/cn";
 import type { CircleDetail } from "@/lib/data/types";
 import {
@@ -72,6 +73,15 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
   )
     ? defaultCandidate
     : (unpaidMembers[0]?.member ?? "");
+  const defaultCandidateOptions = unpaidMembers.length
+    ? unpaidMembers.map((member) => ({ label: member.handle, value: member.member }))
+    : [{ label: "No missed contributors", value: "" }];
+  const vouchCandidateOptions = candidateOptions.length
+    ? candidateOptions.map((member) => ({
+        label: `${member.handle} · rep ${member.reputation}`,
+        value: member.member,
+      }))
+    : [{ label: "No eligible members", value: "" }];
 
   function requestReview(
     title: string,
@@ -522,25 +532,18 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
           </div>
         ) : myMembership?.active ? (
           <div className="space-y-2 px-1">
-            <label className="block">
+            <div>
               <span className="mb-1.5 block font-mono text-[0.52rem] uppercase tracking-[0.08em] text-muted">
                 Missed contributor
               </span>
-              <select
-                className="input-control font-mono text-[0.7rem]"
+              <DropdownSelect
+                disabled={!unpaidMembers.length}
+                label="Missed contributor"
+                onChange={setDefaultCandidate}
+                options={defaultCandidateOptions}
                 value={selectedDefaultCandidate}
-                onChange={(event) => setDefaultCandidate(event.target.value)}
-              >
-                {unpaidMembers.length === 0 ? (
-                  <option value="">No missed contributors</option>
-                ) : null}
-                {unpaidMembers.map((member) => (
-                  <option key={member.member} value={member.member}>
-                    {member.handle}
-                  </option>
-                ))}
-              </select>
-            </label>
+              />
+            </div>
             <Button
               type="button"
               variant="secondary"
@@ -655,22 +658,18 @@ export function CircleActionDesk({ detail }: { detail: CircleDetail }) {
         {myMembership?.active && circle.status !== "Completed" && !allRoundsResolved ? (
           <div className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem_auto] sm:items-end">
-              <label className="block">
+              <div>
                 <span className="mb-1.5 block font-mono text-[0.52rem] uppercase tracking-[0.08em] text-muted">
                   Member
                 </span>
-                <select
-                  className="input-control font-mono text-[0.7rem]"
+                <DropdownSelect
+                  disabled={!candidateOptions.length}
+                  label="Member"
+                  onChange={setVouchCandidate}
+                  options={vouchCandidateOptions}
                   value={selectedVouchCandidate}
-                  onChange={(event) => setVouchCandidate(event.target.value)}
-                >
-                  {candidateOptions.map((member) => (
-                    <option key={member.member} value={member.member}>
-                      {member.handle} · rep {member.reputation}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                />
+              </div>
               <label className="block">
                 <span className="mb-1.5 block font-mono text-[0.52rem] uppercase tracking-[0.08em] text-muted">
                   Stake (SOL)
