@@ -3,11 +3,12 @@
 import { useConnection } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { useQueryClient } from "@tanstack/react-query";
-import { Filter, ListPlus, ShieldAlert, ShieldCheck, ShoppingCart, X } from "lucide-react";
-import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { Check, Filter, ListPlus, ShieldAlert, ShieldCheck, ShoppingCart, X } from "lucide-react";
+import { type ReactNode, type SubmitEvent, useEffect, useMemo, useRef, useState } from "react";
 import { AppPageHeader, AppShell, Panel } from "@/components/app/app-shell";
 import { TransactionReviewModal } from "@/components/circles/TransactionReviewModal";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/cn";
 import { queryKeys, useMarketListingsQuery, useProfileQuery } from "@/lib/data/queries";
 import type { CircleSummary, MarketListing, ProfilePosition } from "@/lib/data/types";
 import {
@@ -22,6 +23,12 @@ import { useProgramTransaction } from "@/lib/use-program-transaction";
 import { useWalletIdentity } from "@/lib/use-wallet-identity";
 
 type MarketTab = "active" | "history" | "mine";
+type EligiblePosition = {
+  circle: CircleSummary;
+  position: ProfilePosition;
+  payoutRound: number;
+  remainingContributions: number;
+};
 
 const EMPTY_CIRCLES: CircleSummary[] = [];
 const EMPTY_LISTINGS: MarketListing[] = [];
@@ -35,29 +42,49 @@ export default function MarketPage() {
   const marketQuery = useMarketListingsQuery();
   const profileQuery = useProfileQuery(address);
   const [activeTab, setActiveTab] = useState<MarketTab>("active");
-  const [circleAddress, setCircleAddress] = useState("");
   const [listPrice, setListPrice] = useState("");
   const [listingFormOpen, setListingFormOpen] = useState(false);
   const [localError, setLocalError] = useState("");
+  const [selectedPositionMint, setSelectedPositionMint] = useState("");
   const processedMarketReview = useRef("");
   const marketListings = marketQuery.data ?? EMPTY_LISTINGS;
   const profileListings = profileQuery.data?.listings ?? EMPTY_LISTINGS;
   const activeCircles = profileQuery.data?.activeCircles ?? EMPTY_CIRCLES;
   const positions = profileQuery.data?.positions ?? EMPTY_POSITIONS;
-  const listablePositions = positions.filter(
-    (position) =>
-      position.active &&
-      !position.defaulted &&
-      activeCircles.some(
-        (circle) => circle.address === position.circle && circle.status === "Active",
-      ),
+  const activeListingMints = new Set(
+    profileListings
+      .filter((listing) => listing.active && !listing.cancelled && !listing.sold)
+      .map((listing) => listing.positionNftMint),
   );
+  const eligiblePositions: EligiblePosition[] = positions.flatMap((position) => {
+    const circle = activeCircles.find(
+      (candidate) => candidate.address === position.circle && candidate.status === "Active",
+    );
 
-  const selectedCircleAddress = listablePositions.some(
-    (position) => position.circle === circleAddress,
-  )
-    ? circleAddress
-    : (listablePositions[0]?.circle ?? "");
+    if (
+      !position.active ||
+      position.defaulted ||
+      !circle ||
+      activeListingMints.has(position.positionNftMint)
+    ) {
+      return [];
+    }
+
+    return [
+      {
+        circle,
+        position,
+        payoutRound: position.joinOrder + 1,
+        remainingContributions: Math.max(circle.memberCap - circle.currentRoundIndex, 0),
+      },
+    ];
+  });
+  const selectedPosition =
+    eligiblePositions.find(
+      (candidate) => candidate.position.positionNftMint === selectedPositionMint,
+    ) ??
+    eligiblePositions[0] ??
+    null;
 
   const visibleListings = useMemo(() => {
     if (activeTab === "active") return marketListings;
@@ -79,6 +106,7 @@ export default function MarketPage() {
       if (review.title === "List position") {
         setListingFormOpen(false);
         setListPrice("");
+        setSelectedPositionMint("");
         setActiveTab("mine");
       } else if (review.title === "Cancel listing") {
         setActiveTab("history");
@@ -114,28 +142,30 @@ export default function MarketPage() {
     void transaction.preview({ bundle, description, details, title }).catch(() => undefined);
   }
 
-  async function reviewListing(event: React.FormEvent<HTMLFormElement>) {
+  async function reviewListing(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!address || !selectedCircleAddress) {
-      setLocalError(
-        "Connect a wallet and choose one of your active circles before listing a position.",
-      );
+    if (!address) {
+      setLocalError("Connect a wallet before listing a payout position.");
+      return;
+    }
+    if (!selectedPosition) {
+      setLocalError("Choose one of your eligible payout positions before listing.");
       return;
     }
 
     try {
       const askPrice = solToLamports(listPrice);
       if (askPrice <= 0n) throw new Error("Enter a listing price greater than zero.");
-      const circle = new PublicKey(selectedCircleAddress);
+
+      const {
+        circle: selectedCircle,
+        position,
+        payoutRound,
+        remainingContributions,
+      } = selectedPosition;
+      const circle = new PublicKey(selectedCircle.address);
       const seller = new PublicKey(address);
-      const selectedCircle = activeCircles.find((item) => item.address === selectedCircleAddress);
-      const selectedPosition = listablePositions.find(
-        (position) => position.circle === selectedCircleAddress,
-      );
-      if (!selectedPosition) {
-        throw new Error("No active payout position is available for this circle.");
-      }
-      const positionMint = new PublicKey(selectedPosition.positionNftMint);
+      const positionMint = new PublicKey(position.positionNftMint);
       const sellerPositionTokenAccount = await findPositionTokenAccount(
         connection,
         seller,
@@ -151,9 +181,17 @@ export default function MarketPage() {
 
       requestReview(
         "List position",
-        "Move your payout-position NFT into program escrow and set a SOL asking price.",
+        "Move this payout-position NFT into program escrow. A buyer receives its payout right and remaining contribution obligations.",
         [
-          { label: "Circle", value: selectedCircle?.name ?? "Selected circle" },
+          { label: "Circle", value: selectedCircle.name },
+          { label: "Payout position", value: `Round ${payoutRound}` },
+          {
+            label: "Remaining contributions",
+            value: formatContributionObligation(
+              remainingContributions,
+              selectedCircle.contribution,
+            ),
+          },
           { label: "Asking price", value: `${listPrice} SOL` },
           { label: "Settlement", value: "Native SOL" },
         ],
@@ -241,7 +279,7 @@ export default function MarketPage() {
               ) : (
                 <ListPlus className="h-3.5 w-3.5" aria-hidden="true" />
               )}
-              {listingFormOpen ? "Close listing form" : "List position"}
+              {listingFormOpen ? "Close listing" : "List position"}
             </Button>
           }
         />
@@ -260,14 +298,15 @@ export default function MarketPage() {
 
         {listingFormOpen ? (
           <ListingForm
-            circles={activeCircles}
             onClose={() => setListingFormOpen(false)}
             onSubmit={reviewListing}
             price={listPrice}
-            positions={listablePositions}
-            selectedCircle={selectedCircleAddress}
+            positions={eligiblePositions}
+            selectedPosition={selectedPosition}
+            selectedPositionMint={selectedPositionMint}
             setPrice={setListPrice}
-            setSelectedCircle={setCircleAddress}
+            setSelectedPositionMint={setSelectedPositionMint}
+            walletConnected={Boolean(address)}
           />
         ) : null}
 
@@ -326,7 +365,7 @@ export default function MarketPage() {
                 <table className="w-full min-w-[820px] border-separate border-spacing-0 text-left">
                   <thead>
                     <tr>
-                      <TableHead>Circle / Round</TableHead>
+                      <TableHead>Circle / Position</TableHead>
                       <TableHead>Value</TableHead>
                       <TableHead>Discount</TableHead>
                       <TableHead>Seller Rep</TableHead>
@@ -356,79 +395,260 @@ export default function MarketPage() {
 }
 
 function ListingForm({
-  circles,
   onClose,
   onSubmit,
   price,
   positions,
-  selectedCircle,
+  selectedPosition,
+  selectedPositionMint,
   setPrice,
-  setSelectedCircle,
+  setSelectedPositionMint,
+  walletConnected,
 }: {
-  circles: CircleSummary[];
   onClose: () => void;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onSubmit: (event: SubmitEvent<HTMLFormElement>) => void;
   price: string;
-  positions: { circle: string; joinOrder: number }[];
-  selectedCircle: string;
+  positions: EligiblePosition[];
+  selectedPosition: EligiblePosition | null;
+  selectedPositionMint: string;
   setPrice: (value: string) => void;
-  setSelectedCircle: (value: string) => void;
+  setSelectedPositionMint: (value: string) => void;
+  walletConnected: boolean;
 }) {
   return (
-    <Panel className="p-6">
-      <form
-        onSubmit={onSubmit}
-        className="grid gap-5 md:grid-cols-[minmax(0,1fr)_12rem_auto] md:items-end"
-      >
-        <label className="block">
-          <span className="mb-2 block font-mono text-[0.6rem] uppercase tracking-[0.08em] text-muted">
-            Payout position
-          </span>
-          <select
-            className="input-control font-mono text-[0.75rem]"
-            value={selectedCircle}
-            disabled={positions.length === 0}
-            onChange={(event) => setSelectedCircle(event.target.value)}
-          >
-            {positions.length === 0 ? <option value="">No active positions</option> : null}
-            {positions.map((position) => {
-              const circle = circles.find((item) => item.address === position.circle);
-              return (
-                <option key={position.circle} value={position.circle}>
-                  {circle?.name ?? position.circle.slice(0, 8)} · Round {position.joinOrder + 1}
-                </option>
-              );
-            })}
-          </select>
-        </label>
-        <label className="block">
-          <span className="mb-2 block font-mono text-[0.6rem] uppercase tracking-[0.08em] text-muted">
-            Asking price (SOL)
-          </span>
+    <Panel className="p-5 sm:p-6">
+      <form onSubmit={onSubmit}>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <span className="font-mono text-[0.62rem] uppercase tracking-[0.1em] text-accent">
+              Create a listing
+            </span>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight">Choose a payout position</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+              You are listing a specific payout right, not the whole circle. The buyer receives the
+              position NFT and its remaining contribution obligations.
+            </p>
+          </div>
+          <Button type="button" variant="secondary" size="sm" onClick={onClose}>
+            <X className="h-3.5 w-3.5" aria-hidden="true" />
+            Close
+          </Button>
+        </div>
+
+        {!walletConnected ? (
+          <ListingState
+            copy="Connect your wallet to load the active payout positions available to list."
+            title="Connect a wallet to list a position"
+          />
+        ) : positions.length === 0 ? (
+          <ListingState
+            copy="Eligible positions must be active, non-defaulted, and not already listed. Join or complete a circle action to see a transferable payout position here."
+            title="No eligible payout positions"
+          />
+        ) : (
+          <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(18rem,0.7fr)]">
+            <fieldset>
+              <legend className="mb-3 font-mono text-[0.62rem] uppercase tracking-[0.1em] text-muted">
+                Your eligible positions ({positions.length})
+              </legend>
+              <div className="grid gap-3" role="radiogroup" aria-label="Eligible payout positions">
+                {positions.map((candidate) => (
+                  <PositionSelectionCard
+                    key={candidate.position.positionNftMint}
+                    position={candidate}
+                    selected={
+                      candidate.position.positionNftMint ===
+                      (selectedPositionMint || selectedPosition?.position.positionNftMint)
+                    }
+                    onSelect={() => setSelectedPositionMint(candidate.position.positionNftMint)}
+                  />
+                ))}
+              </div>
+            </fieldset>
+
+            {selectedPosition ? (
+              <ListingSummary
+                position={selectedPosition}
+                price={price}
+                setPrice={setPrice}
+                onClose={onClose}
+              />
+            ) : null}
+          </div>
+        )}
+      </form>
+    </Panel>
+  );
+}
+
+function PositionSelectionCard({
+  onSelect,
+  position,
+  selected,
+}: {
+  onSelect: () => void;
+  position: EligiblePosition;
+  selected: boolean;
+}) {
+  const { circle, payoutRound, remainingContributions } = position;
+
+  return (
+    <label
+      className={cn(
+        "block w-full cursor-pointer rounded-lg border p-4 text-left transition-[border-color,background,transform] duration-150 ease-out focus-within:ring-2 focus-within:ring-ring",
+        selected
+          ? "border-accent/60 bg-accent/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+          : "border-border bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04] active:scale-[0.995]",
+      )}
+    >
+      <input
+        className="sr-only"
+        type="radio"
+        name="listing-position"
+        value={position.position.positionNftMint}
+        checked={selected}
+        onChange={onSelect}
+      />
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="truncate text-[0.95rem] font-semibold text-foreground">{circle.name}</p>
+          <p className="mt-1 font-mono text-[0.65rem] uppercase tracking-wide text-muted">
+            Your payout · Round {payoutRound}
+          </p>
+        </div>
+        <span
+          className={cn(
+            "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
+            selected ? "border-accent bg-accent text-background" : "border-white/20 bg-transparent",
+          )}
+          aria-hidden="true"
+        >
+          {selected ? <Check className="h-3 w-3" strokeWidth={3} /> : null}
+        </span>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-4 sm:grid-cols-4">
+        <PositionMetric label="Current round" value={circle.round} />
+        <PositionMetric label="Contribution" value={circle.contribution} />
+        <PositionMetric label="Current pot" value={circle.pot} />
+        <PositionMetric label="Mode" value={circle.mode} />
+      </div>
+      <p className="mt-4 text-[0.75rem] leading-5 text-muted">
+        Buyer takes on {formatContributionObligation(remainingContributions, circle.contribution)}.
+      </p>
+    </label>
+  );
+}
+
+function ListingSummary({
+  onClose,
+  position,
+  price,
+  setPrice,
+}: {
+  onClose: () => void;
+  position: EligiblePosition;
+  price: string;
+  setPrice: (value: string) => void;
+}) {
+  const { circle, payoutRound, remainingContributions } = position;
+
+  return (
+    <div className="rounded-lg border border-accent/25 bg-accent/[0.06] p-5">
+      <span className="font-mono text-[0.62rem] uppercase tracking-[0.1em] text-accent">
+        Selected position
+      </span>
+      <h3 className="mt-2 text-lg font-semibold">{circle.name}</h3>
+      <p className="mt-1 font-mono text-[0.7rem] text-muted">Your payout · Round {payoutRound}</p>
+
+      <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-5 border-y border-accent/15 py-5">
+        <SummaryMetric label="Current round" value={circle.round} />
+        <SummaryMetric label="Payout context" value={circle.pot} />
+        <SummaryMetric label="Contribution" value={circle.contribution} />
+        <SummaryMetric label="Next deadline" value={circle.deadline} />
+      </dl>
+
+      <div className="mt-5 rounded-md border border-accent/20 bg-background/35 p-3">
+        <p className="font-mono text-[0.6rem] uppercase tracking-[0.08em] text-muted">
+          Buyer assumes
+        </p>
+        <p className="mt-1 text-sm leading-6 text-foreground">
+          {formatContributionObligation(remainingContributions, circle.contribution)}
+        </p>
+      </div>
+
+      <label className="mt-5 block" htmlFor="listing-price">
+        <span className="mb-2 block font-mono text-[0.62rem] uppercase tracking-[0.08em] text-muted">
+          Asking price (SOL)
+        </span>
+        <div className="relative">
           <input
-            className="input-control font-mono tabular-nums"
+            id="listing-price"
+            name="askPrice"
+            autoComplete="off"
+            spellCheck={false}
+            className="input-control pr-14 font-mono tabular-nums"
             type="text"
             inputMode="decimal"
             value={price}
-            placeholder="0.00"
+            placeholder="e.g. 4.50…"
             onChange={(event) => setPrice(event.target.value)}
           />
-        </label>
-        <div className="flex gap-2">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" variant="primary" disabled={!selectedCircle || !price}>
-            Review listing
-          </Button>
+          <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center font-mono text-[0.7rem] text-muted">
+            SOL
+          </span>
         </div>
-      </form>
-      <p className="mt-4 text-sm leading-6 text-muted">
-        Listing moves your 1-of-1 payout NFT into program escrow. The buyer receives the position
-        and remaining obligations when the sale confirms.
+      </label>
+
+      <p className="mt-3 text-[0.75rem] leading-5 text-muted">
+        Your position NFT moves to program escrow when the listing is confirmed. It returns to your
+        wallet if you cancel before a sale.
       </p>
-    </Panel>
+
+      <div className="mt-5 flex flex-wrap gap-2">
+        <Button type="button" variant="secondary" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button type="submit" variant="primary" disabled={!price}>
+          Review listing
+        </Button>
+      </div>
+    </div>
   );
+}
+
+function ListingState({ copy, title }: { copy: string; title: string }) {
+  return (
+    <div className="mt-7 rounded-lg border border-border bg-white/[0.02] p-6">
+      <h3 className="text-[0.95rem] font-medium">{title}</h3>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">{copy}</p>
+    </div>
+  );
+}
+
+function PositionMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <span className="block font-mono text-[0.55rem] uppercase tracking-wide text-muted">
+        {label}
+      </span>
+      <span className="mt-1 block truncate font-mono text-[0.72rem] text-foreground">{value}</span>
+    </div>
+  );
+}
+
+function SummaryMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="font-mono text-[0.55rem] uppercase tracking-wide text-muted">{label}</dt>
+      <dd className="mt-1 font-mono text-[0.75rem] text-foreground">{value}</dd>
+    </div>
+  );
+}
+
+function formatContributionObligation(count: number, contribution: string) {
+  const rounds = count === 1 ? "contribution" : "contributions";
+  return `${count} scheduled ${rounds} of ${contribution}`;
 }
 
 function isMarketTransactionTitle(title: string) {
@@ -454,7 +674,7 @@ function MarketRow({
       <td className="border-b border-border px-4 py-5">
         <div>
           <p className="text-[0.88rem] font-medium">{listing.circle}</p>
-          <p className="mt-1 font-mono text-[0.62rem] text-muted">{listing.round}</p>
+          <p className="mt-1 font-mono text-[0.62rem] text-muted">Payout {listing.round}</p>
         </div>
       </td>
       <td className="border-b border-border px-4 py-5 font-mono text-[0.88rem] tabular-nums">
