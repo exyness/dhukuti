@@ -17,7 +17,7 @@ export function LandingSidebar({ collapsed, onToggle }: LandingSidebarProps) {
       <aside
         id="sidebar"
         className={cn(
-          "fixed left-0 top-0 z-50 flex h-screen w-[420px] shrink-0 flex-col justify-between overflow-hidden border-r border-white/[0.05] bg-[#151719] p-10 text-white transition-transform duration-[400ms] ease-in-out",
+          "fixed left-0 top-0 z-50 hidden h-screen w-[420px] shrink-0 flex-col justify-between overflow-hidden border-r border-white/[0.05] bg-[#151719] p-10 text-white transition-transform duration-[400ms] ease-in-out lg:flex",
           collapsed && "-translate-x-full",
         )}
       >
@@ -46,7 +46,7 @@ export function LandingSidebar({ collapsed, onToggle }: LandingSidebarProps) {
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         title="Toggle Sidebar"
         className={cn(
-          "fixed bottom-5 z-[60] flex h-10 w-10 items-center justify-center rounded-md border border-white/10 bg-white/[0.08] backdrop-blur-xl transition-[left,background] duration-[400ms] ease-in-out hover:bg-white/[0.12] cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(255,210,196,0.85)]",
+          "fixed bottom-5 z-[60] hidden h-10 w-10 items-center justify-center rounded-md border border-white/10 bg-white/[0.08] backdrop-blur-xl transition-[left,background] duration-[400ms] ease-in-out hover:bg-white/[0.12] cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(255,210,196,0.85)] lg:flex",
           collapsed ? "left-5" : "left-[360px]",
         )}
         onClick={onToggle}

@@ -247,22 +247,25 @@ export function SidebarWalletFlow() {
           view !== "intro" && "hidden",
         )}
       >
-        <h1 className="font-geist mb-6 text-[2.5rem] font-bold leading-[1.1] tracking-tight">
-          Community savings, built for the on-chain era.
+        <span className="mb-4 block font-mono text-[0.68rem] uppercase tracking-[0.16em] text-[var(--accent)]">
+          Community savings on Solana
+        </span>
+        <h1 className="font-geist mb-6 text-[2.5rem] font-bold leading-[1.1] tracking-tight [text-wrap:balance]">
+          Save together. Get your turn.
         </h1>
         <p className="font-geist mb-10 max-w-sm text-lg font-light leading-relaxed text-white/60">
-          The ancient ROSCA model, reimagined on Solana. Secure, transparent, and globally
-          accessible rotating capital.
+          Start a trusted savings circle with people you know. Each member contributes on a
+          schedule, and every member receives the collective pot once.
         </p>
 
-        <div className="flex w-full items-center gap-4">
+        <div className="flex w-full flex-wrap items-center gap-4">
           <div className="relative inline-flex">
             <Button
               ref={connectButtonRef}
               variant="primary"
               size="md"
               className={cn(
-                "min-w-[156px] focus-visible:ring-[rgba(255,210,196,0.92)] focus-visible:ring-offset-[3px] focus-visible:ring-offset-[#0a0a0a]",
+                "min-w-[156px] active:scale-[0.97] focus-visible:ring-[rgba(255,210,196,0.92)] focus-visible:ring-offset-[3px] focus-visible:ring-offset-[#0a0a0a]",
                 hasConnectedSignal && "normal-case tracking-[0.04em]",
               )}
               aria-controls={isConnected ? "walletAccountMenu" : "sidebarWalletView"}
@@ -289,7 +292,7 @@ export function SidebarWalletFlow() {
                 {hasConnectedSignal
                   ? shortAddress
                   : connecting || walletState === "connecting"
-                    ? "Connecting..."
+                    ? "Connecting…"
                     : "Connect Wallet"}
               </span>
               {!hasConnectedSignal ? (
@@ -341,10 +344,10 @@ export function SidebarWalletFlow() {
           </div>
 
           <Link
-            href="/whitepaper"
-            className="cursor-pointer border-b border-white/20 bg-transparent pb-0.5 font-mono text-[0.7rem] font-medium uppercase tracking-wide text-white transition-colors duration-100 ease-out hover:border-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(255,210,196,0.85)]"
+            href="/circles"
+            className="cursor-pointer border-b border-white/20 bg-transparent pb-0.5 font-mono text-[0.7rem] font-medium uppercase tracking-wide text-white transition-[border-color,color,transform] duration-150 ease-out hover:border-white/60 hover:text-white active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(255,210,196,0.85)]"
           >
-            Read Whitepaper
+            Explore Circles
           </Link>
         </div>
       </div>
