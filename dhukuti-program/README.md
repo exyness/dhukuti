@@ -1,53 +1,88 @@
 # Dhukuti Program
 
-Anchor/Rust Solana program for a Dhukuti savings circle: members join with collateral, contribute each round, receive payouts, and carry protocol reputation across circles.
+The `dhukuti-program/` directory contains the Anchor/Rust Solana program for Dhukuti, an on-chain rotating savings circle. The program owns circle funds, membership, payout rounds, default handling, social collateral, portable reputation, and escrowed position transfers.
 
-## Program Scope
+The current target is **Solana devnet**. Native SOL is the only settlement asset implemented, and this code must not be used with production funds.
 
-- Settlement asset: native SOL only in V1. `denom_mint` must be the system program sentinel.
-- Member cap: 2 to 64 members, enforced so contribution and vote bitmaps fit in `u64`.
-- Payout curves: fixed order and early payout discount auction. VRF lottery is reserved and intentionally unsupported until an oracle integration is added.
-- Position transfers: each membership receives a 1-of-1 SPL position NFT; active obligations can be sold through escrowed listings.
-- Default handling: missed contributions require a default proposal after the round deadline, then either majority approval from active non-defaulting members or a 24 hour grace expiry.
-- Social trust: active members can stake vouches behind another member; vouches release after clean completion or slash into insurance after the vouched member defaults.
-- Reputation: member completion/default, host completion, and vouch outcomes are recorded in wallet-scoped reputation PDAs.
+## Protocol scope
 
-## Instruction Surface
+- Circle sizes are bounded to 2–64 members so contribution and governance bitmaps fit in `u64`.
+- Members lock collateral and receive a 1-of-1 SPL position NFT representing their payout position.
+- Payout modes include fixed order and Dutch-bid early settlement.
+- VRF lottery is reserved for a future oracle integration and is not supported by the current program.
+- Missed contributions can enter member-governed default handling after the round deadline.
+- Default handling can use active-member approval or a grace-period expiry, then slashes collateral and uses the insurance pool as configured.
+- Social vouches lock SOL behind another member and are either released after clean completion or slashed after default.
+- Reputation is wallet-scoped and records completion, default, hosting, and vouch outcomes.
+- Position NFTs can be listed, cancelled, and purchased through escrowed secondary-market instructions.
 
-- `create_circle(params)`: creates circle, SOL vault, and insurance pool PDAs.
-- `join_circle()`: joins an open circle, locks collateral, and mints the position NFT.
-- `start_circle()`: creator starts the circle and opens round 0.
-- `contribute()`: transfers the round contribution, routes insurance fee, and marks the member bit.
-- `open_default_proposal()`: opens a default proposal after a missed deadline.
-- `vote_default(approve)`: active non-defaulting members approve or reject a default proposal.
-- `handle_default()`: slashes collateral and covers the missed contribution after approval or grace expiry.
-- `resolve_round(next_round_index)`: pays the recipient and opens the next round.
-- `complete_circle()`: returns active member collateral and closes the lifecycle.
-- `update_reputation(event)`: claims member completion/default reputation.
-- `claim_host_reputation()`: claims non-replayable host reputation after completion.
-- `vouch_member(stake_lamports)`: locks social stake behind an active member.
-- `release_vouch()`: returns social stake after the vouched member completes cleanly.
-- `slash_vouch()`: moves social stake to insurance after the vouched member defaults.
-- `list_position(ask_price)`, `cancel_listing()`, `buy_position()`: escrowed secondary market for position NFTs.
-- `place_dutch_bid()`: accepts the active round's early payout discount.
+## Instruction surface
 
-## PDA Seeds
+The public Anchor instruction entrypoints are:
 
-- `circle`: `[b"circle", creator, circle_id]`
-- `vault`: `[b"vault", circle]`
-- `insurance`: `[b"insurance", circle]`
-- `membership`: `[b"membership", circle, member]`
-- `round`: `[b"round", circle, round_index]`
-- `reputation`: `[b"reputation", wallet]`
-- `position_nft`: `[b"position_nft", circle, member]`
-- `listing`: `[b"listing", circle, membership]`
-- `listing_escrow`: `[b"listing_escrow", listing]`
-- `vouch`: `[b"vouch", circle, voucher, candidate]`
-- `default_proposal`: `[b"default_proposal", circle, round, defaulting_member]`
+| Instruction | Purpose |
+| --- | --- |
+| `create_circle(params)` | Create a circle, SOL vault, and insurance pool. |
+| `join_circle()` | Join an open circle, lock collateral, and mint the position NFT. |
+| `start_circle()` | Lock admissions and open the first round. |
+| `contribute()` | Transfer the round contribution, route insurance, and mark the member as funded. |
+| `place_dutch_bid()` | Accept the current early-payout discount. |
+| `resolve_round(next_round_index)` | Pay the selected recipient and open the next round. |
+| `open_default_proposal()` | Propose a missed contributor for default review. |
+| `vote_default(approve)` | Approve or reject a default proposal. |
+| `handle_default()` | Apply the approved or expired default outcome. |
+| `complete_circle()` | Close the lifecycle and return eligible collateral. |
+| `update_reputation(event)` | Claim member completion/default reputation for a completed circle. |
+| `claim_host_reputation()` | Claim non-replayable host reputation after completion. |
+| `vouch_member(stake_lamports)` | Lock social collateral behind an active member. |
+| `release_vouch()` | Return a vouch after clean completion. |
+| `slash_vouch()` | Move a vouch stake to insurance after default. |
+| `list_position(ask_price)` | Place a payout position into escrowed sale. |
+| `cancel_listing()` | Cancel an active position listing. |
+| `buy_position()` | Purchase an escrowed payout position. |
 
-## Verification
+## Accounts and PDA seeds
 
-Run from `dhukuti-program/`:
+The principal program-derived addresses are:
+
+| Account | Seeds |
+| --- | --- |
+| Circle | `[b"circle", creator, circle_id]` |
+| Vault | `[b"vault", circle]` |
+| Insurance pool | `[b"insurance", circle]` |
+| Membership | `[b"membership", circle, member]` |
+| Round | `[b"round", circle, round_index]` |
+| Reputation | `[b"reputation", wallet]` |
+| Position NFT mint | `[b"position_nft", circle, member]` |
+| Listing | `[b"listing", circle, membership]` |
+| Listing escrow | `[b"listing_escrow", listing]` |
+| Vouch | `[b"vouch", circle, voucher, candidate]` |
+| Default proposal | `[b"default_proposal", circle, round, defaulting_member]` |
+
+Account validation, arithmetic, lifecycle transitions, and custom errors live under `programs/dhukuti-program/src/`.
+
+## Events and indexing
+
+The program emits Anchor events for user-visible transitions, including circle creation/naming/start/completion, membership, contributions, round resolution, Dutch bids, default proposals/votes/handling, reputation updates, vouch creation/release/slash, and position listings/cancellation/purchase.
+
+The web indexer decodes those events, stores every decoded event in `dhukuti_event_log`, and projects current state into normalized Supabase read models. Event payloads retain the circle and wallet metadata used by global activity and circle-scoped activity views.
+
+## Local development
+
+Prerequisites:
+
+- Rust toolchain `1.89.0` with `rustfmt` and `clippy` components; see `rust-toolchain.toml`.
+- Anchor CLI.
+- Solana CLI and a configured localnet/devnet wallet.
+- Node/Bun only if you use the TypeScript deployment helpers.
+
+The checked-in `Anchor.toml` uses localnet as its default provider and keeps the Dhukuti program ID consistent across localnet and devnet:
+
+```text
+FrVMUmF1maCCiCZaVAkGn9mT69kQ5Hbgd9sUvzfmsgvs
+```
+
+Build and test from `dhukuti-program/`:
 
 ```bash
 NO_DNA=1 cargo fmt --all
@@ -56,28 +91,37 @@ NO_DNA=1 cargo test -- --nocapture
 NO_DNA=1 cargo clippy --all-targets -- -D warnings
 ```
 
-Current local coverage includes LiteSVM tests for lifecycle, duplicate contributions, full-circle joins, default insurance, default grace/votes, cured defaults, reputation gates, host reputation, vouch release/slash, secondary market transfers, and early payout discount settlement.
+The integration suite uses LiteSVM and covers lifecycle transitions, duplicate contributions, full-circle joins, default insurance and grace/voting paths, cured defaults, reputation gates and claims, vouch release/slash, secondary-market transfers, and Dutch-bid settlement.
 
-## Devnet Deployment
+## Devnet deployment
 
 - Cluster: Solana devnet
 - Program ID: `FrVMUmF1maCCiCZaVAkGn9mT69kQ5Hbgd9sUvzfmsgvs`
-- ProgramData: `vyW7FuSSXARQXAhuLEohpfas8rzVWJAjxwM9tz816hM`
-- Upgrade authority: `6rqcaPUEdcyAp8u3bw8xeMKtSRYB7jxXt1xb51YWbYmP`
-- Deploy signature: `2jeydVCQo2p9vZktrf7xsYzDoKgujixvikEWghXx6fMJjjzbPNaL8szVG6uFEvqpfmxHGJ7EP2iq86KcSsPfr2YW`
-- Last deployed slot: `475409129`
-- ProgramData allocation: `796064` bytes
-- Deployed artifact SHA-256: `e277e3c3d78554fbfe08a95958256486c91e127de038ed77147298a801b49da6`
+- Recorded deployment slot: `475643502`
+- Recorded deployment transaction: [`4NnrJ5ZCseUM3ZaEPmWaTfeAb3Go8yjUJEFTsyhQrbs9EYpxfwMuyRZVToWGorZcoEn7N94gyhCZNhKePUi5rnBg`](https://explorer.solana.com/tx/4NnrJ5ZCseUM3ZaEPmWaTfeAb3Go8yjUJEFTsyhQrbs9EYpxfwMuyRZVToWGorZcoEn7N94gyhCZNhKePUi5rnBg?cluster=devnet)
 
-## Supabase Indexing
+To deploy a newly built artifact, review the provider and wallet configuration first, then run the deployment explicitly against devnet:
 
-The program emits Anchor events for all user-facing transitions. Apply `../supabase/migrations/20260710000000_dhukuti_events.sql` to create the event log and read-model tables, then run a trusted server-side indexer that decodes program logs and writes with the Supabase secret key.
+```bash
+cd dhukuti-program
+NO_DNA=1 anchor build
+NO_DNA=1 anchor deploy --provider.cluster devnet
+```
 
-## Mainnet Gate
+Do not deploy to a value-bearing cluster without an independent review and an explicit release process.
 
-This codebase is mainnet-candidate only after these are complete:
+## Mainnet gate
 
-- Run a Trident or equivalent fuzz suite against contribution/default/listing/auction/vouch state transitions.
-- Perform a devnet deployment and soak test with the frontend/client using wallet simulation before any mainnet transaction.
-- Get at least one independent Solana program review before value-bearing mainnet use.
-- Keep native SOL-only settlement unless SPL-token support is implemented with mint, token account, decimals, and Token-2022 tests.
+Before any mainnet use, the project still needs:
+
+- Independent Solana program security review.
+- Fuzzing and soak testing of contribution, default, auction, vouch, listing, and payout transitions.
+- A controlled devnet deployment and frontend/client integration test using real wallet simulation.
+- Verified migration/indexer recovery procedures and monitoring.
+- SPL-token settlement support and tests if non-SOL assets are required.
+
+## Related documentation
+
+- [`../README.md`](../README.md) — repository setup and system overview.
+- [`../web/README.md`](../web/README.md) — frontend, API, wallet, and indexer operations.
+- [`../supabase/README.md`](../supabase/README.md) — event-log schema, migrations, RLS, and local database commands.
