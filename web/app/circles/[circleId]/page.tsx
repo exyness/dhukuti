@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, Clock3 } from "lucide-react";
+import { AlertCircle, Clock3, ShieldAlert } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { AppShell, Panel } from "@/components/app/app-shell";
@@ -73,7 +73,9 @@ function CircleDetailsInner({ data }: { data: CircleDetail }) {
   const processedClaimReview = useRef("");
   const processedCompleteReview = useRef("");
   const processedResolveReview = useRef("");
-  const { localError, primaryAction, transaction } = useCirclePrimaryAction(data, { justResolved });
+  const { localError, primaryAction, reputationGate, transaction } = useCirclePrimaryAction(data, {
+    justResolved,
+  });
 
   useEffect(() => {
     const review = transaction.review;
@@ -337,7 +339,26 @@ function CircleDetailsInner({ data }: { data: CircleDetail }) {
                 </div>
               )}
             </div>
-            {primaryAction ? (
+            {reputationGate?.status === "blocked" ? (
+              <div
+                className="flex w-full items-start gap-3 rounded-md border border-warning/25 bg-warning/8 px-4 py-3 text-left"
+                role="status"
+              >
+                <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+                <div className="min-w-0">
+                  <p className="font-mono text-[0.7rem] font-medium uppercase tracking-widest text-warning">
+                    Reputation required
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-muted">
+                    Your reputation is {reputationGate.current}. This circle requires at least{" "}
+                    {reputationGate.required}.
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-muted">
+                    Complete a circle without defaulting to build your reputation.
+                  </p>
+                </div>
+              </div>
+            ) : primaryAction ? (
               <Button
                 type="button"
                 variant="primary"

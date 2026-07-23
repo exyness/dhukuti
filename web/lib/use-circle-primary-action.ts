@@ -3,6 +3,7 @@
 import { useConnection } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { useEffect, useMemo, useState } from "react";
+import { useProfileQuery } from "@/lib/data/queries";
 import type { CircleDetail } from "@/lib/data/types";
 import {
   buildClaimHostReputationInstruction,
@@ -30,6 +31,12 @@ export type PrimaryAction = {
   disabled?: boolean;
 };
 
+export type ReputationGate = {
+  current: number;
+  required: number;
+  status: "blocked" | "checking";
+};
+
 type ReputationClaimState = {
   hostReputationClaimed: boolean;
   isLoading: boolean;
@@ -48,6 +55,7 @@ export function useCirclePrimaryAction(detail: CircleDetail, options?: { justRes
   const { connection } = useConnection();
   const { address } = useWalletIdentity();
   const transaction = useProgramTransaction();
+  const profileQuery = useProfileQuery(address);
   const [localError, setLocalError] = useState("");
   const [reputationClaimState, setReputationClaimState] = useState<ReputationClaimState>(
     EMPTY_REPUTATION_CLAIM_STATE,
@@ -56,6 +64,19 @@ export function useCirclePrimaryAction(detail: CircleDetail, options?: { justRes
   const wallet = address ?? "";
   const walletKey = useMemo(() => (wallet ? new PublicKey(wallet) : null), [wallet]);
   const myMembership = members.find((member) => member.member === wallet);
+  const currentReputation =
+    Number.parseInt(profileQuery.data?.stats.memberReputation ?? "0", 10) || 0;
+  const isJoinCandidate = circle.status === "Forming" && !myMembership && Boolean(walletKey);
+  const reputationGate: ReputationGate | null =
+    isJoinCandidate &&
+    circle.minReputation > 0 &&
+    (profileQuery.isLoading || currentReputation < circle.minReputation)
+      ? {
+          current: currentReputation,
+          required: circle.minReputation,
+          status: profileQuery.isLoading ? "checking" : "blocked",
+        }
+      : null;
   const activeMembers = members.filter((member) => member.active);
   const unpaidMembers = activeMembers.filter((member) => member.state !== "Paid");
   const allActiveMembersPaid = activeMembers.length > 0 && unpaidMembers.length === 0;
@@ -426,7 +447,23 @@ export function useCirclePrimaryAction(detail: CircleDetail, options?: { justRes
   let primaryAction: PrimaryAction | null = null;
 
   if (circle.status === "Forming" && !myMembership) {
-    primaryAction = { label: "Join circle", onClick: reviewJoin, tone: "accent" };
+    if (reputationGate?.status === "checking") {
+      primaryAction = {
+        disabled: true,
+        label: "Checking reputation",
+        onClick: () => undefined,
+        tone: "muted",
+      };
+    } else if (reputationGate?.status === "blocked") {
+      primaryAction = {
+        disabled: true,
+        label: "Reputation required",
+        onClick: () => undefined,
+        tone: "muted",
+      };
+    } else {
+      primaryAction = { label: "Join circle", onClick: reviewJoin, tone: "accent" };
+    }
   } else if (
     circle.status === "Forming" &&
     ((isHost && circle.members >= 2) || circle.members >= circle.memberCap)
@@ -504,5 +541,5 @@ export function useCirclePrimaryAction(detail: CircleDetail, options?: { justRes
     };
   }
 
-  return { localError, primaryAction, transaction };
+  return { localError, primaryAction, reputationGate, transaction };
 }

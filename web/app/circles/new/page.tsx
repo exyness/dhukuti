@@ -4,7 +4,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { Transaction } from "@solana/web3.js";
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, Loader2, LockKeyhole, WalletCards } from "lucide-react";
-import type { ReactNode } from "react";
+import type { ReactNode, SubmitEvent } from "react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppPageHeader, AppShell, Panel, TokenScopeNotice } from "@/components/app/app-shell";
@@ -108,7 +108,7 @@ export default function NewCirclePage() {
     }
   }
 
-  async function handleReview(event: React.FormEvent<HTMLFormElement>) {
+  async function handleReview(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (!publicKey || !connected) {
